@@ -1,0 +1,102 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial1 - Getting Started", "Tutorial1 - Getting Started\Tutorial1 - Getting Started.csproj", "{AF606C92-7617-480D-8AE5-5EB1466B570E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial2 - Simple Animation", "Tutorial2 - Simple Animation\Tutorial2 - Simple Animation.csproj", "{FFB53C99-7644-4B40-AE90-C74E34284E52}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial3 - Simple 2D GUI", "Tutorial3 - Simple 2D GUI\Tutorial3 - Simple 2D GUI.csproj", "{DDB52267-5D28-4B73-A139-7E185CEB5123}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial4 - 3D Object Selection", "Tutorial4 - 3D Object Selection\Tutorial4 - 3D Object Selection.csproj", "{671ABEB2-7AB5-4492-AC7C-064F1D3EEB0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial5 - Simple Physics", "Tutorial5 - Simple Physics\Tutorial5 - Simple Physics.csproj", "{BCB724C0-6006-44B6-AFEC-394C48188E1D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial6 - Simple Particle Systems", "Tutorial6 - Simple Particle Systems\Tutorial6 - Simple Particle Systems.csproj", "{9DB630BB-210F-4FD5-A46C-63E3047A9DEC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial7 - Custom Shape", "Tutorial7 - Custom Shape\Tutorial7 - Custom Shape.csproj", "{328D8D16-9378-4068-AB8A-065506758805}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial8 - Optical Marker Tracking", "Tutorial8 - Optical Marker Tracking\Tutorial8 - Optical Marker Tracking.csproj", "{E1805CB8-0610-4687-8998-9A075ABF65DB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial9 - Advanced Features", "Tutorial9 - Advanced Features\Tutorial9 - Advanced Features.csproj", "{DADFB059-7150-4AAB-A23C-8D19729CC98E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial10 - Networking", "Tutorial10 - Networking\Tutorial10 - Networking.csproj", "{336516B8-94B4-4BB9-9979-87EB1E63312D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial11 - Shader", "Tutorial11 - Shader\Tutorial11 - Shader.csproj", "{04FA4A5D-3C99-4ED9-BEDA-6643B6C0F39E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF606C92-7617-480D-8AE5-5EB1466B570E}.Debug|x86.ActiveCfg = Debug|x86
+		{AF606C92-7617-480D-8AE5-5EB1466B570E}.Debug|x86.Build.0 = Debug|x86
+		{AF606C92-7617-480D-8AE5-5EB1466B570E}.Release|x86.ActiveCfg = Release|x86
+		{AF606C92-7617-480D-8AE5-5EB1466B570E}.Release|x86.Build.0 = Release|x86
+		{FFB53C99-7644-4B40-AE90-C74E34284E52}.Debug|x86.ActiveCfg = Debug|x86
+		{FFB53C99-7644-4B40-AE90-C74E34284E52}.Debug|x86.Build.0 = Debug|x86
+		{FFB53C99-7644-4B40-AE90-C74E34284E52}.Release|x86.ActiveCfg = Release|x86
+		{FFB53C99-7644-4B40-AE90-C74E34284E52}.Release|x86.Build.0 = Release|x86
+		{DDB52267-5D28-4B73-A139-7E185CEB5123}.Debug|x86.ActiveCfg = Debug|x86
+		{DDB52267-5D28-4B73-A139-7E185CEB5123}.Debug|x86.Build.0 = Debug|x86
+		{DDB52267-5D28-4B73-A139-7E185CEB5123}.Release|x86.ActiveCfg = Release|x86
+		{DDB52267-5D28-4B73-A139-7E185CEB5123}.Release|x86.Build.0 = Release|x86
+		{671ABEB2-7AB5-4492-AC7C-064F1D3EEB0C}.Debug|x86.ActiveCfg = Debug|x86
+		{671ABEB2-7AB5-4492-AC7C-064F1D3EEB0C}.Debug|x86.Build.0 = Debug|x86
+		{671ABEB2-7AB5-4492-AC7C-064F1D3EEB0C}.Release|x86.ActiveCfg = Release|x86
+		{671ABEB2-7AB5-4492-AC7C-064F1D3EEB0C}.Release|x86.Build.0 = Release|x86
+		{BCB724C0-6006-44B6-AFEC-394C48188E1D}.Debug|x86.ActiveCfg = Debug|x86
+		{BCB724C0-6006-44B6-AFEC-394C48188E1D}.Debug|x86.Build.0 = Debug|x86
+		{BCB724C0-6006-44B6-AFEC-394C48188E1D}.Release|x86.ActiveCfg = Release|x86
+		{BCB724C0-6006-44B6-AFEC-394C48188E1D}.Release|x86.Build.0 = Release|x86
+		{9DB630BB-210F-4FD5-A46C-63E3047A9DEC}.Debug|x86.ActiveCfg = Debug|x86
+		{9DB630BB-210F-4FD5-A46C-63E3047A9DEC}.Debug|x86.Build.0 = Debug|x86
+		{9DB630BB-210F-4FD5-A46C-63E3047A9DEC}.Release|x86.ActiveCfg = Release|x86
+		{9DB630BB-210F-4FD5-A46C-63E3047A9DEC}.Release|x86.Build.0 = Release|x86
+		{328D8D16-9378-4068-AB8A-065506758805}.Debug|x86.ActiveCfg = Debug|x86
+		{328D8D16-9378-4068-AB8A-065506758805}.Debug|x86.Build.0 = Debug|x86
+		{328D8D16-9378-4068-AB8A-065506758805}.Release|x86.ActiveCfg = Release|x86
+		{328D8D16-9378-4068-AB8A-065506758805}.Release|x86.Build.0 = Release|x86
+		{E1805CB8-0610-4687-8998-9A075ABF65DB}.Debug|x86.ActiveCfg = Debug|x86
+		{E1805CB8-0610-4687-8998-9A075ABF65DB}.Debug|x86.Build.0 = Debug|x86
+		{E1805CB8-0610-4687-8998-9A075ABF65DB}.Release|x86.ActiveCfg = Release|x86
+		{E1805CB8-0610-4687-8998-9A075ABF65DB}.Release|x86.Build.0 = Release|x86
+		{DADFB059-7150-4AAB-A23C-8D19729CC98E}.Debug|x86.ActiveCfg = Debug|x86
+		{DADFB059-7150-4AAB-A23C-8D19729CC98E}.Debug|x86.Build.0 = Debug|x86
+		{DADFB059-7150-4AAB-A23C-8D19729CC98E}.Release|x86.ActiveCfg = Release|x86
+		{DADFB059-7150-4AAB-A23C-8D19729CC98E}.Release|x86.Build.0 = Release|x86
+		{336516B8-94B4-4BB9-9979-87EB1E63312D}.Debug|x86.ActiveCfg = Debug|x86
+		{336516B8-94B4-4BB9-9979-87EB1E63312D}.Debug|x86.Build.0 = Debug|x86
+		{336516B8-94B4-4BB9-9979-87EB1E63312D}.Release|x86.ActiveCfg = Release|x86
+		{336516B8-94B4-4BB9-9979-87EB1E63312D}.Release|x86.Build.0 = Release|x86
+		{04FA4A5D-3C99-4ED9-BEDA-6643B6C0F39E}.Debug|x86.ActiveCfg = Debug|x86
+		{04FA4A5D-3C99-4ED9-BEDA-6643B6C0F39E}.Debug|x86.Build.0 = Debug|x86
+		{04FA4A5D-3C99-4ED9-BEDA-6643B6C0F39E}.Release|x86.ActiveCfg = Release|x86
+		{04FA4A5D-3C99-4ED9-BEDA-6643B6C0F39E}.Release|x86.Build.0 = Release|x86
+		{FF03E337-ECCB-4970-B5F0-F93A93511DA4}.Debug|x86.ActiveCfg = Debug|x86
+		{FF03E337-ECCB-4970-B5F0-F93A93511DA4}.Release|x86.ActiveCfg = Release|x86
+		{AA95DBDE-53CD-4782-BF98-DC37374610B2}.Debug|x86.ActiveCfg = Debug|x86
+		{AA95DBDE-53CD-4782-BF98-DC37374610B2}.Release|x86.ActiveCfg = Release|x86
+		{3D7F8E82-5EE1-40B6-945F-37A28C60D138}.Debug|x86.ActiveCfg = Debug|x86
+		{3D7F8E82-5EE1-40B6-945F-37A28C60D138}.Release|x86.ActiveCfg = Release|x86
+		{361954B6-5B6E-4C31-8FE1-E218130C142C}.Debug|x86.ActiveCfg = Debug|x86
+		{361954B6-5B6E-4C31-8FE1-E218130C142C}.Release|x86.ActiveCfg = Release|x86
+		{651265D6-8DC7-4109-8B5D-CAF10281845C}.Debug|x86.ActiveCfg = Debug|x86
+		{651265D6-8DC7-4109-8B5D-CAF10281845C}.Release|x86.ActiveCfg = Release|x86
+		{2D328FD7-787C-4225-AE0B-2D896D719D71}.Debug|x86.ActiveCfg = Debug|x86
+		{2D328FD7-787C-4225-AE0B-2D896D719D71}.Release|x86.ActiveCfg = Release|x86
+		{860F4A5B-C8F8-422F-AF45-1C81D6A82EC0}.Debug|x86.ActiveCfg = Debug|x86
+		{860F4A5B-C8F8-422F-AF45-1C81D6A82EC0}.Release|x86.ActiveCfg = Release|x86
+		{642C39F6-F903-4916-8525-BB3A2A10122E}.Debug|x86.ActiveCfg = Debug|x86
+		{642C39F6-F903-4916-8525-BB3A2A10122E}.Release|x86.ActiveCfg = Release|x86
+		{16FD8F67-47E1-4AA8-8631-003EF39870D7}.Debug|x86.ActiveCfg = Debug|x86
+		{16FD8F67-47E1-4AA8-8631-003EF39870D7}.Release|x86.ActiveCfg = Release|x86
+		{2E5ACD3B-92B8-4235-89EC-C43AFA181E18}.Debug|x86.ActiveCfg = Debug|x86
+		{2E5ACD3B-92B8-4235-89EC-C43AFA181E18}.Release|x86.ActiveCfg = Release|x86
+		{30A67329-5F41-4A6E-89D3-11C497E91FE4}.Debug|x86.ActiveCfg = Debug|x86
+		{30A67329-5F41-4A6E-89D3-11C497E91FE4}.Release|x86.ActiveCfg = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

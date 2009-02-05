@@ -1,0 +1,105 @@
+/************************************************************************************ 
+ * Copyright (c) 2008, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/ 
+
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+using Microsoft.Xna.Framework;
+
+using GoblinXNA.Device;
+
+namespace GoblinXNA.SceneGraph
+{
+    /// <summary>
+    /// A scene graph node that handles 6DOF tracking devices.
+    /// </summary>
+    public class TrackerNode : BranchNode
+    {
+        #region Member Fields
+        private Matrix worldTransform;
+        private String deviceIdentifier;
+        #endregion
+
+        #region Constructors
+        /// <summary>
+        /// Creates a tracker node with the given 6DOF device identifier (see InputMapper class
+        /// for the identifier strings).
+        /// </summary>
+        /// <param name="name">The name of this node</param>
+        /// <param name="deviceIdentifier">The 6DOF device identifier (see InputMapper class)</param>
+        /// <exception cref="GoblinException">If the given device identifier is not a 6DOF device</exception>
+        public TrackerNode(String name, String deviceIdentifier) :
+            base(name)
+        {
+            worldTransform = Matrix.Identity;
+            this.deviceIdentifier = deviceIdentifier;
+            if (!InputMapper.Contains6DOFInputDevice(deviceIdentifier))
+                throw new GoblinException(deviceIdentifier + " is not recognized. Only 6DOF devices " +
+                    "are allowed to be used with TrackerNode.");
+        }
+
+        /// <summary>
+        /// Creates a tracker node with the given 6DOF device identifier (see InputMapper class
+        /// for the identifier strings).
+        /// </summary>
+        /// <param name="deviceIdentifier">The 6DOF device identifier (see InputMapper class)</param>
+        public TrackerNode(String deviceIdentifier) : this("", deviceIdentifier) { }
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// Gets or sets the 6DOF device identifier (see InputMapper class for the identifier strings)
+        /// </summary>
+        /// <exception cref="GoblinException">If the given device identifier is not a 6DOF device</exception>
+        public String DeviceIdentifier
+        {
+            get { return deviceIdentifier; }
+            set
+            {
+                if (!InputMapper.Contains6DOFInputDevice(value))
+                    throw new GoblinException(value + " is not recognized. Only 6DOF devices " +
+                        "are allowed to be used with TrackerNode.");
+                deviceIdentifier = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets the tranformation of the 6DOF tracker.
+        /// </summary>
+        public Matrix WorldTransformation
+        {
+            get { return InputMapper.GetWorldTransformation(deviceIdentifier); }
+        }
+        #endregion
+    }
+}
