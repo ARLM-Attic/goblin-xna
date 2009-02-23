@@ -24,7 +24,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace GoblinXNA.Device.Capture
+namespace GoblinXNA.Device.Capture.PointGrey
 {
     /// <summary>
     /// A camera driver class for Point Grey Research firefly/dragonfly cameras.
@@ -32,83 +32,6 @@ namespace GoblinXNA.Device.Capture
     /// </summary>
 	internal unsafe class PGRFlyCapture : IDisposable
     {
-        #region Structs
-        public struct RGBQUAD
-        {
-            public byte rgbBlue;
-            public byte rgbGreen;
-            public byte rgbRed;
-            public byte rgbReserved;
-        }
-
-        public struct BITMAPINFOHEADER
-        {
-            public int biSize;
-            public int biWidth;
-            public int biHeight;
-            public short biPlanes;
-            public short biBitCount;
-            public int biCompression;
-            public int biSizeImage;
-            public int biXPelsPerMeter;
-            public int biYPelsPerMeter;
-            public int biClrUsed;
-            public int biClrImportant;
-        }
-
-        public struct BITMAPINFO
-        {
-            public BITMAPINFOHEADER bmiHeader;
-            public RGBQUAD bmiColors;
-        }
-        #endregion
-
-        #region DLL Imports
-        //
-		// DLL Functions to import
-		// 
-		// Follow this format to import any DLL with a specific function.
-		//
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureCreateContext(int* flycapcontext);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureStart(int flycapcontext, 
-			PGRFlyModule.FlyCaptureVideoMode videoMode,
-            PGRFlyModule.FlyCaptureFrameRate frameRate);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern string flycaptureErrorToString(int error);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureInitialize(int flycapContext, 
-			int cameraIndex);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureGetCameraInformation(int flycapContext,
-            ref PGRFlyModule.FlyCaptureInfo arInfo);
-
-		[DllImport("pgrflycapture.dll")]
-		unsafe public static extern int flycaptureGrabImage2(int flycapContext,
-            ref PGRFlyModule.FlyCaptureImage image);
-
-		[DllImport("pgrflycapture.dll")]
-		unsafe public static extern int flycaptureSaveImage(int flycapContext,
-            ref PGRFlyModule.FlyCaptureImage image, string filename, 
-			PGRFlyModule.FlyCaptureImageFileFormat fileFormat);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureStop(int flycapContext);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureDestroyContext(int flycapContext);
-
-		[DllImport("pgrflycapture.dll")]
-		public static extern int flycaptureConvertImage(int flycapContext,
-            ref PGRFlyModule.FlyCaptureImage image, ref PGRFlyModule.FlyCaptureImage imageConvert);
-        #endregion
-
         #region Constants
         // Bitmap constant
 		public const short DIB_RGB_COLORS = 0;
@@ -144,7 +67,7 @@ namespace GoblinXNA.Device.Capture
         /// <summary>
         /// The model of the camera
         /// </summary>
-        /// <seealso cref="GoblinXNA.Device.Capture.PGRFlyModule"/>
+        /// <seealso cref="GoblinXNA.Device.Capture.PointGrey.PGRFlyModule"/>
         public PGRFlyModule.FlyCaptureCameraModel CameraModel
         {
             get { return cameraModel; }
@@ -177,17 +100,17 @@ namespace GoblinXNA.Device.Capture
             int flycapContext;
             int ret;
             // Create the context.
-            ret = flycaptureCreateContext(&flycapContext);
+            ret = PGRFlyDllBridge.flycaptureCreateContext(&flycapContext);
             if (ret != 0)
                 ReportError(ret, "flycaptureCreateContext");
 
             // Initialize the camera.
-            ret = flycaptureInitialize(flycapContext, cameraIndex);
+            ret = PGRFlyDllBridge.flycaptureInitialize(flycapContext, cameraIndex);
             if (ret != 0)
                 ReportError(ret, "flycaptureInitialize");
 
             // Get the info for this camera.
-            ret = flycaptureGetCameraInformation(flycapContext, ref flycapInfo);
+            ret = PGRFlyDllBridge.flycaptureGetCameraInformation(flycapContext, ref flycapInfo);
             if (ret != 0)
                 ReportError(ret, "flycaptureGetCameraInformation");
 
@@ -201,9 +124,10 @@ namespace GoblinXNA.Device.Capture
 
             // Start FlyCapture.
             if (cameraModel == PGRFlyModule.FlyCaptureCameraModel.FLYCAPTURE_DRAGONFLY2)
-                ret = flycaptureStart(flycapContext, PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_640x480RGB, frameRate);
+                ret = PGRFlyDllBridge.flycaptureStart(flycapContext, 
+                    PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_640x480RGB, frameRate);
             else
-                ret = flycaptureStart(flycapContext, videoMode, frameRate);
+                ret = PGRFlyDllBridge.flycaptureStart(flycapContext, videoMode, frameRate);
             
             if (ret != 0)
                 ReportError(ret, "flycaptureStart");
@@ -219,7 +143,7 @@ namespace GoblinXNA.Device.Capture
         public PGRFlyModule.FlyCaptureImage GrabRGBImage(IntPtr camImage)
         {
             int ret;
-            ret = flycaptureGrabImage2(flycapContext, ref image);
+            ret = PGRFlyDllBridge.flycaptureGrabImage2(flycapContext, ref image);
             if (ret != 0)
                 ReportError(ret, "flycaptureGrabImage2");
 
@@ -230,7 +154,7 @@ namespace GoblinXNA.Device.Capture
                 // Convert the image.
                 flycapRGBImage.pData = (byte*)camImage;
                 flycapRGBImage.pixelFormat = PGRFlyModule.FlyCapturePixelFormat.FLYCAPTURE_BGR;
-                ret = flycaptureConvertImage(flycapContext, ref image, ref flycapRGBImage);
+                ret = PGRFlyDllBridge.flycaptureConvertImage(flycapContext, ref image, ref flycapRGBImage);
                 if (ret != 0)
                     ReportError(ret, "flycaptureConvertImage");
 
@@ -239,8 +163,8 @@ namespace GoblinXNA.Device.Capture
         }
 
 		private void ReportError( int ret, string fname )
-		{		
-			throw new GoblinException(fname + " error: " + flycaptureErrorToString(ret));
+		{
+            throw new GoblinException(fname + " error: " + PGRFlyDllBridge.flycaptureErrorToString(ret));
 		}
 
         #region IDisposable Members
@@ -249,12 +173,12 @@ namespace GoblinXNA.Device.Capture
         {
             int ret;
             // Stop FlyCapture.
-            ret = flycaptureStop(flycapContext);
+            ret = PGRFlyDllBridge.flycaptureStop(flycapContext);
             /*if (ret != 0)
                 ReportError(ret, "flycaptureStop");*/
 
             // Destroy the context.
-            ret = flycaptureDestroyContext(flycapContext);
+            ret = PGRFlyDllBridge.flycaptureDestroyContext(flycapContext);
             /*if(ret != 0)
                 ReportError(ret, "flycaptureDestroyContext");*/
         }

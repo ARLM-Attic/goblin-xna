@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,7 +72,7 @@ namespace GoblinXNA.Shaders
         /// Sets the lighting effect to be applied for the rendering.
         /// </summary>
         /// <param name="globalLights">A list of global light nodes</param>
-        /// <param name="ambientLightColor">A list of local light nodes</param>
+        /// <param name="localLights">A list of local light nodes</param>
         void SetParameters(List<LightNode> globalLights, List<LightNode> localLights);
 
         /// <summary>

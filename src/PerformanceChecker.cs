@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,12 +50,12 @@ namespace GoblinXNA
         /// <summary>
         /// Indicates whether to print on the console window or write to a log file
         /// </summary>
-        private static bool print;
+        public static bool Print;
 
         static PerformanceChecker()
         {
             startTime = 0;
-            print = true;
+            Print = true;
         }
 
         /// <summary>
@@ -73,10 +73,15 @@ namespace GoblinXNA
         internal static void Stop(String identifier)
         {
             double stopTime = DateTime.Now.TimeOfDay.TotalMilliseconds;
-            if (print)
+            if (Print)
                 Console.WriteLine(identifier + " - Timespan: " + (stopTime - startTime));
             else
                 Log.Write(identifier + " - Timespan: " + (stopTime - startTime), Log.LogLevel.Log);
+        }
+
+        internal static double Stop()
+        {
+            return DateTime.Now.TimeOfDay.TotalMilliseconds - startTime;
         }
     }
 }

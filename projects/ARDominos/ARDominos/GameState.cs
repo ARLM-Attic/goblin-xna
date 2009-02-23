@@ -4,12 +4,11 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 
-using GoblinXNA.Network;
 using GoblinXNA.Helpers;
 
 namespace ARDominos
 {
-    public class GameState : INetworkObject
+    public class GameState
     {
         #region Mode Enums
         /// <summary>
@@ -67,11 +66,6 @@ namespace ARDominos
 
         #region Member Fields
 
-        private bool readyToSend;
-        private bool hold;
-        private int sendFrequencyInFrameCount;
-        private int sendFrequencyInHertz;
-
         // The current game mode (Add, Edit, or Play)
         private GameMode gameMode;
 
@@ -108,34 +102,6 @@ namespace ARDominos
         #endregion
 
         #region Properties
-        public String Identifier
-        {
-            get { return "ARDomino_GameState"; }
-        }
-
-        public bool ReadyToSend
-        {
-            get { return readyToSend; }
-            set { readyToSend = value; }
-        }
-
-        public bool Hold
-        {
-            get { return hold; }
-            set { hold = value; }
-        }
-
-        public int SendFrequencyInFrameCount
-        {
-            get { return sendFrequencyInFrameCount; }
-            set { sendFrequencyInFrameCount = value; }
-        }
-
-        public int SendFrequencyInHertz
-        {
-            get { return sendFrequencyInHertz; }
-            set { sendFrequencyInHertz = value; }
-        }
 
         public GameMode CurrentGameMode
         {
@@ -186,16 +152,6 @@ namespace ARDominos
             elapsedMinute = 0;
             elapsedSecond = 0;
             gameOver = false;
-        }
-
-        public byte[] GetMessage()
-        {
-            return null;
-        }
-
-        public void InterpretMessage(byte[] msg)
-        {
-            
         }
 
         #endregion

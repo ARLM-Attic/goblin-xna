@@ -92,10 +92,12 @@
     <Reference Include="XNAnimation, Version=0.7.0.0, Culture=neutral, PublicKeyToken=0c21691816f8c6d0, processorArchitecture=x86" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Device\Capture\CameraDiagnostic.cs" />
-    <Compile Include="Device\Capture\PGRFlyCapture.cs" />
-    <Compile Include="Device\Capture\PGRFlyModule.cs" />
-    <Compile Include="Device\Capture\VideoCapture.cs" />
+    <Compile Include="Device\Capture\DirectShowCapture.cs" />
+    <Compile Include="Device\Capture\IVideoCapture.cs" />
+    <Compile Include="Device\Capture\PointGreyCapture.cs" />
+    <Compile Include="Device\Capture\PointGrey\PGRFlyCapture.cs" />
+    <Compile Include="Device\Capture\PointGrey\PGRFlyDllBridge.cs" />
+    <Compile Include="Device\Capture\PointGrey\PGRFlyModule.cs" />
     <Compile Include="Device\DeviceEnumerator.cs" />
     <Compile Include="Device\Generic\GenericInput.cs" />
     <Compile Include="Device\Generic\KeyboardInput.cs" />
@@ -110,11 +112,15 @@
     <Compile Include="Device\InterSense\InterSenseStation.cs" />
     <Compile Include="Device\InterSense\ISDllBridge.cs" />
     <Compile Include="Device\IReconfigurable.cs" />
+    <Compile Include="Device\Util\DESPredictor.cs" />
+    <Compile Include="Device\Util\IPredictor.cs" />
+    <Compile Include="Device\Util\ISmoother.cs" />
     <Compile Include="Device\Vision\Marker\ARTagDllBridge.cs" />
+    <Compile Include="Device\Vision\Marker\ARTagTracker.cs" />
+    <Compile Include="Device\Vision\Marker\IMarkerTracker.cs" />
     <Compile Include="Device\Vision\Marker\MarkerBase.cs" />
     <Compile Include="Device\Vision\Marker\MarkerException.cs" />
-    <Compile Include="Device\Vision\Marker\MarkerTracker.cs" />
-    <Compile Include="Device\Vision\Util\Smoother.cs" />
+    <Compile Include="Device\Util\DESSmoother.cs" />
     <Compile Include="GoblinEnums.cs" />
     <Compile Include="GoblinException.cs" />
     <Compile Include="Graphics\Environment.cs" />
@@ -143,8 +149,8 @@
     <Compile Include="Network\NetworkObject.cs" />
     <Compile Include="Physics\IPhysicsMaterial.cs" />
     <Compile Include="Physics\NewtonJoint.cs" />
-    <Compile Include="Physics\NewtonTire.cs" />
     <Compile Include="Physics\NewtonVehicle.cs" />
+    <Compile Include="Physics\NewtonTire.cs" />
     <Compile Include="Physics\PhysicsMaterial.cs" />
     <Compile Include="Physics\PhysicsObject.cs" />
     <Compile Include="Physics\PickedObject.cs" />

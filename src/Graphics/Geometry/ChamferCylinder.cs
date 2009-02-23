@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -78,7 +78,7 @@ namespace GoblinXNA.Graphics.Geometry
             double thaiIncr = Math.PI / slices;
             double thetaIncr = Math.PI * 2 / slices;
             int countB, countA;
-            int sideCount = 0;
+
             // Add side vertices
             for (countA = 0, thai = 0; thai <= Math.PI; thai += thaiIncr, countA++)
             {

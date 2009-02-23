@@ -24,7 +24,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace GoblinXNA.Device.Capture
+namespace GoblinXNA.Device.Capture.PointGrey
 {
     /// <summary>
     /// A collection of Enums used for the PGRFlyCapture class.

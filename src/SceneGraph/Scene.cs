@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -128,7 +128,7 @@ namespace GoblinXNA.SceneGraph
 
         protected SpriteBatch spriteBatch;
 
-        protected MarkerTracker tracker;
+        protected IMarkerTracker tracker;
         protected bool trackMarkers;
         protected bool markerModuleInited;
 
@@ -162,12 +162,19 @@ namespace GoblinXNA.SceneGraph
         protected bool readyToUpdateTracker;
         protected int[] videoImage;
 
+        protected List<MarkerNode> markerNodes;
+
         #region For Augmented Reality Scene
-        protected bool cameraInited;
         protected bool showCameraImage;
         protected int overlayVideoID;
-        protected int actualVideoID;
+        protected int trackerVideoID;
+        protected int actualOverlayVideoID;
+        protected int actualTrackerVideoID;
+        protected bool overlayAndTrackerUseSameID;
         protected Dictionary<int, int> videoIDs;
+        protected bool freezeVideo;
+        protected bool waitForVideoIDChange;
+        protected bool waitForTrackerUpdate;
         #endregion
 
         #endregion
@@ -197,6 +204,7 @@ namespace GoblinXNA.SceneGraph
             needTransparencySort = false;
             renderedEffects = new List<ParticleNode>();
             occluderGroup = new List<GeometryNode>();
+            markerNodes = new List<MarkerNode>();
 
             networkObjects = new Dictionary<String, NetObj>();
             cameraNode = null;
@@ -242,11 +250,22 @@ namespace GoblinXNA.SceneGraph
             backgroundTexture = null;
             backgroundColor = Color.CornflowerBlue;
 
-            cameraInited = false;
             showCameraImage = false;
-            actualVideoID = 0;
+            actualOverlayVideoID = -1;
+            trackerVideoID = 0;
+            actualTrackerVideoID = 0;
+            overlayAndTrackerUseSameID = true;
             videoIDs = new Dictionary<int, int>();
             readyToUpdateTracker = false;
+            freezeVideo = false;
+            waitForVideoIDChange = false;
+            waitForTrackerUpdate = false;
+
+            if (State.IsMultiCore)
+            {
+                updateThread = new Thread(UpdateTracker);
+                updateThread.Start();
+            }
         }
 
         #endregion
@@ -273,6 +292,7 @@ namespace GoblinXNA.SceneGraph
                 opaqueGroups.Clear();
                 renderedEffects.Clear();
                 occluderGroup.Clear();
+                markerNodes.Clear();
             }
         }
 
@@ -322,11 +342,36 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets the marker tracking system
+        /// Gets or sets the marker tracking system.
         /// </summary>
-        public MarkerTracker MarkerTracker
+        public IMarkerTracker MarkerTracker
         {
             get { return tracker; }
+            set
+            {
+                if (value == null)
+                    return;
+
+                if (!value.Initialized)
+                    throw new GoblinException("You have to initialize the tracker before you assign " +
+                        "to Scene.MarkerTracker");
+
+                tracker = value;
+                MarkerBase.Base.Tracker = tracker;
+
+                MarkerBase.Base.InitCameraNode();
+
+                if (cameraNode == null)
+                {
+                    RootNode.AddChild(MarkerBase.Base.CameraNode);
+                    CameraNode = (CameraNode)MarkerBase.Base.CameraNode;
+                }
+                else
+                {
+                    throw new GoblinException("You shouldn't assign your own camera node " +
+                        "when using marker tracking");
+                }
+            }
         }
 
         /// <summary>
@@ -520,41 +565,121 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets a list of initialized video capture devices
+        /// Gets a list of added video capture devices.
         /// </summary>
-        public List<VideoCapture> VideoCapture
+        public List<IVideoCapture> VideoCapture
         {
             get { return MarkerBase.Base.VideoCaptures; }
         }
 
         /// <summary>
-        /// Gets or sets whether to show camera captured physical image in the background
+        /// Gets or sets whether to show camera captured physical image in the background.
         /// (By default, this is false. If showing camera image, then needs
         /// to be set to true before initializing the marker tracker using InitMarkerTracker method)
         /// </summary>
+        /// <remarks>
+        /// If you want to show a static image used by the tracker, you need to set the 
+        /// Scene.OverlayVideoID to -1.
+        /// </remarks>
+        /// <see cref="OverlayVideoID"/>
         public bool ShowCameraImage
         {
             get { return showCameraImage; }
-            set { showCameraImage = value; }
+            set 
+            {
+                //if (value && (MarkerBase.Base.VideoCaptures.Count == 0))
+                //    throw new GoblinException("You need to add at least one video capture device " +
+                //        "before you can show the camera image");
+
+                showCameraImage = value;
+                if (showCameraImage && !MarkerBase.Base.RenderInitialized)
+                    MarkerBase.Base.InitRendering();
+            }
         }
 
         /// <summary>
         /// Gets or sets the video capture device ID used to provide the overlaid physical image.
         /// This ID should correspond to the videoDeviceID given to the initialized video device
-        /// using InitVideoCapture method.
+        /// using InitVideoCapture method. If you want to show a static image used by the tracker,
+        /// you should set this to -1.
         /// </summary>
+        /// <exception cref="GoblinException"></exception>
         public int OverlayVideoID
         {
             get { return overlayVideoID; }
             set 
             {
+                // Wait for the tracker update to end before modifying the ID
+                while (waitForTrackerUpdate) { }
+                waitForVideoIDChange = true;
+                if (value < 0)
+                {
+                    MarkerBase.Base.ActiveCaptureDevice = -1;
+                    actualOverlayVideoID = -1;
+                    overlayVideoID = -1;
+                    overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
+                    waitForVideoIDChange = false;
+                    return;
+                }
+
                 if (!videoIDs.ContainsKey(value))
                     throw new GoblinException("OverlayVideoID " + value + " does not exist");
 
-                actualVideoID = videoIDs[value];
-                overlayVideoID = value; 
+                actualOverlayVideoID = videoIDs[value];
+                overlayVideoID = value;
+                MarkerBase.Base.ActiveCaptureDevice = actualOverlayVideoID;
+
+                overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
+                waitForVideoIDChange = false;
             }
         }
+
+        /// <summary>
+        /// Gets or sets the video capture device ID used to perform marker tracking (if available).
+        /// This ID should correspond to the videoDeviceID given to the initialized video device
+        /// using InitVideoCapture method. If you want to process a static image used by the tracker,
+        /// you should set this to -1.
+        /// </summary>
+        public int TrackerVideoID
+        {
+            get { return trackerVideoID; }
+            set
+            {
+                // Wait for the tracker update to end before modifying the ID
+                while (waitForTrackerUpdate) { }
+                waitForVideoIDChange = true;
+                if (value < 0)
+                {
+                    actualTrackerVideoID = -1;
+                    trackerVideoID = -1;
+                    overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
+                    waitForVideoIDChange = false;
+                    return;
+                }
+
+                if (!videoIDs.ContainsKey(value))
+                    throw new GoblinException("TrackerVideoID " + value + " does not exist");
+
+                actualTrackerVideoID = videoIDs[value];
+                trackerVideoID = value;
+
+                overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
+                waitForVideoIDChange = false;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets whether to freeze currently active video streaming. 
+        /// </summary>
+        /// <remarks>
+        /// This will also affect the vision tracking if tracking is used.
+        /// </remarks>
+        public bool FreezeVideo
+        {
+            get { return freezeVideo; }
+            set { freezeVideo = value; }
+        }
+
         #endregion
 
         #region Protected Methods
@@ -776,12 +901,15 @@ namespace GoblinXNA.SceneGraph
             {
                 trackMarkers = true;
                 MarkerNode markerNode = (MarkerNode)node;
-                markerNode.Update();
+                //markerNode.Update();
                 parentMarkerTransform = Matrix.Multiply(markerNode.WorldTransformation,
                     markerTransform);
 
                 if(markerNode.Optimize && !markerNode.MarkerFound)
                     pruneForMarkerNode = true;
+
+                if (!markerNodes.Contains(markerNode))
+                    markerNodes.Add(markerNode);
             }
             else if (node is TrackerNode)
             {
@@ -841,7 +969,7 @@ namespace GoblinXNA.SceneGraph
                             if (child.Enabled && (child is LightNode))
                             {
                                 LightNode lNode = (LightNode)child;
-                                lNode.WorldTransformation = parentTransformation * markerTransform;
+                                lNode.WorldTransformation = parentTransformation * parentMarkerTransform;
                                 if (lNode.Global)
                                     globalLights.Add(lNode);
                                 else
@@ -882,6 +1010,8 @@ namespace GoblinXNA.SceneGraph
                 renderedEffects.Remove((ParticleNode)node);
                 ((ParticleNode)node).IsRendered = false;
             }
+            else if (node is MarkerNode)
+                markerNodes.Remove((MarkerNode)node);
 
             if(node is BranchNode)
                 foreach (Node child in ((BranchNode)node).Children)
@@ -1245,35 +1375,77 @@ namespace GoblinXNA.SceneGraph
                 while (true)
                 {
                     if (readyToUpdateTracker)
+                        UpdateTrackerAndImage();
+                }
+            }
+            else
+                UpdateTrackerAndImage();
+        }
+
+        /// <summary>
+        /// Updates the optical marker tracker as well as the video image
+        /// </summary>
+        protected void UpdateTrackerAndImage()
+        {
+            // Wait for video ID to change before updating the tracker and image
+            while (waitForVideoIDChange) { }
+            waitForTrackerUpdate = true;
+            if (showCameraImage)
+            {
+                if (tracker == null)
+                {
+                    if(!freezeVideo)
+                        videoImage = MarkerBase.Base.VideoCaptures[actualOverlayVideoID].
+                            GetImageTexture(true, false);
+                }
+                else
+                {
+                    if (overlayAndTrackerUseSameID)
                     {
-                        if (showCameraImage)
+                        if (actualOverlayVideoID < 0)
                         {
-                            if (tracker == null)
-                                videoImage = MarkerBase.Base.VideoCaptures[actualVideoID].GetImageTexture(false);
-                            else
-                                videoImage = tracker.ProcessImage(actualVideoID);
+                            videoImage = tracker.StaticImage;
+                            tracker.ProcessImage();
                         }
-                        else if (trackMarkers && (tracker != null))
+                        else
                         {
-                            tracker.ProcessImage(actualVideoID);
+                            if (!freezeVideo)
+                                videoImage = MarkerBase.Base.VideoCaptures[actualOverlayVideoID].
+                                    GetImageTexture(true, true);
+                            tracker.ProcessImage(MarkerBase.Base.VideoCaptures[actualOverlayVideoID]);
+                        }
+                    }
+                    else
+                    {
+                        if (actualOverlayVideoID < 0)
+                            videoImage = tracker.StaticImage;
+                        else if (!freezeVideo)
+                            videoImage = MarkerBase.Base.VideoCaptures[actualOverlayVideoID].
+                                GetImageTexture(true, false);
+
+                        if (actualTrackerVideoID < 0)
+                            tracker.ProcessImage();
+                        else
+                        {
+                            if(!freezeVideo)
+                                MarkerBase.Base.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
+                            tracker.ProcessImage(MarkerBase.Base.VideoCaptures[actualTrackerVideoID]);
                         }
                     }
                 }
             }
-            else
+            else if (trackMarkers && (tracker != null))
             {
-                if (showCameraImage)
+                if (actualTrackerVideoID < 0)
+                    tracker.ProcessImage();
+                else
                 {
-                    if (tracker == null)
-                        videoImage = MarkerBase.Base.VideoCaptures[actualVideoID].GetImageTexture(false);
-                    else
-                        videoImage = tracker.ProcessImage(actualVideoID);
-                }
-                else if (trackMarkers && (tracker != null))
-                {
-                    tracker.ProcessImage(actualVideoID);
+                    if (!freezeVideo)
+                        MarkerBase.Base.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
+                    tracker.ProcessImage(MarkerBase.Base.VideoCaptures[actualTrackerVideoID]);
                 }
             }
+            waitForTrackerUpdate = false;
         }
 
         protected void AddNetMessage(List<byte> msgs, List<byte> riMsgs, List<byte> ruMsgs,
@@ -1451,150 +1623,32 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Initializes the modules for optical marker tracking with the specified number of intended
-        /// video capture devices to use.
-        /// 
-        /// If you want to use a static image rather than the live video image for tracking, then
-        /// set numCameras to 0 and use InitMarkerTracker(String, String) signature to initialize
-        /// the marker tracker.
-        /// </summary>
-        /// <param name="numCameras">The number of intended video capture devices to use</param>
-        public virtual void InitMarkerModules(int numCameras)
-        {
-            if (markerModuleInited)
-                return;
-
-            if (numCameras < 1)
-            {
-                MarkerBase.Base.UseCamera = false;
-                MarkerBase.Base.InitModules(0);
-            }
-            else
-            {
-                MarkerBase.Base.InitModules(numCameras);
-                MarkerBase.Base.UseCamera = true;
-            }
-
-            markerModuleInited = true;
-        }
-
-        /// <summary>
-        /// Initializes the optical marker tracker with a marker configuration file (.cf file) and
-        /// a static image. This method should be called only if InitMarkerModules is passed 
-        /// a value 0. Otherwise, you should use InitMarkerTracker(int, int, String) signature to
-        /// use live video images for tracking the optical markers.
-        /// </summary>
-        /// <param name="staticImageFile">The path of an image file that will be used to track the markers</param>
-        /// <param name="sArrayFilename">The path of a marker configuration file (.cf file)</param>
-        /// <exception cref="GoblinException"></exception>
-        public virtual void InitMarkerTracker(String staticImageFile, String sArrayFilename)
-        {
-            if (!markerModuleInited)
-                throw new GoblinException("Call InitMarkerModules method before calling this method");
-
-            tracker = MarkerBase.Base.Tracker;
-            tracker.InitTracker(staticImageFile, sArrayFilename);
-
-            MarkerBase.Base.InitCameraNode();
-
-            if (cameraNode == null)
-            {
-                RootNode.AddChild(MarkerBase.Base.CameraNode);
-                CameraNode = (CameraNode)MarkerBase.Base.CameraNode;
-            }
-            else
-            {
-                throw new GoblinException("You shouldn't assign your own camera node " +
-                    "when using marker tracking");
-            }
-        }
-
-        /// <summary>
-        /// Initializes the optical marker tracker with a marker configuration file (.cf file) and
-        /// the camera focal point. This method should be called only if InitMarkerModules is passed 
-        /// a value greater than 0. Otherwise, you should use InitMarkerTracker(String, String) signature to
-        /// use a static image for tracking the optical markers.
-        /// </summary>
-        /// <param name="camera_fx">The x-coordinate of the camera focal point</param>
-        /// <param name="camera_fy">The y-coordinate of the camera focal point</param>
-        /// <param name="sArrayFilename">The path of a marker configuration file (.cf file)</param>
-        /// <exception cref="GoblinException"></exception>
-        public virtual void InitMarkerTracker(float camera_fx, float camera_fy,
-            String sArrayFilename)
-        {
-            if (!markerModuleInited)
-                throw new GoblinException("Call InitMarkerModules method before calling this method");
-
-            if (showCameraImage && !cameraInited)
-                throw new GoblinException("Please first initialize the video capture first in order " +
-                    "to show camera image");
-
-            tracker = MarkerBase.Base.Tracker;
-            tracker.InitTracker(camera_fx, camera_fy, sArrayFilename);
-
-            MarkerBase.Base.InitCameraNode();
-
-            if (cameraNode == null)
-            {
-                RootNode.AddChild(MarkerBase.Base.CameraNode);
-                CameraNode = (CameraNode)MarkerBase.Base.CameraNode;
-            }
-            else
-            {
-                throw new GoblinException("You shouldn't assign your own camera node " +
-                    "when using marker tracking");
-            }
-        }
-
-        /// <summary>
-        /// Initializes the video capture device parameters for each video capture device you intend
-        /// to use.
+        /// Adds a video streaming decoder implementation for background rendering and 
+        /// marker tracking.
         /// </summary>
         /// <remarks>
-        /// You should initialize as many as the number of capture devices you specified in InitMarkerModules
-        /// method.
+        /// The video capture device should be initialized before it can be added.
         /// </remarks>
-        /// <param name="id">An ID to access this video capture device</param>
-        /// <param name="videoDeviceID">The actual video device ID assigned by the OS. It's usually determined
-        /// in the order of time that they were plugged in to the computer. For example, the first video capture device
-        /// plugged into the computer is assigned ID of 0, and the next one is assigned ID of 1. If you're
-        /// using the cameras embedded on a laptop or other mobile PC, usually the front camera is assigned
-        /// ID of 0, and the back camera is assigned ID of 1.</param>
-        /// <param name="resolution">The resolution of the live video image to use. Some resolution is
-        /// not supported by certain cameras, and an exception will be thrown in that case</param>
-        /// <param name="grayscale">Indicates whether to use grayscale mode. If the camera only supports 
-        /// black & white, then this must be set to false. Otherwise, an exception will be thrown</param>
-        /// <param name="frameRate">The frame rate of the camera to use</param>
-        /// <param name="cameraLibrary">The video decoding library to use. Some libraries are specific to
-        /// a particular type of camera. For example, you can't use PGRFly library for non-Point-Grey 
-        /// cameras.</param>
-        /// <exception cref="GoblinException"></exception>
-        public virtual void InitVideoCapture(int id, int videoDeviceID, VideoCapture.Resolution resolution,
-            bool grayscale, VideoCapture.FrameRate frameRate, GoblinEnums.CameraLibraryType cameraLibrary)
+        /// <param name="decoder">A video streaming decoder implementation</param>
+        /// <exception cref="GoblinException">If the device is not initialized</exception>
+        public virtual void AddVideoCaptureDevice(IVideoCapture decoder)
         {
-            if (!markerModuleInited)
-                throw new GoblinException("Call InitMarkerModules method before calling this method");
+            if (decoder == null)
+                return;
 
-            if(id < 0 || id >= MarkerBase.Base.VideoCaptures.Count)
-                throw new GoblinException("ID has to be between 0 and (numCameras-1) you set in " +
-                    "InitMarkerTracker(...) method: " + id);
+            if (!decoder.Initialized)
+                throw new GoblinException("You should initialize the video capture device first " +
+                    "before you add it");
 
-            MarkerBase.Base.VideoCaptures[id].InitVideoCapture(resolution, grayscale, cameraLibrary);
-            MarkerBase.Base.VideoCaptures[id].InitCamera(videoDeviceID, -1, frameRate);
+            MarkerBase.Base.VideoCaptures.Add(decoder);
 
-            if (showCameraImage)
-                MarkerBase.Base.InitRendering();
-
-            overlayVideoID = videoDeviceID;
-            actualVideoID = videoIDs.Count;
-            videoIDs.Add(videoDeviceID, actualVideoID);
-            cameraInited = true;
-
-            if (State.IsMultiCore)
-            {
-                updateThread = new Thread(UpdateTracker);
-                updateThread.Start();
-            }
+            overlayVideoID = decoder.VideoDeviceID;
+            trackerVideoID = decoder.VideoDeviceID;
+            actualOverlayVideoID = videoIDs.Count;
+            actualTrackerVideoID = videoIDs.Count;
+            MarkerBase.Base.ActiveCaptureDevice = actualOverlayVideoID;
+            videoIDs.Add(decoder.VideoDeviceID, actualOverlayVideoID);
+            overlayAndTrackerUseSameID = true;
         }
 
         /// <summary>
@@ -1763,9 +1817,6 @@ namespace GoblinXNA.SceneGraph
             else
                 UpdateTracker();
 
-            if (showCameraImage && (videoImage != null))
-                MarkerBase.Base.UpdateRendering(videoImage);
-
             bool updatePhysicsEngine = (physicsEngine != null);
 
             if (State.EnableNetworking)
@@ -1783,6 +1834,12 @@ namespace GoblinXNA.SceneGraph
 
             if (updatePhysicsEngine)
                 physicsEngine.Update((float)gameTime.ElapsedRealTime.TotalSeconds);
+
+            
+            for (int i = 0; i < markerNodes.Count; i++)
+                markerNodes[i].Update((float)gameTime.ElapsedGameTime.TotalMilliseconds);
+            if (showCameraImage && (videoImage != null))
+                MarkerBase.Base.UpdateRendering(videoImage);
 
             PrepareSceneForRendering();
 

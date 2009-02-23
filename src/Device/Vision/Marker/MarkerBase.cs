@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,26 +56,23 @@ namespace GoblinXNA.Device.Vision.Marker
         /// </summary>
         public static readonly MarkerBase Base = new MarkerBase();
         /// <summary>
-        /// The camera diagnostic object
-        /// </summary>
-        private CameraDiagnostic m_kDiagnostics;
-        /// <summary>
         /// The marker tracker object
         /// </summary>
-        private MarkerTracker m_kTracker;
+        private IMarkerTracker m_kTracker;
         /// <summary>
         /// The video capture object
         /// </summary>
-        private List<VideoCapture> m_kVideoCapture;
-        /// <summary>
-        /// Indicates whether the person is useing a camera
-        /// </summary>
-        private bool m_bUseCamera;
+        private List<IVideoCapture> m_kVideoCapture;
+
+        private int activeDevice;
 
         #region Rendering parameters
         private bool m_bRenderInitialized;
         private Texture2D videoTexture;
         private CameraNode markerCameraNode;
+
+        private int prevWidth;
+        private int prevHeight;
         #endregion
         #endregion
 
@@ -84,12 +81,14 @@ namespace GoblinXNA.Device.Vision.Marker
         private MarkerBase()
         {
             m_kTracker = null;
-            m_kVideoCapture = null;
-            m_kDiagnostics = null;
-            m_bUseCamera = false;
+            m_kVideoCapture = new List<IVideoCapture>();
             m_bRenderInitialized = false;
+            activeDevice = -1;
 
             markerCameraNode = null;
+
+            prevWidth = 0;
+            prevHeight = 0;
         }
 
         #endregion
@@ -97,53 +96,49 @@ namespace GoblinXNA.Device.Vision.Marker
         #region Properties
 
         /// <summary>
-        /// Gets the diagnostic class
-        /// </summary>
-        /// <returns>The camera diagnostic class</returns>
-        internal CameraDiagnostic Diagnostics
-        {
-            get { return m_kDiagnostics; }
-        }
-
-        /// <summary>
-        /// Gets the optical marker tracker instance.
+        /// Gets or sets the optical marker tracker instance.
         /// </summary>
         /// <returns>The marker tracker class</returns>
-        public MarkerTracker Tracker
+        public IMarkerTracker Tracker
         {
             get { return m_kTracker; }
+            set { m_kTracker = value; }
         }
 
         /// <summary>
-        /// Gets a list of video capture instances.
+        /// Gets or sets a list of video capture instances.
         /// </summary>
         /// <returns>The video capture class</returns>
-        public List<VideoCapture> VideoCaptures
+        public List<IVideoCapture> VideoCaptures
         {
             get { return m_kVideoCapture; }
+            set { m_kVideoCapture = value; }
         }
 
         /// <summary>
-        /// Gets or sets whether to use camera's live video images for tracking
-        /// instead of using a static image.
+        /// Gets or sets the active capture device used for rendering the background image.
         /// </summary>
-        /// <returns>The camera flag</returns>
-        public bool UseCamera
+        internal int ActiveCaptureDevice
         {
-            set { m_bUseCamera = value; }
-            get { return m_bUseCamera; }
+            get { return activeDevice; }
+            set 
+            { 
+                activeDevice = value;
+                if (activeDevice >= 0)
+                {
+                    // if the new active capture device has different width or height
+                    // from the previosly used capture device, then we need to reset
+                    // the texture configuration
+                    if ((m_kVideoCapture[activeDevice].Width != prevWidth) ||
+                        (m_kVideoCapture[activeDevice].Height != prevHeight))
+                        InitRendering();
+                }
+            }
         }
 
         public Node CameraNode
         {
-            get
-            {
-                if (!m_bRenderInitialized)
-                    throw new Exception("InitRendering() has to be called " +
-                        "before you can get MarkerNode");
-
-                return markerCameraNode;
-            }
+            get { return markerCameraNode; }
         }
 
         /// <summary>
@@ -166,37 +161,6 @@ namespace GoblinXNA.Device.Vision.Marker
         #region Public Methods
 
         /// <summary>
-        /// Initializes the marker tracking module with 1 video capture device.
-        /// </summary>
-        public void InitModules()
-        {
-            InitModules(1);
-        }
-
-        /// <summary>
-        /// Initializes the marker tracking module with the specified number of video
-        /// capture devices.
-        /// </summary>
-        /// <param name="numOfCaptureDeviceToUse">The number of video capture devices to use</param>
-        public void InitModules(int numOfCaptureDeviceToUse)
-        {
-            //create tracker and init it
-            m_kTracker = new MarkerTracker();
-
-            //create video capture and init it
-            if (numOfCaptureDeviceToUse > 0)
-            {
-                m_kVideoCapture = new List<VideoCapture>();
-                for (int i = 0; i < numOfCaptureDeviceToUse; i++)
-                    m_kVideoCapture.Add(new VideoCapture());
-            }
-
-            //create camera diagnostics and init it
-            m_kDiagnostics = new CameraDiagnostic();
-            m_kDiagnostics.Init();
-        }
-
-        /// <summary>
         /// Initializes the background video image rendering routine.
         /// </summary>
         /// <exception cref="GoblinException"></exception>
@@ -206,8 +170,29 @@ namespace GoblinXNA.Device.Vision.Marker
                 throw new GoblinException("GoblinXNA.GoblinSetting.InitGoblin(...) method needs to be called " +
                     "before you can call this method");
 
-            videoTexture = new Texture2D(State.Device, m_kVideoCapture[0].Width,
-                m_kVideoCapture[0].Height, 1, TextureUsage.None, SurfaceFormat.Bgr32);
+            int width = 0, height = 0;
+            if (activeDevice < 0)
+            {
+                if (m_kTracker == null)
+                    throw new GoblinException("marker tracker is null. Can't make texture for static image.");
+
+                width = m_kTracker.ImageWidth;
+                height = m_kTracker.ImageHeight;
+            }
+            else
+            {
+                if (activeDevice > m_kVideoCapture.Count)
+                    throw new GoblinException(activeDevice + " is out of range");
+
+                width = m_kVideoCapture[activeDevice].Width;
+                height = m_kVideoCapture[activeDevice].Height;
+            }
+
+            prevWidth = width;
+            prevHeight = height;
+
+            videoTexture = new Texture2D(State.Device, width, height, 1, TextureUsage.None, 
+                SurfaceFormat.Bgr32);
 
             m_bRenderInitialized = true;
         }
@@ -215,24 +200,19 @@ namespace GoblinXNA.Device.Vision.Marker
         /// <summary>
         /// Initialize the camera setting used for marker tracking.
         /// </summary>
+        /// <exception cref="GoblinException"></exception>
         public void InitCameraNode()
         {
+            if (m_kTracker == null)
+                throw new GoblinException("marker tracker is null, can not create a camera node");
+
             Camera markerCamera = new Camera();
             PrimitiveMesh mesh = new PrimitiveMesh();
 
             markerCamera.View = Matrix.CreateLookAt(new Vector3(0, 0, 0), new Vector3(0, 0, -1),
                 new Vector3(0, 1, 0));
 
-            double camera_dRight = (double)m_kTracker.CameraWidth / (double)(2.0 * m_kTracker.CameraFx);
-            double camera_dTop = (double)m_kTracker.CameraHeight / (double)(2.0 * m_kTracker.CameraFy);
-
-            camera_dRight *= 1024;
-            camera_dTop *= 1024;
-
-            markerCamera.FieldOfViewY = (float)Math.Atan(camera_dRight / 1380) * 2;
-            markerCamera.AspectRatio = (float)(camera_dRight / camera_dTop);
-            markerCamera.ZNearPlane = 1.0f;
-            markerCamera.ZFarPlane = 102500;
+            markerCamera.Projection = m_kTracker.CameraProjection;
 
             markerCameraNode = new CameraNode("MarkerCameraNode", markerCamera);
         }
@@ -248,12 +228,17 @@ namespace GoblinXNA.Device.Vision.Marker
                 return;
 
             if (videoTexture.IsDisposed)
-            {
-                videoTexture = new Texture2D(State.Device, m_kVideoCapture[0].Width,
-                    m_kVideoCapture[0].Height, 1, TextureUsage.None, SurfaceFormat.Bgr32);
-            }
+                InitRendering();
 
-            videoTexture.SetData(imageData);
+            try
+            {
+                videoTexture.SetData(imageData);
+            }
+            catch (Exception exp)
+            {
+                InitRendering();
+                videoTexture.SetData(imageData);
+            }
         }
 
         #endregion
@@ -262,9 +247,10 @@ namespace GoblinXNA.Device.Vision.Marker
 
         public void Dispose()
         {
-            foreach (VideoCapture captureDevice in m_kVideoCapture)
+            foreach (IVideoCapture captureDevice in m_kVideoCapture)
                 captureDevice.Dispose();
-            m_kTracker.Dispose();
+            if(m_kTracker != null)
+                m_kTracker.Dispose();
         }
 
         #endregion

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@ using System.Text;
 using Microsoft.Xna.Framework;
 
 using GoblinXNA.Device;
+using GoblinXNA.Device.Util;
 
 namespace GoblinXNA.SceneGraph
 {
@@ -47,10 +48,15 @@ namespace GoblinXNA.SceneGraph
     {
         #region Member Fields
         private Matrix worldTransform;
+        private ISmoother smoother;
+        private IPredictor predictor;
         private String deviceIdentifier;
+        protected bool smooth;
+        protected bool predict;
         #endregion
 
         #region Constructors
+
         /// <summary>
         /// Creates a tracker node with the given 6DOF device identifier (see InputMapper class
         /// for the identifier strings).
@@ -66,6 +72,11 @@ namespace GoblinXNA.SceneGraph
             if (!InputMapper.Contains6DOFInputDevice(deviceIdentifier))
                 throw new GoblinException(deviceIdentifier + " is not recognized. Only 6DOF devices " +
                     "are allowed to be used with TrackerNode.");
+
+            smoother = null;
+            predictor = null;
+            smooth = false;
+            predict = false;
         }
 
         /// <summary>
@@ -74,9 +85,11 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="deviceIdentifier">The 6DOF device identifier (see InputMapper class)</param>
         public TrackerNode(String deviceIdentifier) : this("", deviceIdentifier) { }
+
         #endregion
 
         #region Properties
+
         /// <summary>
         /// Gets or sets the 6DOF device identifier (see InputMapper class for the identifier strings)
         /// </summary>
@@ -94,11 +107,59 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Gets or sets the smoothing filter to apply to the transformation returned from the
+        /// 6DOF device.
+        /// </summary>
+        public ISmoother Smoother
+        {
+            get { return smoother; }
+            set
+            {
+                smoother = value;
+                smooth = (smoother != null);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the prediction filter to apply to the transformation returned from the
+        /// 6DOF device.
+        /// </summary>
+        public IPredictor Predictor
+        {
+            get { return predictor; }
+            set
+            {
+                predictor = value;
+                predict = (predictor != null);
+            }
+        }
+
+        /// <summary>
         /// Gets the tranformation of the 6DOF tracker.
         /// </summary>
         public Matrix WorldTransformation
         {
-            get { return InputMapper.GetWorldTransformation(deviceIdentifier); }
+            get 
+            {
+                Vector3 p = Vector3.Zero;
+                Quaternion q = Quaternion.Identity;
+
+                if (smooth || predict)
+                {
+                    Vector3 scale;
+                    InputMapper.GetWorldTransformation(deviceIdentifier).Decompose(out scale, out q, out p);
+                }
+
+                if (smooth)
+                    worldTransform = smoother.FilterMatrix(p, q);
+                else
+                    worldTransform = InputMapper.GetWorldTransformation(deviceIdentifier);
+
+                if (predict)
+                    predictor.UpdatePredictor(p, q);
+
+                return worldTransform;
+            }
         }
         #endregion
     }

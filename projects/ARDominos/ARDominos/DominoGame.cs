@@ -58,6 +58,8 @@ using GoblinXNA.UI.Events;
 
 using GoblinXNA.Device.Capture;
 using GoblinXNA.Device.Vision;
+using GoblinXNA.Device.Vision.Marker;
+using GoblinXNA.Device.Util;
 
 namespace ARDominos
 {
@@ -501,9 +503,6 @@ namespace ARDominos
                             TransformNode tNode = (TransformNode)domino.Parent;
 
                             tNode.Rotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
-
-                            // Force the physics engine to modify the transformation of this domino
-                            scene.PhysicsEngine.ModifyPhysicsObject(domino.Physics);
                         }
                     }
                 }
@@ -1256,17 +1255,23 @@ namespace ARDominos
 
         private void SetupMarkerTracking()
         {
+            DirectShowCapture captureDevice = new DirectShowCapture();
+            captureDevice.InitVideoCapture(0, 0, FrameRate._30Hz, Resolution._640x480, false);
+
+            scene.AddVideoCaptureDevice(captureDevice);
+
+            ARTagTracker tracker = new ARTagTracker();
+            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, captureDevice.Height,
+                false, "ARRacing.cf");
+
+            scene.MarkerTracker = tracker;
+
             scene.ShowCameraImage = true;
-            scene.TrackingRate = 1;
-            scene.InitMarkerModules(1);
-            scene.InitVideoCapture(0, 1, VideoCapture.Resolution._320x240, false,
-                VideoCapture.FrameRate._30Hz, GoblinEnums.CameraLibraryType.DirectShow);
-            scene.InitMarkerTracker(319.052f, 317.673f, "ARRacing.cf");
 
             scene.PhysicsEngine.GravityDirection = -Vector3.UnitZ;
 
             // Create a marker node to track the ground plane
-            markerNode = new MarkerNode(scene.MarkerTracker, "ground", 0.8f);
+            markerNode = new MarkerNode(scene.MarkerTracker, "ground");
             markerNode.Name = "GroundMarker";
 
             TransformNode transNode =  new TransformNode();

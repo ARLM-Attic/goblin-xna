@@ -1,0 +1,87 @@
+Version 3.1 (2/18/09)
+
+
+1. Addition of Tutorial 12 that demonstrates advanced physics functionalities including joint
+   physics and vehicle physics simulation.
+
+
+2. Significant structural and design changes for video capturing and marker tracking for better
+   flexibility and extensibility.
+
+   a) Point Grey (PGRFly) related classes are moved under GoblinXNA.Device.Capture.PointGrey package.
+
+   b) Marker tracking related utility classes are moved from GoblinXNA.Device.Vision.Util to
+      GoblinXNA.Device.Util.
+
+   c) VideoCapture class is now gone. Instead, IVideoCapture interface is added and each different
+      video streaming classes are implemented in its own class that extend this IVideoCapture interface
+      (e.g., DirectShowCapture, PointGreyCapture). Now if you want to create your own video streaming
+      class that uses other video streaming library, you simply implement IVideoCapture interface. 
+      You can then add it to Scene class to use it for either marker tracking or simply displaying 
+      the video image on the background. Prior to this change, you had to modify the VideoCapture class
+      inside the Goblin XNA and recompile the library if you want to create your own streaming class. 
+      Now, you can implement the class outside of Goblin XNA, and you don't need to modify and recompile 
+      Goblin XNA. 
+
+   d) MarkerTracker class is now gone. Instead, IMarkerTracker interface is added. ARTagTracker class
+      implements this interface using ARTag library. If you want to implement your own marker tracking
+      class using another tracker library and use it with Goblin XNA, you simply need to implement this
+      interface and assign your tracker implementation to Scene.MarkerTracker. 
+
+
+3. Modifications and additions in the Scene class due to the redesign.
+
+   a) Scene.InitMarkerModules(...) function is removed.
+
+   b) Scene.InitVideoCapture(...) function is replaced with Scene.AddVideoCapture(...) function. The
+      signature of the function changed, so please see the API documentation as well as the tutorial 8
+      for modification details. Before you can add a video capture device, you need to initialize the
+      device by calling InitVideoCapture(...) function with appropriate parameters.
+
+   c) Scene.InitMarkerTracker(...) function is replaced with Scene.MarkerTracker property. Now you can
+      directly set the IMarkerTracker implementation you want to use to Scene.MarkerTracker. Before you
+      can set the marker tracker, you need to initialize it.
+
+   d) Added Scene.TrackerVideoID property which is used to specifiy which capture device to use for
+      performing the tracking when there are more than one video capture devices. Prior to this, the
+      Scene.OverlayVideoID was used to specify which capture device to use, but now, they are separated.
+      This means that you can show a different video overlay image on the background from the video image
+      you use for performing the tracking. This is useful when you have a camera that is used only for 
+      tracking hand gestures that use attached markers on the fingers or hand, and a separate camera to
+      visualize the physical world. 
+
+   e) Added Scene.FreezeVideo property which can be used to freeze the video streaming. (Note that the
+      video image is frozen, but the virtual world is not frozen).
+
+
+4. MarkerNode's constructor signature is modified, and new properties are added.
+
+   a) Due to the changes to MarkerTracker class, we removed the arTagArrayName parameter since the
+      marker tracking library may not necessary be ARTag. Instead, we added markerConfigs parameter
+      which is an array of String that can specify the marker configurations for any type of marker
+      tracker library. 
+
+   b) We removed the smoothingAlpha parameter, but instead, we added Smoother property which can be set to
+      any implementation of ISmoother interface. This way, the programmer has the choice of what smoothing
+      algorithm to apply instead of forced to use our DES (double-exponential-smoothing) implementation.
+
+   c) We added Predictor property which can be set to any implementation of IPredictor interface. This 
+      predictor is used to predict the marker transform when the marker can not be found in the image
+      for a few frames.
+
+
+5. UserData property is added to the Node class which is the ancestor of all Node types. Since it's an Object
+   type, you can associate any type of information to a Node by using this UserData property. 
+
+
+6. Added Smoother and Predictor properties to TrackerNode.
+
+
+7. Added AddInputDevice(..), Add6DOFInputDevice(..), and Reenumerate() functions to InputMapper class, so now
+   you can add your own implemented InputDevice or InputDevice_6DOF class to the InputMapper, and use it with
+   the TrackerNode. After you add a new device to InputMapper, make sure to call Reenumerate() so that the
+   newly added device is recognized.
+
+   
+      
+   

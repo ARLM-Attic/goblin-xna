@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -170,6 +170,41 @@ namespace GoblinXNA.Device
         public static bool Contains6DOFInputDevice(String identifier)
         {
             return enumerator.Available6DOFDevices.ContainsKey(identifier);
+        }
+
+        /// <summary>
+        /// Adds an input device to be enumerated.
+        /// </summary>
+        /// <param name="device">An input device to be added</param>
+        /// <exception cref="GoblinException">If duplicate device identifier exists</exception>
+        public static void AddInputDevice(InputDevice device)
+        {
+            if (!enumerator.AdditionalDevices.ContainsKey(device.Identifier))
+                enumerator.AdditionalDevices.Add(device.Identifier, device);
+            else
+                throw new GoblinException("The identifier: " + device.Identifier + " is already used");
+        }
+
+        /// <summary>
+        /// Adds a 6DOF input device to be enumerated.
+        /// </summary>
+        /// <param name="device">A 6DOF input device to be added</param>
+        /// <exception cref="GoblinException">If duplicate device identifier exists</exception>
+        public static void Add6DOFInputDevice(InputDevice_6DOF device)
+        {
+            if (!enumerator.Additional6DOFDevices.ContainsKey(device.Identifier))
+                enumerator.Additional6DOFDevices.Add(device.Identifier, device);
+            else
+                throw new GoblinException("The identifier: " + device.Identifier + " is already used");
+        }
+
+        /// <summary>
+        /// Reenumerates all of the available input devices. You should call this function after you
+        /// add your own input devices.
+        /// </summary>
+        public static void Reenumerate()
+        {
+            enumerator.Reenumerate();
         }
 
         /// <summary>

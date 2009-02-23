@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -333,7 +333,7 @@ namespace GoblinXNA.UI
         /// Get or sets the background image with the given image texture.
         /// </summary>
         /// <remarks>
-        /// This will automatically disable the border drawing
+        /// This will automatically disable the border drawing, and enable the background drawing.
         /// </remarks>
         public virtual Texture2D Texture
         {
@@ -342,6 +342,7 @@ namespace GoblinXNA.UI
             { 
                 backTexture = value;
                 drawBorder = false;
+                drawBackground = true;
             }
         }
 

@@ -225,14 +225,10 @@ Wave Bank
     Windows Bank Path Edited = 0;
     Seek Tables = 1;
     Compression Preset Name = <none>;
-    Xbox Bank Last Modified Low = 0;
-    Xbox Bank Last Modified High = 0;
-    PC Bank Last Modified Low = 0;
-    PC Bank Last Modified High = 0;
     Header Last Modified Low = 0;
     Header Last Modified High = 0;
-    Bank Last Revised Low = 1284198874;
-    Bank Last Revised High = 29920138;
+    Bank Last Revised Low = 2690651236;
+    Bank Last Revised High = 29987359;
 
     Wave
     {
@@ -438,29 +434,6 @@ Wave Bank
             File Type = 1;
             Last Modified Low = 2343896576;
             Last Modified High = 29910069;
-        }
-    }
-
-    Wave
-    {
-        Name = RacingGame Game Music 1;
-        File = ..\..\..\ARRacingV2\ARRacingV2\Content\Audio\Waves\RacingGame Game Music 1.wav;
-        Build Settings Last Modified Low = 1224195802;
-        Build Settings Last Modified High = 29920138;
-
-        Cache
-        {
-            Format Tag = 0;
-            Channels = 2;
-            Sampling Rate = 22050;
-            Bits Per Sample = 1;
-            Play Region Offset = 58;
-            Play Region Length = 24762332;
-            Loop Region Offset = 0;
-            Loop Region Length = 0;
-            File Type = 1;
-            Last Modified Low = 3009804760;
-            Last Modified High = 29916690;
         }
     }
 }
@@ -961,60 +934,6 @@ Sound Bank
         }
     }
 
-    Sound
-    {
-        Name = RacingGame Game Music 1;
-        Volume = -1200;
-        Pitch = 0;
-        Priority = 0;
-
-        Category Entry
-        {
-            Name = Music;
-        }
-
-        Track
-        {
-            Volume = 0;
-
-            Play Wave Event
-            {
-                Break Loop = 0;
-                Use Speaker Position = 0;
-                Use Center Speaker = 1;
-                New Speaker Position On Loop = 1;
-                Speaker Position Angle = 0.000000;
-                Speaer Position Arc = 0.000000;
-
-                Event Header
-                {
-                    Timestamp = 0;
-                    Relative = 0;
-                    Random Recurrence = 0;
-                    Random Offset = 0;
-                }
-
-                Volume Variation
-                {
-                    Min = -9000;
-                    Max = 600;
-                    Volume = 0;
-                    New Variation On Loop = 0;
-                }
-
-                Wave Entry
-                {
-                    Bank Name = Wave Bank;
-                    Bank Index = 0;
-                    Entry Name = RacingGame Game Music 1;
-                    Entry Index = 9;
-                    Weight = 255;
-                    Weight Min = 0;
-                }
-            }
-        }
-    }
-
     Cue
     {
         Name = Hit_metal_22;
@@ -1296,39 +1215,6 @@ Sound Bank
             Index = 8;
             Weight Min = 0;
             Weight Max = 255;
-        }
-    }
-
-    Cue
-    {
-        Name = music_1;
-
-        Variation
-        {
-            Variation Type = 3;
-            Variation Table Type = 1;
-            New Variation on Loop = 0;
-        }
-
-        Sound Entry
-        {
-            Name = RacingGame Game Music 1;
-            Index = 9;
-            Weight Min = 0;
-            Weight Max = 255;
-        }
-
-        Instance Limit
-        {
-            Max Instances = 1;
-            Behavior = 4;
-
-            Crossfade
-            {
-                Fade In = 0;
-                Fade Out = 0;
-                Crossfade Type = 0;
-            }
         }
     }
 }

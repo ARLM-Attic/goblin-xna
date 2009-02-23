@@ -11,6 +11,7 @@ struct Light
     float attenuation2;
     float innerConeAngle;
     float outerConeAngle;
+    int type; // 0: directional; 1: point; 2: spot;
     
 };
 struct VertexShaderOutput
@@ -28,13 +29,16 @@ struct PixelShaderInput
      float3 WorldPosition : TEXCOORD2;
 };
 
-Light lights[1];
+Light lights[12];
+Light light;
+int numberOfLights;
+
 
 //shared scene parameters
 shared float4x4 viewProjection;
 shared float3 cameraPosition;
 shared float4 ambientLightColor;
-shared int numLightsPerPass = 1;
+
 
 sampler diffuseSampler;
 
@@ -109,19 +113,20 @@ float4 AmbientPS(PixelShaderInput input) : COLOR
 //This function calculates the diffuse and specular effect of a single light
 //on a pixel given the world position, normal, and material properties
 float4 CalculateSinglePointLight(Light light, float3 worldPosition, float3 worldNormal, 
-                            float4 diffuseColor, float4 specularColor )
-{
-     float3 lightVector = light.position - worldPosition;
-     float lightDist = length(lightVector);
-     float3 directionToLight = normalize(lightVector);
-     
+                            float4 diffuseColor, float4 specularColor)
+{    
+	float3 lightVector = light.position - worldPosition;
+	float lightDist = length(lightVector);
+	float3 directionToLight = normalize(lightVector);
+    
+	float distanceAttenuation;                            
+	distanceAttenuation = 1 / (light.attenuation0 + (light.attenuation1 + light.attenuation2 * lightDist) * lightDist);
+		
      //calculate the intensity of the light with exponential falloff
      float baseIntensity = pow(saturate((light.range - lightDist) / light.range),
                                  light.falloff);
      
-     float attenuation;                            
-	 attenuation = 1 / (light.attenuation0 + ((light.attenuation1) * lightDist) + ((light.attenuation2) * lightDist * lightDist));
-     baseIntensity *= attenuation;
+     baseIntensity *= distanceAttenuation;
      baseIntensity  = saturate(baseIntensity);
      
      float diffuseIntensity = saturate( dot(directionToLight, worldNormal));
@@ -161,14 +166,14 @@ float4 CalculateSingleDirectionalLight(Light light, float3 worldPosition, float3
 }
 
 float4 CalculateSingleSpotLight(Light light, float3 worldPosition, float3 worldNormal, 
-                            float4 diffuseColor, float4 specularColor )
+                            float4 diffuseColor, float4 specularColor)
 {
-     float3 lightVector = light.position - worldPosition;
-     float lightDist = length(lightVector);
-     float3 directionToLight = normalize(lightVector);
-     
-     float distanceAttenuation;                            
-	 distanceAttenuation = 1 / (light.attenuation0 + ((light.attenuation1) * lightDist) + ((light.attenuation2) * lightDist * lightDist));
+    float3 lightVector = light.position - worldPosition;
+	float lightDist = length(lightVector);
+	float3 directionToLight = normalize(lightVector);
+    
+	float distanceAttenuation;                            
+	distanceAttenuation = 1 / (light.attenuation0 + (light.attenuation1 + light.attenuation2 * lightDist) * lightDist);
      
      float innerCos = cos(light.innerConeAngle / 2);
      float outerCos = cos(light.outerConeAngle / 2);
@@ -204,58 +209,125 @@ float4 CalculateSingleSpotLight(Light light, float3 worldPosition, float3 worldN
      return  distanceAttenuation * coneAttenuation * (diffuse + specular);
 }
 
-float4 SinglePointLightPS(PixelShaderInput input) : COLOR
-{
-     
-    if(diffuseTexEnabled)
-    {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
-    }
-    
-    
-	float4  color = CalculateSinglePointLight(lights[0], 
-			                    input.WorldPosition, input.WorldNormal,
-				                diffuseColor, specularColor);
 
-     color.a = 1.0;
-     return color;
-}
-
-float4 SingleDirectionalLightPS(PixelShaderInput input) : COLOR
+float4 MultipleDirectionalLightsPS(PixelShaderInput input) : COLOR
 {
-     
-    if(diffuseTexEnabled)
-    {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
-    }
-   
-	
-	float4 color = CalculateSingleDirectionalLight(lights[0], 
-				                    input.WorldPosition, input.WorldNormal,
-					                diffuseColor, specularColor);
-   
-     
-     color.a = 1.0;
-     return color;
-}
-
-float4 SingleSpotLightPS(PixelShaderInput input) : COLOR
-{
-     
     if(diffuseTexEnabled)
     {
         diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
-   
-    
-	float4 color = CalculateSingleSpotLight(lights[0], 
-				                    input.WorldPosition, input.WorldNormal,
-					                diffuseColor, specularColor);
-     
-     color.a = 1.0;
-     
-     return color;
+    float4 color = 0;
+    color.a = 1.0;
+	int i = 0;
+	
+    for (; i< numberOfLights; i++)
+    {    
+		color += CalculateSingleDirectionalLight(lights[i], 
+						 input.WorldPosition, input.WorldNormal,
+						diffuseColor, specularColor);
+	}
+	
+	return color;	
+}
+
+float4 MultiplePointLightsPS(PixelShaderInput input) : COLOR
+{
+    if(diffuseTexEnabled)
+    {
+        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+    }
+	
+    float4 color = 0;
+    color.a = 1.0;
+	int i = 0;
+	
+    for (; i< numberOfLights; i++)
+    {    
+		color += CalculateSinglePointLight(lights[i], 
+						 input.WorldPosition, input.WorldNormal,
+						diffuseColor, specularColor);
+	}
+	
+	return color;	
+}
+
+float4 MultipleSpotLightsPS(PixelShaderInput input) : COLOR
+{
+    if(diffuseTexEnabled)
+    {
+        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+    }
+	
+    float4 color = 0;
+    color.a = 1.0;
+	int i = 0;
+	
+    for (; i< numberOfLights; i++)
+    {    
+		color += CalculateSingleSpotLight(lights[i], 
+						 input.WorldPosition, input.WorldNormal,
+						diffuseColor, specularColor);
+	}
+	
+	return color;	
+}
+
+float4 SingleDirectionalLightsPS(PixelShaderInput input) : COLOR
+{
+    if(diffuseTexEnabled)
+    {
+        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+    }
+	
+    float4 color = 0;
+    color.a = 1.0;
+	int i = 0;
+	
+      
+	color += CalculateSingleDirectionalLight(light, 
+						 input.WorldPosition, input.WorldNormal,
+						diffuseColor, specularColor);
+	
+	
+	return color;	
+}
+
+float4 SinglePointLightsPS(PixelShaderInput input) : COLOR
+{
+    if(diffuseTexEnabled)
+    {
+        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+    }
+	
+    float4 color = 0;
+    color.a = 1.0;
+	int i = 0;
+		
+	color += CalculateSinglePointLight(light, 
+						 input.WorldPosition, input.WorldNormal,
+						diffuseColor, specularColor);
+
+	return color;	
+}
+
+float4 SingleSpotLightsPS(PixelShaderInput input) : COLOR
+{
+    if(diffuseTexEnabled)
+    {
+        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+    }
+	
+    float4 color = 0;
+    color.a = 1.0;
+	int i = 0;
+	 
+	color += CalculateSingleSpotLight(light, 
+						 input.WorldPosition, input.WorldNormal,
+						diffuseColor, specularColor);
+
+	
+	return color;	
 }
 
 
@@ -283,22 +355,37 @@ technique GeneralLighting
         VertexShader = compile vs_2_0 BasicVS();
         PixelShader = compile ps_2_0 AmbientPS();
     }
-    pass PointLight
+
+    pass MultipleDirectionalLight
     {
-        VertexShader = compile vs_2_0 BasicVS();
-        PixelShader = compile ps_2_0 SinglePointLightPS();
+        VertexShader = compile vs_3_0 BasicVS();
+       PixelShader = compile ps_3_0 MultipleDirectionalLightsPS();
     }
     
-    pass DirectionalLight
+    pass MultiplePointLight
+    {
+        VertexShader = compile vs_3_0 BasicVS();
+        PixelShader = compile ps_3_0 MultiplePointLightsPS();
+    }
+    pass MultipleSpotLight
+    {
+        VertexShader = compile vs_3_0 BasicVS();
+        PixelShader = compile ps_3_0 MultipleSpotLightsPS();
+    }
+    pass SingleDirectionalLight
     {
         VertexShader = compile vs_2_0 BasicVS();
-        PixelShader = compile ps_2_0 SingleDirectionalLightPS();
+       PixelShader = compile ps_2_0 SingleDirectionalLightsPS();
     }
     
-    pass SpotLight
+    pass SinglePointLight
     {
         VertexShader = compile vs_2_0 BasicVS();
-        PixelShader = compile ps_2_0 SingleSpotLightPS();
+        PixelShader = compile ps_2_0 SinglePointLightsPS();
     }
-    
+    pass SingleSpotLight
+    {
+        VertexShader = compile vs_2_0 BasicVS();
+        PixelShader = compile ps_2_0 SingleSpotLightsPS();
+    }
 }

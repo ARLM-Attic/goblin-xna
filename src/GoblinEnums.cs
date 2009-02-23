@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -148,25 +148,6 @@ namespace GoblinXNA
             /// Fixed to the world
             /// </summary>
             WorldFixed
-        }
-
-        /// <summary>
-        /// A collection of different video decoding libraries.
-        /// </summary>
-        public enum CameraLibraryType
-        {
-            /// <summary>
-            /// DirectShow video stream decoding library that can be used with any web camera
-            /// </summary>
-            DirectShow,
-            /// <summary>
-            /// Point Grey Research video stream decoding library that is specialized for Point Grey cameras
-            /// </summary>
-            PGRFly,
-            /// <summary>
-            /// 3DV Systems' Depth Camera decoding library
-            /// </summary>
-            //DepthCamera_3DVS
         }
     }
 }

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -101,30 +101,31 @@ namespace GoblinXNA.Helpers
         }
 
         /// <summary>
-        /// Computes an orthonormal matrix with the front vector pointing on the 'dir' direction,
-        /// and the up and right are determined by using the Gramm Schmidt procedure.
+        /// Orthonormalizes a transformation matrix.
         /// </summary>
-        /// <param name="dir"></param>
+        /// <param name="mat"></param>
         /// <returns></returns>
-        public static Matrix ComputeGrammSchmidt(Vector3 dir)
+        public static Matrix OrthonormalizeMatrix(Matrix mat)
         {
-            Vector3 up = Vector3.Zero;
-            Vector3 right = Vector3.Zero;
-            Vector3 front = new Vector3(dir.X, dir.Y, dir.Z);
+            Matrix m = mat;
 
-            front *= 1.0f / (float)Math.Sqrt(Vector3.Dot(front, front));
-            if (Math.Abs(front.Z) > 0.577f)
-                right = Vector3.Multiply(front, new Vector3(-front.Y, front.Z, 0.0f));
-            else
-                right = Vector3.Multiply(front, new Vector3(-front.Y, front.X, 0.0f));
-            right *= 1.0f / (float)Math.Sqrt(Vector3.Dot(right, right));
-            up = Vector3.Multiply(right, front);
+            Vector3 axisX = new Vector3(m.M11, m.M12, m.M13);
+            Vector3 axisY = new Vector3(m.M21, m.M22, m.M23);
+            Vector3 axisZ = new Vector3(m.M31, m.M32, m.M33);
 
-            return new Matrix(
-                front.X, front.Y, front.Z, 0,
-                up.X, up.Y, up.Z, 0,
-                right.X, right.Y, right.Z, 0,
-                0, 0, 0, 1);
+            axisX.Normalize();
+            axisY.Normalize();
+            axisZ.Normalize();
+
+            axisZ = Vector3.Normalize(Vector3.Cross(axisX, axisY));
+            axisY = Vector3.Normalize(Vector3.Cross(axisZ, axisX));
+            axisX = Vector3.Normalize(Vector3.Cross(axisY, axisZ));
+
+            m.M11 = axisX.X; m.M12 = axisX.Y; m.M13 = axisX.Z;
+            m.M21 = axisY.X; m.M22 = axisY.Y; m.M23 = axisY.Z;
+            m.M31 = axisZ.X; m.M32 = axisZ.Y; m.M33 = axisZ.Z;
+
+            return m;
         }
 
         /// <summary>

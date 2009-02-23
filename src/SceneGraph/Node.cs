@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,7 @@ namespace GoblinXNA.SceneGraph
 
         protected Scene scene;
         protected Node parent;
+        protected Object userData;
 
         #endregion
 
@@ -73,6 +74,7 @@ namespace GoblinXNA.SceneGraph
             parent = null;
 
             scene = null;
+            userData = null;
         }
 
         /// <summary>
@@ -85,7 +87,7 @@ namespace GoblinXNA.SceneGraph
         #region Properties
 
         /// <summary>
-        /// Gets the ID of this scene node. Used for both retrieval and debugging
+        /// Gets the ID of this scene node. Used for both retrieval and debugging.
         /// </summary>
         /// <remarks>This ID is automatically assigned when a node created, and it is 
         /// guaranteed to be unique</remarks>
@@ -95,7 +97,7 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets or sets the group ID of this scene node for group rendering
+        /// Gets or sets the group ID of this scene node for group rendering.
         /// </summary>
         /// <remarks>The default value is 0 for all nodes</remarks>
         public virtual int GroupID
@@ -145,6 +147,15 @@ namespace GoblinXNA.SceneGraph
         {
             get { return parent; }
             set { parent = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets an user defined data associated with this node. 
+        /// </summary>
+        public virtual Object UserData
+        {
+            get { return userData; }
+            set { userData = value; }
         }
 
         #endregion

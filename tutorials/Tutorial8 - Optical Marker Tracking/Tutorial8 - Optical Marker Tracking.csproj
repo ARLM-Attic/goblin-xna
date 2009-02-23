@@ -91,12 +91,15 @@
   <ItemGroup>
     <Content Include="..\..\bin\ARTagWrapper.dll">
       <Link>ARTagWrapper.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\bin\freeglut.dll">
       <Link>freeglut.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\bin\Newton.dll">
       <Link>Newton.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Game.ico" />
     <Content Include="GameThumbnail.png" />

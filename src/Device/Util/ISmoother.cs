@@ -1,5 +1,5 @@
-/************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+﻿/************************************************************************************ 
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +27,29 @@
  * 
  * ===================================================================================
  * Authors: Ohan Oda (ohan@cs.columbia.edu)
- *          Mike Sorvillo
  * 
- *************************************************************************************/
+ *************************************************************************************/ 
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
-namespace GoblinXNA.Device.Capture
+using Microsoft.Xna.Framework;
+
+namespace GoblinXNA.Device.Util
 {
     /// <summary>
-    /// NOT IMPLEMENTED YET.
+    /// An interface for matrix smoothing/filtering classes.
     /// </summary>
-    internal class CameraDiagnostic
+    public interface ISmoother
     {
-
-        public CameraDiagnostic()
-        {
-
-        }
-
         /// <summary>
-        /// Initializes the camera diagnostic class
+        /// Gets a filtered matrix based on the given position and orientation.
         /// </summary>
-        public void Init()
-        {
-
-        }
+        /// <param name="p">The original position</param>
+        /// <param name="q">The original rotation</param>
+        /// <returns>A smoothed/filterd matrix</returns>
+        Matrix FilterMatrix(Vector3 p, Quaternion q);
     }
 }

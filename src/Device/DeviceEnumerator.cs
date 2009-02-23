@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -127,10 +127,13 @@ namespace GoblinXNA.Device
         /// </remarks>
         public static String GPS                = "GPS";
 
-        protected IDictionary<String, InputDevice> availableDevices;
-        protected IDictionary<String, InputDevice_6DOF> available6DOFDevices;
+        protected Dictionary<String, InputDevice> availableDevices;
+        protected Dictionary<String, InputDevice_6DOF> available6DOFDevices;
 
         protected InterSense.InterSense interSense;
+
+        protected Dictionary<String, InputDevice> additionalDevices;
+        protected Dictionary<String, InputDevice_6DOF> additional6DOFDevices;
 
         /// <summary>
         /// Creates a device enumerator and enumerates all of the available input devices
@@ -144,13 +147,15 @@ namespace GoblinXNA.Device
         {
             availableDevices = new Dictionary<String, InputDevice>();
             available6DOFDevices = new Dictionary<String, InputDevice_6DOF>();
+            additionalDevices = new Dictionary<string, InputDevice>();
+            additional6DOFDevices = new Dictionary<string, InputDevice_6DOF>();
             Reenumerate();
         }
 
         /// <summary>
         /// Gets all of the available non-6DOF input devices (e.g., mouse, keyboard)
         /// </summary>
-        public IDictionary<String, InputDevice> AvailableDevices
+        public Dictionary<String, InputDevice> AvailableDevices
         {
             get { return availableDevices; }
         }
@@ -158,9 +163,19 @@ namespace GoblinXNA.Device
         /// <summary>
         /// Gets all of the available 6DOF input devices (e.g., InterSense tracker)
         /// </summary>
-        public IDictionary<String, InputDevice_6DOF> Available6DOFDevices
+        public Dictionary<String, InputDevice_6DOF> Available6DOFDevices
         {
             get { return available6DOFDevices; }
+        }
+
+        public Dictionary<String, InputDevice> AdditionalDevices
+        {
+            get { return additionalDevices; }
+        }
+
+        public Dictionary<String, InputDevice_6DOF> Additional6DOFDevices
+        {
+            get { return additional6DOFDevices; }
         }
 
         /// <summary>
@@ -207,6 +222,14 @@ namespace GoblinXNA.Device
             GenericInput genericInput = new GenericInput();
             if(genericInput.IsAvailable)
                 available6DOFDevices.Add(MouseAndKeyboard, genericInput);
+
+            foreach (InputDevice device in additionalDevices.Values)
+                if (device.IsAvailable)
+                    availableDevices.Add(device.Identifier, device);
+
+            foreach (InputDevice_6DOF device in additional6DOFDevices.Values)
+                if (device.IsAvailable)
+                    available6DOFDevices.Add(device.Identifier, device);
         }
 
         /// <summary>

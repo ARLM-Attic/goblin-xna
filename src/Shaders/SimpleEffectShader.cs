@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,9 +49,11 @@ namespace GoblinXNA.Shaders
     /// </summary>
     /// <remarks>
     /// Since BasicEffect class can only include upto three light sources, if more than three light
-    /// sources are passed to this class, then only the first three light sources are used for calculating
-    /// the lighting equation. In the current implementation of the GoblinXNA.SceneGraph.Scene class,
-    /// this means the first three lights encountered in the preorder tree-traversal of the scene graph.
+    /// sources are passed to this class, then the local light sources precede the global light sources.
+    /// Both the global and local light nodes are added in the order of encounter in the preorder
+    /// tree-traversal of the scene graph. For local lights, the last light node is the closest light node
+    /// in the scene graph, so the light sources are added in the reverse order. If there are less than
+    /// three local light sources, then global light sources are added in the normal order.
     /// </remarks>
     public class SimpleEffectShader : IShader
     {

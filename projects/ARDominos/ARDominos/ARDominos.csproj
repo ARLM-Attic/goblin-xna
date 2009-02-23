@@ -87,19 +87,28 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DominoBox.cs" />
+    <Compile Include="GameState.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="DominoGame.cs" />
+    <Compile Include="UIManager.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\..\..\bin\ARTagWrapper.dll">
       <Link>ARTagWrapper.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\..\bin\freeglut.dll">
       <Link>freeglut.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\..\bin\Newton.dll">
       <Link>Newton.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Game.ico" />
     <Content Include="GameThumbnail.png" />

@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial10 - Networking", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial11 - Shader", "Tutorial11 - Shader\Tutorial11 - Shader.csproj", "{04FA4A5D-3C99-4ED9-BEDA-6643B6C0F39E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial12 - Advanced Physics", "Tutorial12 - Advanced Physics\Tutorial12 - Advanced Physics.csproj", "{E1FF416B-D490-4B86-836A-0E65729523DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -95,6 +97,12 @@ Global
 		{2E5ACD3B-92B8-4235-89EC-C43AFA181E18}.Release|x86.ActiveCfg = Release|x86
 		{30A67329-5F41-4A6E-89D3-11C497E91FE4}.Debug|x86.ActiveCfg = Debug|x86
 		{30A67329-5F41-4A6E-89D3-11C497E91FE4}.Release|x86.ActiveCfg = Release|x86
+		{E1FF416B-D490-4B86-836A-0E65729523DA}.Debug|x86.ActiveCfg = Debug|x86
+		{E1FF416B-D490-4B86-836A-0E65729523DA}.Debug|x86.Build.0 = Debug|x86
+		{E1FF416B-D490-4B86-836A-0E65729523DA}.Release|x86.ActiveCfg = Release|x86
+		{E1FF416B-D490-4B86-836A-0E65729523DA}.Release|x86.Build.0 = Release|x86
+		{91217B4C-9D58-42E0-BC06-6C04AC635AFB}.Debug|x86.ActiveCfg = Debug|x86
+		{91217B4C-9D58-42E0-BC06-6C04AC635AFB}.Release|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

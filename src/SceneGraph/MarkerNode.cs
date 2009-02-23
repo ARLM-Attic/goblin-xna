@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,7 @@ using System.Text;
 using Microsoft.Xna.Framework;
 
 using GoblinXNA.Device.Vision.Marker;
-using GoblinXNA.Device.Vision.Util;
+using GoblinXNA.Device.Util;
 using GoblinXNA.Helpers;
 
 namespace GoblinXNA.SceneGraph
@@ -53,156 +53,104 @@ namespace GoblinXNA.SceneGraph
     {
         #region Member Fields
 
-        protected int arTagID;
-        protected String arTagArrayName;
-        protected int arTagSingleMarkerID;
+        protected object markerID;
         protected int maxDropouts;
         protected int dropout;
         protected bool found;
         protected bool optimize;
-        protected Smoother matrixSmoother;
-        protected MarkerTracker tracker;
+        protected ISmoother smoother;
+        protected IPredictor predictor;
+        protected IMarkerTracker tracker;
         protected Matrix prevMatrix;
         protected Matrix worldTransformation;
+        protected bool smooth;
+        protected bool predict;
+        protected float predictionTime;
 
         #endregion
 
         #region Constructors
         /// <summary>
-        /// Creates a node that is tracked by a fiducial marker array and updated automatically.
+        /// Creates a node that is tracked by fiducial marker (can be either an array or
+        /// a single marker) and updated automatically.
         /// </summary>
         /// <param name="name">Name of this marker node (doesn't have to be unique)</param>
         /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
-        /// <param name="arTagArrayName">The name of this fiducial marker array to look for</param>
-        /// <param name="smoothingAlpha">The alpha value used to control the transition
-        /// smoothness between consecutive frames in the range of [0.0f - 1.0f] excluding 0 and 1. If the marker
-        /// transformation is expected to be more dynamic, then use larger values; otherwise,
-        /// use smaller values. Usually, 0.5f would be good</param>
-        public MarkerNode(String name, MarkerTracker tracker, String arTagArrayName, 
-            float smoothingAlpha)
+        /// <param name="markerConfigs">A list of configs that specify the fiducial marker 
+        /// (can be either an array or a single marker) to look for</param>
+        public MarkerNode(String name, IMarkerTracker tracker, params String[] markerConfigs)
             : base(name)
         {
-            this.arTagArrayName = arTagArrayName;
             this.tracker = tracker;
-            arTagID = tracker.SetMarkerArray(arTagArrayName);
-            if (smoothingAlpha <= 0 || smoothingAlpha > 1)
-                throw new ArgumentException("smoothingAlpha has to be between 0.0f and 1.0f excluding 0");
-            if (smoothingAlpha == 1)
-                matrixSmoother = null;
-            else
-                matrixSmoother = new Smoother(smoothingAlpha);
+            markerID = tracker.AssociateMarker(markerConfigs);
             found = false;
             maxDropouts = 5;
             prevMatrix = Matrix.Identity;
             dropout = 0;
             optimize = false;
+
+            smoother = null;
+            predictor = null;
+            smooth = false;
+            predict = false;
+            predictionTime = 0;
         }
 
         /// <summary>
-        /// Creates a node that is tracked by a single fiducial marker and updated automatically.
-        /// </summary>
-        /// <param name="name">Name of this marker node (doesn't have to be unique)</param>
-        /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
-        /// <param name="arTagSingleMarkerID">The id of a single fiducial marker to look for</param>
-        /// <param name="smoothingAlpha">The alpha value used to control the transition
-        /// smoothness between consecutive frames in the range of [0.0f - 1.0f] excluding 0 and 1. If the marker
-        /// transformation is expected to be more dynamic, then use larger values; otherwise,
-        /// use smaller values. Usually, 0.5f would be good</param>
-        public MarkerNode(String name, MarkerTracker tracker, int arTagSingleMarkerID,
-            float smoothingAlpha)
-            : base(name)
-        {
-            this.arTagSingleMarkerID = arTagSingleMarkerID;
-            this.tracker = tracker;
-            arTagID = tracker.SetSingleMarker(arTagSingleMarkerID);
-            if (smoothingAlpha <= 0 || smoothingAlpha > 1)
-                throw new ArgumentException("smoothingAlpha has to be between 0.0f and 1.0f excluding 0");
-            if (smoothingAlpha == 1)
-                matrixSmoother = null;
-            else
-                matrixSmoother = new Smoother(smoothingAlpha);
-            found = false;
-            maxDropouts = 5;
-            prevMatrix = Matrix.Identity;
-            dropout = 0;
-            optimize = false;
-        }
-
-        /// <summary>
-        /// Creates a node that is tracked by a single fiducial marker and updated automatically.
+        /// Creates a node that is tracked by fiducial marker (can be either an array or a single
+        /// marker) and updated automatically.
         /// </summary>
         /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
-        /// <param name="arTagArrayName">The name of this fiducial marker array to look for</param>
-        /// <param name="smoothingAlpha">The alpha value used to control the transition
-        /// smoothness between consecutive frames in the range of [0.0f - 1.0f]. If the marker
-        /// transformation is expected to be more dynamic, then use larger values; otherwise,
-        /// use smaller values. Usually, 0.5f would be good</param>
-        public MarkerNode(MarkerTracker tracker, String arTagArrayName,
-            float smoothingAlpha)
-            : this("", tracker, arTagArrayName, smoothingAlpha) { }
-
-        /// <summary>
-        /// Creates a node that is tracked by a fiducial marker array and updated automatically.
-        /// </summary>
-        /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
-        /// <param name="arTagSingleMarkerID">The id of a single fiducial marker to look for</param>
-        /// <param name="smoothingAlpha">The alpha value used to control the transition
-        /// smoothness between consecutive frames in the range of [0.0f - 1.0f]. If the marker
-        /// transformation is expected to be more dynamic, then use larger values; otherwise,
-        /// use smaller values. Usually, 0.5f would be good</param>
-        public MarkerNode(MarkerTracker tracker, int arTagSingleMarkerID,
-            float smoothingAlpha)
-            : this("", tracker, arTagSingleMarkerID, smoothingAlpha) { }
-
-        /// <summary>
-        /// Creates a node that is tracked by a fiducial marker array and updated automatically
-        /// with 1.0f smoothingAlpha (smoothing is not applied).
-        /// </summary>
-        /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
-        /// <param name="arTagArrayName">The name of this fiducial marker array to look for</param>
-        public MarkerNode(MarkerTracker tracker, String arTagArrayName)
+        /// <param name="markerConfigs">A list of configs that specify the fiducial marker 
+        /// (can be either an array or a single marker) to look for</param>
+        public MarkerNode(IMarkerTracker tracker, params String[] markerConfigs)
             :
-            this("", tracker, arTagArrayName, 1) { }
-
-        /// <summary>
-        /// Creates a node that is tracked by a single fiducial marker and updated automatically
-        /// with 1.0f smoothingAlpha (smoothing is not applied).
-        /// </summary>
-        /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
-        /// <param name="arTagSingleMarkerID">The id of a single fiducial marker to look for</param>
-        public MarkerNode(MarkerTracker tracker, int arTagSingleMarkerID)
-            :
-            this("", tracker, arTagSingleMarkerID, 1) { }
+            this("", tracker, markerConfigs) { }
 
         #endregion
 
         #region Properties
         /// <summary>
-        /// Gets an ID returned by the ARTag library.
+        /// Gets the marker ID returned by the marker tracker library.
         /// </summary>
-        public virtual int ARTagID
+        public object MarkerID
         {
-            get { return arTagID; }
+            get { return markerID; }
+        }
+        
+        /// <summary>
+        /// Gets or sets the smoother used to filter the matrix returned by the optical marker
+        /// tracker.
+        /// </summary>
+        public ISmoother Smoother
+        {
+            get { return smoother; }
+            set 
+            { 
+                smoother = value; 
+                smooth = (smoother != null); 
+            }
         }
 
         /// <summary>
-        /// Gets the name of the ARTag array associated with this marker node.
+        /// Gets or sets the prediction filter to apply to the transformation returned by the
+        /// optical marker tracker.
         /// </summary>
-        public virtual String ARTagArrayName
+        public IPredictor Predictor
         {
-            get { return arTagArrayName; }
+            get { return predictor; }
+            set 
+            { 
+                predictor = value;
+                predict = (predictor != null);
+            }
         }
 
         /// <summary>
-        /// Gets the ARTag single marker ID associated with this marker node.
-        /// </summary>
-        public virtual int ARTagSingleMarkerID
-        {
-            get { return arTagSingleMarkerID; }
-        }
-
-        /// <summary>
-        /// Gets or sets the maximum number of dropouts.
+        /// Gets or sets the maximum number of dropouts. If it fails to detect the marker within
+        /// 'MaxDropouts' frames, the WorldTransform becomes an empty matrix. Set this value to
+        /// -1 number if you want to keep the last detected transformation indefinitely when the
+        /// marker is not found.
         /// </summary>
         /// <remarks>
         /// Dropout count is used to make marker tracking more stable. For example, if MaxDropouts
@@ -210,7 +158,7 @@ namespace GoblinXNA.SceneGraph
         /// detected transformation.
         /// </remarks>
         /// <seealso cref="WorldTransformation"/>
-        public virtual int MaxDropouts
+        public int MaxDropouts
         {
             get { return maxDropouts; }
             set { maxDropouts = value; }
@@ -219,7 +167,7 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Gets whether the marker is detected.
         /// </summary>
-        public virtual bool MarkerFound
+        public bool MarkerFound
         {
             get { return found; }
         }
@@ -231,7 +179,7 @@ namespace GoblinXNA.SceneGraph
         /// If no marker is detected after MaxDropouts, then transformation matrix with 
         /// all zero values is returned.
         /// </remarks>
-        public virtual Matrix WorldTransformation
+        public Matrix WorldTransformation
         {
             get { return worldTransformation; }
         }
@@ -240,7 +188,7 @@ namespace GoblinXNA.SceneGraph
         /// Gets or sets whether to optimize the scene graph by not traversing the nodes
         /// added below this node if marker is not found.
         /// </summary>
-        public virtual bool Optimize
+        public bool Optimize
         {
             get { return optimize; }
             set { optimize = value; }
@@ -266,29 +214,60 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Updates the current matrix of this marker node
         /// </summary>
-        internal void Update()
+        /// <param name="elapsedTime">Elapsed time from last update in milliseconds</param>
+        internal void Update(float elapsedTime)
         {
-            if (tracker.FindMarker(arTagID))
+            if (tracker.FindMarker(markerID))
             {
-                if (matrixSmoother == null)
-                    worldTransformation = tracker.GetMarkerRHSMatrix();
+                Vector3 p = Vector3.Zero;
+                Quaternion q = Quaternion.Identity;
+
+                if (smooth || predict)
+                {
+                    Vector3 scale;
+                    tracker.GetMarkerTransform().Decompose(out scale, out q, out p);
+                }
+
+                if (smooth)
+                    worldTransformation = smoother.FilterMatrix(p, q);
                 else
-                    worldTransformation = matrixSmoother.FilterMatrix(tracker.GetMarkerRHSMatrix());
+                    worldTransformation = tracker.GetMarkerTransform();
+
+                if (predict)
+                {
+                    predictionTime = 0;
+                    predictor.UpdatePredictor(p, q);
+                }
+
                 prevMatrix = worldTransformation;
                 dropout = 0;
                 found = true;
             }
             else
             {
-                if (dropout < maxDropouts)
+                if (maxDropouts < 0)
                 {
-                    dropout++;
                     worldTransformation = prevMatrix;
+                    found = false;
                 }
                 else
                 {
-                    found = false;
-                    worldTransformation = MatrixHelper.Empty;
+                    if (dropout < maxDropouts)
+                    {
+                        dropout++;
+                        if (predict)
+                        {
+                            predictionTime += elapsedTime;
+                            worldTransformation = predictor.GetPrediction(predictionTime);
+                        }
+                        else
+                            worldTransformation = prevMatrix;
+                    }
+                    else
+                    {
+                        found = false;
+                        worldTransformation = MatrixHelper.Empty;
+                    }
                 }
             }
         }

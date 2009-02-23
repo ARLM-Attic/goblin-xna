@@ -16,6 +16,8 @@ using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Graphics.Geometry;
 using GoblinXNA.Device.Capture;
 using GoblinXNA.Device.Vision;
+using GoblinXNA.Device.Vision.Marker;
+using GoblinXNA.Device.Util;
 using GoblinXNA.Physics;
 using GoblinXNA.Helpers;
 
@@ -104,21 +106,30 @@ namespace Tutorial8___Optical_Marker_Tracking
 
         private void SetupMarkerTracking()
         {
-            // Display the camera image in the background
-            scene.ShowCameraImage = true;
-            
-            // Initialize the marker tracking modules for one video capture device
-            scene.InitMarkerModules(1);
-            // Initialize our video capture device. Note that the combinations of
-            // resolution and frame rate that are allowed depend on the particular
-            // video capture device.  Thus, setting incorrect
-            // resolution and frame rate values may cause exceptions or simply be ignored,
-            // depending on the device driver.  The values set here will work for a 
-            // Microsoft VX 6000, and many other webcams.
-            scene.InitVideoCapture(0, 0, VideoCapture.Resolution._640x480, false,
-                VideoCapture.FrameRate._30Hz, GoblinEnums.CameraLibraryType.DirectShow);
+            // Create our video capture device that uses DirectShow library. Note that 
+            // the combinations of resolution and frame rate that are allowed depend on 
+            // the particular video capture device. Thus, setting incorrect resolution 
+            // and frame rate values may cause exceptions or simply be ignored, depending 
+            // on the device driver.  The values set here will work for a Microsoft VX 6000, 
+            // and many other webcams.
+            DirectShowCapture captureDevice = new DirectShowCapture();
+            captureDevice.InitVideoCapture(0, 0, FrameRate._30Hz, Resolution._640x480, false);
+
+            // Add this video capture device to the scene so that it can be used for
+            // the marker tracker
+            scene.AddVideoCaptureDevice(captureDevice);
+
+            // Create a optical marker tracker that uses ARTag library
+            ARTagTracker tracker = new ARTagTracker();
             // Set the configuration file to look for the marker specifications
-            scene.InitMarkerTracker(638.052f, 633.673f, "ARTag.cf");
+            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, 
+                captureDevice.Height, false, "ARTag.cf");
+
+            scene.MarkerTracker = tracker;
+
+            // Display the camera image in the background. Note that this parameter should
+            // be set after adding at least one video capture device to the Scene class.
+            scene.ShowCameraImage = true;
         }
 
         private void CreateGround()
@@ -196,7 +207,8 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             // Create a marker node to track a toolbar marker array. Since we expect that the 
             // toolbar marker array will move a lot, we use a large smoothing alpha.
-            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1", 0.8f);
+            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1");
+            toolbarMarkerNode.Smoother = new DESSmoother(0.8f, 0.8f);
             scene.RootNode.AddChild(toolbarMarkerNode);
 
             // Create a material to apply to the box model

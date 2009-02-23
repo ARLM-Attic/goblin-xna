@@ -61,7 +61,7 @@ namespace GoblinXNA.Helpers
         /// <summary>
         /// YTo res 1200
         /// </summary>
-        /// <param name="yIn768px">Y in 1200px</param>
+        /// <param name="yIn1200px">Y in 1200px</param>
         /// <returns>Int</returns>
         public static int YToRes1200(int yIn1200px)
         {
@@ -93,10 +93,10 @@ namespace GoblinXNA.Helpers
         /// to the current resolution. Everything will stay in the 16/9
         /// format of the textures.
         /// </summary>
-        /// <param name="x">X</param>
-        /// <param name="y">Y</param>
-        /// <param name="width">Width</param>
-        /// <param name="height">Height</param>
+        /// <param name="relX">X</param>
+        /// <param name="relY">Y</param>
+        /// <param name="relWidth">Width</param>
+        /// <param name="relHeight">Height</param>
         /// <returns>Rectangle</returns>
         public static Rectangle CalcRectangle(
             int relX, int relY, int relWidth, int relHeight)
