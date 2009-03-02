@@ -67,15 +67,60 @@ namespace Tutorial11___Shader
 
             //Light paramters
             lights,
+            light,
+            numberOfLights,
+
             ambientLightColor;
 
-        private IList<LightSource> lightSources;
+        private List<LightSource> lightSources;
+        private List<LightSource> dirLightSources;
+        private List<LightSource> pointLightSources;
+        private List<LightSource> spotLightSources;
+
+        private int maxNumLightsPerPass;
         private Material material;
+        private bool is_3_0;
+        private bool forcePS20;
 
         public GeneralShader()
             : base("DirectXShader")
         {
             lightSources = new List<LightSource>();
+            dirLightSources = new List<LightSource>();
+            pointLightSources = new List<LightSource>();
+            spotLightSources = new List<LightSource>();
+
+            maxNumLightsPerPass = 12;
+            is_3_0 = false;
+            forcePS20 = true;
+
+            if ((State.Device.GraphicsDeviceCapabilities.PixelShaderVersion.Major >= 3) && ! forcePS20)
+            {
+                is_3_0 = true;
+            }
+            else
+            {
+                is_3_0 = false;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets whether to force this shader to use Pixel Shader 2.0 profile even if
+        /// the graphics card support Pixel Shader 3.0. By default, this is set to true.
+        /// </summary>
+        /// <remarks>
+        /// When there are less than fifty lights, it's faster to use Pixel Shader 2.0 profile.
+        /// However, if you have more than fifty lights, Pixel Shader 3.0 will perform better.
+        /// </remarks>
+        public bool UsePS20
+        {
+            get { return forcePS20; }
+            set { forcePS20 = value; }
+        }
+
+        public override int MaxLights
+        {
+            get { return 1000; }
         }
 
         protected override void GetParameters()
@@ -98,7 +143,9 @@ namespace Tutorial11___Shader
 
             // Lights
             lights = effect.Parameters["lights"];
+            light = effect.Parameters["light"];
             ambientLightColor = effect.Parameters["ambientLightColor"];
+            numberOfLights = effect.Parameters["numberOfLights"];
         }
 
         public override void SetParameters(Material material)
@@ -185,6 +232,24 @@ namespace Tutorial11___Shader
                 }
             }
 
+            dirLightSources.Clear();
+            pointLightSources.Clear();
+            spotLightSources.Clear();
+            foreach (LightSource l in lightSources)
+            {
+                switch (l.Type)
+                {
+                    case LightType.Directional:
+                        dirLightSources.Add(l);
+                        break;
+                    case LightType.Point:
+                        pointLightSources.Add(l);
+                        break;
+                    case LightType.SpotLight:
+                        spotLightSources.Add(l);
+                        break;
+                }
+            }
             this.ambientLightColor.SetValue(ambientLightColor);
         }
 
@@ -223,21 +288,22 @@ namespace Tutorial11___Shader
                 renderDelegate();
                 effect.CurrentTechnique.Passes["Ambient"].End();
 
-                EffectPass pass = effect.CurrentTechnique.Passes["Ambient"];
-
                 State.Device.RenderState.AlphaBlendEnable = true;
                 State.Device.RenderState.DepthBufferWriteEnable = false;
+               // System.Diagnostics.Debug.Assert(false);
 
-                for (int l = 0; l < lightSources.Count; l++)
+                if (is_3_0)
                 {
-                    SetUpLightSource(lightSources[l], 0);
-
-                    string passName = GetPassName(lightSources[l].Type);
-                    effect.CurrentTechnique.Passes[passName].Begin();
-                    renderDelegate();
-                    effect.CurrentTechnique.Passes[passName].End();
+                    DoRendering30(renderDelegate, dirLightSources);
+                    DoRendering30(renderDelegate, pointLightSources);
+                    DoRendering30(renderDelegate, spotLightSources);
                 }
-
+                else
+                {
+                    DoRendering20(renderDelegate, dirLightSources);
+                    DoRendering20(renderDelegate, pointLightSources);
+                    DoRendering20(renderDelegate, spotLightSources);
+                }
                 effect.End();
 
                 State.Device.RenderState.BlendFunction = origBlendFunc;
@@ -249,6 +315,60 @@ namespace Tutorial11___Shader
             }
         }
 
+        private void DoRendering30(RenderHandler renderDelegate, List<LightSource> lightSources)
+        {
+            string passName;
+            if (lightSources.Count == 0)
+            {
+                return;
+            }
+            else
+            {
+                passName = "Multiple" + GetPassName(lightSources[0].Type);
+            }
+            for (int passCount = 0; passCount < (((lightSources.Count - 1) / maxNumLightsPerPass) + 1); passCount++)
+            {
+
+                int count = 0;
+                for (int l = 0; l < maxNumLightsPerPass; l++)
+                {
+                    int lightIndex = (passCount * maxNumLightsPerPass) + l;
+                    if (lightIndex >= lightSources.Count)
+                    {
+                        break;
+                    }
+
+                    SetUpLightSource(lightSources[lightIndex], l);
+                    count++;
+                }
+               
+                numberOfLights.SetValue(count);
+                
+                effect.CurrentTechnique.Passes[passName].Begin();
+                renderDelegate();
+                effect.CurrentTechnique.Passes[passName].End();
+            }
+        }
+
+        private void DoRendering20(RenderHandler renderDelegate, List<LightSource> lightSources)
+        {
+            string passName;
+            if (lightSources.Count == 0)
+            {
+                return;
+            }
+            else
+            {
+                passName = "Single" + GetPassName(lightSources[0].Type);
+            }
+            for (int passCount = 0; passCount < lightSources.Count; passCount++)
+            {
+                SetUpSingleLightSource(lightSources[passCount]);
+                effect.CurrentTechnique.Passes[passName].Begin();
+                renderDelegate();
+                effect.CurrentTechnique.Passes[passName].End();
+            }
+        }
         private void SetUpLightSource(LightSource lightSource, int index)
         {
             lights.Elements[index].StructureMembers["direction"].SetValue(lightSource.Direction);
@@ -261,6 +381,35 @@ namespace Tutorial11___Shader
             lights.Elements[index].StructureMembers["attenuation2"].SetValue(lightSource.Attenuation2);
             lights.Elements[index].StructureMembers["innerConeAngle"].SetValue(lightSource.InnerConeAngle);
             lights.Elements[index].StructureMembers["outerConeAngle"].SetValue(lightSource.OuterConeAngle);
+        }
+        private void SetUpSingleLightSource(LightSource lightSource)
+        {
+            light.StructureMembers["direction"].SetValue(lightSource.Direction);
+            light.StructureMembers["position"].SetValue(lightSource.Position);
+            light.StructureMembers["falloff"].SetValue(lightSource.Falloff);
+            light.StructureMembers["range"].SetValue(lightSource.Range);
+            light.StructureMembers["color"].SetValue(lightSource.Diffuse);
+            light.StructureMembers["attenuation0"].SetValue(lightSource.Attenuation0);
+            light.StructureMembers["attenuation1"].SetValue(lightSource.Attenuation1);
+            light.StructureMembers["attenuation2"].SetValue(lightSource.Attenuation2);
+            light.StructureMembers["innerConeAngle"].SetValue(lightSource.InnerConeAngle);
+            light.StructureMembers["outerConeAngle"].SetValue(lightSource.OuterConeAngle);
+        }
+
+        static private int compareLightSource(LightSource l1, LightSource l2)
+        {
+            if ((int)l1.Type > (int)l2.Type)
+            {
+                return 1;
+            }
+            else if (l1.Type == l2.Type)
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
         }
 
         private string GetPassName(LightType type)
