@@ -76,7 +76,7 @@ namespace Tutorial5___Simple_Physics
             scene.PreferPerPixelLighting = true;
 
             // Add a mouse click handler for shooting a box model from the mouse location 
-            MouseInput.MouseClickEvent += new HandleMouseClick(MouseClickHandler);
+            MouseInput.Instance.MouseClickEvent += new HandleMouseClick(MouseClickHandler);
 
             // Show some debug information
             State.ShowFPS = true;

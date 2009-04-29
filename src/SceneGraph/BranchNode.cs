@@ -106,6 +106,11 @@ namespace GoblinXNA.SceneGraph
 
             CheckForLoops(node);
 
+            if (scene != null)
+            {
+                // busy wait if the scene graph is processing
+                while (scene.Processing) { }
+            }
             children.Add(node);
             node.Enabled = this.Enabled;
             node.Parent = this;

@@ -64,5 +64,10 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="data"></param>
         void TriggerDelegates(byte[] data);
+
+        /// <summary>
+        /// Disposes this input device.
+        /// </summary>
+        void Dispose();
 	}
 }

@@ -34,6 +34,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA.Helpers;
@@ -56,9 +57,12 @@ namespace GoblinXNA.UI
         public enum NotifierPlacement
         {
             TopRight,
+            TopMiddle,
             TopLeft,
             BottomRight,
-            BottomLeft
+            BottomMiddle,
+            BottomLeft,
+            Custom
         }
 
         /// <summary>
@@ -82,6 +86,8 @@ namespace GoblinXNA.UI
 
         private static List<NotifierMessage> notifications;
         private static NotifierPlacement placement;
+        private static Vector2 customLocation;
+        private static Vector2 customAppearDir;
         private static int fadeoutTime;
         private static Interpolator fadeoutInterporator;
         private static int messageCount;
@@ -102,6 +108,8 @@ namespace GoblinXNA.UI
             fadeoutInterporator = new Interpolator(255, 0, 1000, InterpolationMethod.Linear);
             fadeoutTime = -1;
             font = null;
+            customLocation = Vector2.Zero;
+            customAppearDir = Vector2.Zero;
             color = Color.Red;
         }
 
@@ -109,12 +117,37 @@ namespace GoblinXNA.UI
         /// Gets or sets the display location of the debugging/notification messages.
         /// </summary>
         /// <remarks>
-        /// The default value is NotifierPlacement.TopRight
+        /// The default value is NotifierPlacement.TopRight. If defined as Custom, then you need to
+        /// set the CustomStartLocation and CustomAppearDirection properties.
         /// </remarks>
+        /// <see cref="CustomStartLocation"/>
+        /// <seealso cref="CustomAppearDirection"/>
         public static NotifierPlacement Placement
         {
             get { return placement; }
             set { placement = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the custom starting location of the notifier messages to appear when Placement 
+        /// property is set to Custom.
+        /// </summary>
+        /// <see cref="Placement"/>
+        public static Vector2 CustomStartLocation
+        {
+            get { return customLocation; }
+            set { customLocation = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the direction in which the text appears when Placement property is set
+        /// to Custom.
+        /// </summary>
+        /// <see cref="Placement"/>
+        public static Vector2 CustomAppearDirection
+        {
+            get { return customAppearDir; }
+            set { customAppearDir = value; }
         }
 
         /// <summary>

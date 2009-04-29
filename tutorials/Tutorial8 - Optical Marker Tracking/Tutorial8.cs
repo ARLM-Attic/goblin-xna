@@ -113,7 +113,8 @@ namespace Tutorial8___Optical_Marker_Tracking
             // on the device driver.  The values set here will work for a Microsoft VX 6000, 
             // and many other webcams.
             DirectShowCapture captureDevice = new DirectShowCapture();
-            captureDevice.InitVideoCapture(0, 0, FrameRate._30Hz, Resolution._640x480, false);
+            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480, 
+                ImageFormat.R8G8B8_24, false);
 
             // Add this video capture device to the scene so that it can be used for
             // the marker tracker
@@ -123,7 +124,7 @@ namespace Tutorial8___Optical_Marker_Tracking
             ARTagTracker tracker = new ARTagTracker();
             // Set the configuration file to look for the marker specifications
             tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, 
-                captureDevice.Height, false, "ARTag.cf");
+                captureDevice.Height, false, "NewARTag.cf");
 
             scene.MarkerTracker = tracker;
 
@@ -135,7 +136,7 @@ namespace Tutorial8___Optical_Marker_Tracking
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            groundNode.Model = new Box(85, 66, 0.1f);
+            groundNode.Model = new Box(100, 80, 0.1f);
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 
@@ -150,7 +151,11 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             groundNode.Material = groundMaterial;
 
-            groundMarkerNode.AddChild(groundNode);
+            TransformNode groundTransNode = new TransformNode();
+            groundTransNode.Translation = new Vector3(42.5f, 33, 0);
+
+            groundMarkerNode.AddChild(groundTransNode);
+            groundTransNode.AddChild(groundNode);
         }
 
         private void CreateObjects()

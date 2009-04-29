@@ -111,7 +111,8 @@ namespace GoblinXNA.Device.Generic
     /// <example>
     /// An example of adding a keyboard type event handler:
     /// 
-    /// KeyboardInput.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
+    /// KeyboardInput keyInput = KeyboardInput.Instance;
+    /// keyInput.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
     ///
     /// private void KeyTypeHandler(Microsoft.Xna.Framework.Input.Keys key, KeyModifier modifier)
     /// {
@@ -122,30 +123,35 @@ namespace GoblinXNA.Device.Generic
     ///    }
     /// }
     /// </example>
+    /// <remarks>
+    /// KeyboardInput is a singleton class, so you should access this class through Instance property.
+    /// </remarks>
     public class KeyboardInput : InputDevice
     {
         #region Member Fields
 
-        private static bool isAvailable;
+        private bool isAvailable;
         /// <summary>
         /// Keyboard state, set every frame in the Update method.
         /// </summary>
-        private static KeyboardState keyboardState;
+        private KeyboardState keyboardState;
 
         /// <summary>
         /// Keys pressed last frame, for comparison if a key was just pressed.
         /// </summary>
-        private static List<Keys> keysPressedLastFrame;
-        private static List<Keys> keysBeingPressed;
-        private static List<KeyJustPressed> currentPressedKeys;
-        private static List<KeyJustPressed> releasedKeys;
-        private static List<Keys> releasedKeyList;
+        private List<Keys> keysPressedLastFrame;
+        private List<Keys> keysBeingPressed;
+        private List<KeyJustPressed> currentPressedKeys;
+        private List<KeyJustPressed> releasedKeys;
+        private List<Keys> releasedKeyList;
 
-        private static bool onlyTrackWhenFocused;
+        private bool onlyTrackWhenFocused;
 
-        private static int initialRepetitionWait;
-        private static int repetitionWait;
-        private static int repetitionTime;
+        private int initialRepetitionWait;
+        private int repetitionWait;
+        private int repetitionTime;
+
+        private static KeyboardInput input;
 
         #endregion
 
@@ -153,27 +159,27 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// An event to add or remove key press delegate/callback functions
         /// </summary>
-        public static event HandleKeyPress KeyPressEvent;
+        public event HandleKeyPress KeyPressEvent;
 
         /// <summary>
         /// An event to add or remove key release delegate/callback functions
         /// </summary>
-        public static event HandleKeyRelease KeyReleaseEvent;
+        public event HandleKeyRelease KeyReleaseEvent;
 
         /// <summary>
         /// An event to add or remove key type delegate/callback functions
         /// </summary>
-        public static event HandleKeyType KeyTypeEvent;
+        public event HandleKeyType KeyTypeEvent;
         #endregion
 
-        #region Static Constructors
+        #region Private Constructor
         /// <summary>
-        /// A static constructor.
+        /// A private constructor.
         /// </summary>
         /// <remarks>
         /// Don't instantiate this constructor.
         /// </remarks>
-        static KeyboardInput()
+        private KeyboardInput()
         {
             keysPressedLastFrame = new List<Keys>();
             currentPressedKeys = new List<KeyJustPressed>();
@@ -207,7 +213,7 @@ namespace GoblinXNA.Device.Generic
         /// Gets or sets whether to only handle keyboard events when the application window is focused.
         /// </summary>
         /// <remarks>Default value is true</remarks>
-        public static bool OnlyHandleWhenFocused
+        public bool OnlyHandleWhenFocused
         {
             get { return onlyTrackWhenFocused; }
             set { onlyTrackWhenFocused = value; }
@@ -218,7 +224,7 @@ namespace GoblinXNA.Device.Generic
         /// when a key is held down
         /// </summary>
         /// <remarks>The wait time is in milliseconds. Default value is 500 ms.</remarks>
-        public static int InitialRepetitionWait
+        public int InitialRepetitionWait
         {
             get { return initialRepetitionWait; }
             set { initialRepetitionWait = value; }
@@ -229,10 +235,26 @@ namespace GoblinXNA.Device.Generic
         /// the same key type when a key is held down
         /// </summary>
         /// <remarks>The wait time is in milliseconds. Default value is 100 ms.</remarks>
-        public static int RepetitionWait
+        public int RepetitionWait
         {
             get { return repetitionTime; }
             set { repetitionTime = value; }
+        }
+
+        /// <summary>
+        /// Gets the instantiation of KeyboardInput class.
+        /// </summary>
+        public static KeyboardInput Instance
+        {
+            get
+            {
+                if (input == null)
+                {
+                    input = new KeyboardInput();
+                }
+
+                return input;
+            }
         }
 
         #endregion
@@ -244,7 +266,7 @@ namespace GoblinXNA.Device.Generic
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        private static bool IsSpecialKey(Keys key)
+        private bool IsSpecialKey(Keys key)
         {
             // All keys except A-Z, 0-9 and `-\[];',./= (and space) are special keys. 
             // With shift pressed this also results in this keys:
@@ -274,14 +296,14 @@ namespace GoblinXNA.Device.Generic
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        private static bool IsKeyModifier(Keys key)
+        private bool IsKeyModifier(Keys key)
         {
             return (key == Keys.LeftShift) || (key == Keys.RightShift) ||
                 (key == Keys.LeftAlt) || (key == Keys.RightAlt) ||
                 (key == Keys.LeftControl) || (key == Keys.RightControl);
         }
 
-        private static KeyModifier GetKeyModifier(List<Keys> keys)
+        private KeyModifier GetKeyModifier(List<Keys> keys)
         {
             KeyModifier modifier = new KeyModifier();
 
@@ -310,7 +332,7 @@ namespace GoblinXNA.Device.Generic
         /// <param name="key"></param>
         /// <param name="shiftPressed"></param>
         /// <returns></returns>
-        public static char KeyToChar(Keys key, bool shiftPressed)
+        public char KeyToChar(Keys key, bool shiftPressed)
         {
             // If key will not be found, just return space
             char ret = ' ';
@@ -525,7 +547,7 @@ namespace GoblinXNA.Device.Generic
         /// <param name="modifier">A struct that indicates whether any of the modifier 
         /// keys are held down</param>
         /// <returns></returns>
-        public static byte[] GetNetworkData(KeyboardEventType type, Keys key, KeyModifier modifier)
+        public byte[] GetNetworkData(KeyboardEventType type, Keys key, KeyModifier modifier)
         {
             // 1 byte for type, 1 byte for key, and 1 (bool) * 3 bytes for modifier
             byte[] data = new byte[5];
@@ -537,6 +559,11 @@ namespace GoblinXNA.Device.Generic
             data[4] = BitConverter.GetBytes(modifier.ShiftKeyPressed)[0];
 
             return data;
+        }
+
+        public void Dispose()
+        {
+            // Nothing to dispose
         }
 
         #endregion

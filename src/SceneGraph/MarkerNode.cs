@@ -78,7 +78,7 @@ namespace GoblinXNA.SceneGraph
         /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
         /// <param name="markerConfigs">A list of configs that specify the fiducial marker 
         /// (can be either an array or a single marker) to look for</param>
-        public MarkerNode(String name, IMarkerTracker tracker, params String[] markerConfigs)
+        public MarkerNode(String name, IMarkerTracker tracker, params Object[] markerConfigs)
             : base(name)
         {
             this.tracker = tracker;
@@ -103,7 +103,7 @@ namespace GoblinXNA.SceneGraph
         /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
         /// <param name="markerConfigs">A list of configs that specify the fiducial marker 
         /// (can be either an array or a single marker) to look for</param>
-        public MarkerNode(IMarkerTracker tracker, params String[] markerConfigs)
+        public MarkerNode(IMarkerTracker tracker, params Object[] markerConfigs)
             :
             this("", tracker, markerConfigs) { }
 
@@ -221,17 +221,20 @@ namespace GoblinXNA.SceneGraph
             {
                 Vector3 p = Vector3.Zero;
                 Quaternion q = Quaternion.Identity;
+                Matrix rawMat = tracker.GetMarkerTransform();
+
+                //MatrixHelper.PrintMatrix(rawMat);
 
                 if (smooth || predict)
                 {
                     Vector3 scale;
-                    tracker.GetMarkerTransform().Decompose(out scale, out q, out p);
+                    rawMat.Decompose(out scale, out q, out p);
                 }
 
                 if (smooth)
                     worldTransformation = smoother.FilterMatrix(p, q);
                 else
-                    worldTransformation = tracker.GetMarkerTransform();
+                    worldTransformation = rawMat;
 
                 if (predict)
                 {

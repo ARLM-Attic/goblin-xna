@@ -428,9 +428,9 @@ namespace GoblinXNA.UI.UI2D
             keyPress = new HandleKeyPress(HandleKeyPress);
             keyRelease = new HandleKeyRelease(HandleKeyRelease);
 
-            KeyboardInput.KeyTypeEvent += keyType;
-            KeyboardInput.KeyPressEvent += keyPress;
-            KeyboardInput.KeyReleaseEvent += keyRelease;
+            KeyboardInput.Instance.KeyTypeEvent += keyType;
+            KeyboardInput.Instance.KeyPressEvent += keyPress;
+            KeyboardInput.Instance.KeyReleaseEvent += keyRelease;
 
             keyInputRegistered = true;
         }
@@ -440,9 +440,9 @@ namespace GoblinXNA.UI.UI2D
             if (!keyInputRegistered)
                 return;
 
-            KeyboardInput.KeyTypeEvent -= keyType;
-            KeyboardInput.KeyPressEvent -= keyPress;
-            KeyboardInput.KeyReleaseEvent -= keyRelease;
+            KeyboardInput.Instance.KeyTypeEvent -= keyType;
+            KeyboardInput.Instance.KeyPressEvent -= keyPress;
+            KeyboardInput.Instance.KeyReleaseEvent -= keyRelease;
 
             keyInputRegistered = false;
         }
@@ -514,12 +514,12 @@ namespace GoblinXNA.UI.UI2D
             mouseDrag = new HandleMouseDrag(HandleMouseDrag);
             mouseWheelMove = new HandleMouseWheelMove(HandleMouseWheel);
 
-            MouseInput.MouseClickEvent += mouseClick;
-            MouseInput.MousePressEvent += mousePress;
-            MouseInput.MouseReleaseEvent += mouseRelease;
-            MouseInput.MouseMoveEvent += mouseMove;
-            MouseInput.MouseDragEvent += mouseDrag;
-            MouseInput.MouseWheelMoveEvent += mouseWheelMove;
+            MouseInput.Instance.MouseClickEvent += mouseClick;
+            MouseInput.Instance.MousePressEvent += mousePress;
+            MouseInput.Instance.MouseReleaseEvent += mouseRelease;
+            MouseInput.Instance.MouseMoveEvent += mouseMove;
+            MouseInput.Instance.MouseDragEvent += mouseDrag;
+            MouseInput.Instance.MouseWheelMoveEvent += mouseWheelMove;
 
             mouseInputRegistered = true;
         }
@@ -531,12 +531,12 @@ namespace GoblinXNA.UI.UI2D
             if (!mouseInputRegistered)
                 return;
 
-            MouseInput.MouseClickEvent -= mouseClick;
-            MouseInput.MousePressEvent -= mousePress;
-            MouseInput.MouseReleaseEvent -= mouseRelease;
-            MouseInput.MouseMoveEvent -= mouseMove;
-            MouseInput.MouseDragEvent -= mouseDrag;
-            MouseInput.MouseWheelMoveEvent -= mouseWheelMove;
+            MouseInput.Instance.MouseClickEvent -= mouseClick;
+            MouseInput.Instance.MousePressEvent -= mousePress;
+            MouseInput.Instance.MouseReleaseEvent -= mouseRelease;
+            MouseInput.Instance.MouseMoveEvent -= mouseMove;
+            MouseInput.Instance.MouseDragEvent -= mouseDrag;
+            MouseInput.Instance.MouseWheelMoveEvent -= mouseWheelMove;
 
             mouseInputRegistered = false;
         }

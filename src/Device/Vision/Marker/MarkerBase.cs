@@ -54,7 +54,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// <summary>
         /// The marker base
         /// </summary>
-        public static readonly MarkerBase Base = new MarkerBase();
+        public static readonly MarkerBase Instance = new MarkerBase();
         /// <summary>
         /// The marker tracker object
         /// </summary>
@@ -69,6 +69,8 @@ namespace GoblinXNA.Device.Vision.Marker
         #region Rendering parameters
         private bool m_bRenderInitialized;
         private Texture2D videoTexture;
+        // Used only for stereo video image overlay
+        private Texture2D stereoVideoTexture;
         private CameraNode markerCameraNode;
 
         private int prevWidth;
@@ -150,6 +152,14 @@ namespace GoblinXNA.Device.Vision.Marker
         }
 
         /// <summary>
+        /// Gets the texture for the 2nd video image in stereo video overlay. 
+        /// </summary>
+        public Texture2D AdditionalBackgroundTexture
+        {
+            get { return stereoVideoTexture; }
+        }
+
+        /// <summary>
         /// Gets whether the background video image rendering routine is initialized.
         /// </summary>
         public bool RenderInitialized
@@ -194,6 +204,9 @@ namespace GoblinXNA.Device.Vision.Marker
             videoTexture = new Texture2D(State.Device, width, height, 1, TextureUsage.None, 
                 SurfaceFormat.Bgr32);
 
+            stereoVideoTexture = new Texture2D(State.Device, width, height, 1, TextureUsage.None,
+                SurfaceFormat.Bgr32);
+
             m_bRenderInitialized = true;
         }
 
@@ -207,7 +220,6 @@ namespace GoblinXNA.Device.Vision.Marker
                 throw new GoblinException("marker tracker is null, can not create a camera node");
 
             Camera markerCamera = new Camera();
-            PrimitiveMesh mesh = new PrimitiveMesh();
 
             markerCamera.View = Matrix.CreateLookAt(new Vector3(0, 0, 0), new Vector3(0, 0, -1),
                 new Vector3(0, 1, 0));
@@ -234,10 +246,33 @@ namespace GoblinXNA.Device.Vision.Marker
             {
                 videoTexture.SetData(imageData);
             }
-            catch (Exception exp)
+            catch (Exception)
             {
                 InitRendering();
                 videoTexture.SetData(imageData);
+            }
+        }
+
+        public void UpdateAdditionalImage(int[] imageData)
+        {
+            if (!m_bRenderInitialized || (imageData == null))
+                return;
+
+            if (stereoVideoTexture.IsDisposed)
+            {
+                stereoVideoTexture = new Texture2D(State.Device, prevWidth, prevHeight, 1, 
+                    TextureUsage.None, SurfaceFormat.Bgr32);
+            }
+
+            try
+            {
+                stereoVideoTexture.SetData(imageData);
+            }
+            catch (Exception)
+            {
+                stereoVideoTexture = new Texture2D(State.Device, prevWidth, prevHeight, 1,
+                    TextureUsage.None, SurfaceFormat.Bgr32);
+                stereoVideoTexture.SetData(imageData);
             }
         }
 

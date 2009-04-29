@@ -88,7 +88,7 @@ namespace GoblinXNA.Shaders
         private bool forcePS20;
 
         /// <summary>
-        /// Creates an OpenGL shader that uses 'OpenGLShader.fx' shader file. 
+        /// Creates a DirectX shader that uses 'DirectXShader.fx' shader file. 
         /// </summary>
         public DirectXShader()
             : base("DirectXShader")

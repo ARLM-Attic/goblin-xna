@@ -69,7 +69,7 @@ namespace GoblinXNA.SceneGraph
         {
             worldTransform = Matrix.Identity;
             this.deviceIdentifier = deviceIdentifier;
-            if (!InputMapper.Contains6DOFInputDevice(deviceIdentifier))
+            if (!InputMapper.Instance.Contains6DOFInputDevice(deviceIdentifier))
                 throw new GoblinException(deviceIdentifier + " is not recognized. Only 6DOF devices " +
                     "are allowed to be used with TrackerNode.");
 
@@ -99,7 +99,7 @@ namespace GoblinXNA.SceneGraph
             get { return deviceIdentifier; }
             set
             {
-                if (!InputMapper.Contains6DOFInputDevice(value))
+                if (!InputMapper.Instance.Contains6DOFInputDevice(value))
                     throw new GoblinException(value + " is not recognized. Only 6DOF devices " +
                         "are allowed to be used with TrackerNode.");
                 deviceIdentifier = value;
@@ -147,13 +147,13 @@ namespace GoblinXNA.SceneGraph
                 if (smooth || predict)
                 {
                     Vector3 scale;
-                    InputMapper.GetWorldTransformation(deviceIdentifier).Decompose(out scale, out q, out p);
+                    InputMapper.Instance.GetWorldTransformation(deviceIdentifier).Decompose(out scale, out q, out p);
                 }
 
                 if (smooth)
                     worldTransform = smoother.FilterMatrix(p, q);
                 else
-                    worldTransform = InputMapper.GetWorldTransformation(deviceIdentifier);
+                    worldTransform = InputMapper.Instance.GetWorldTransformation(deviceIdentifier);
 
                 if (predict)
                     predictor.UpdatePredictor(p, q);

@@ -72,7 +72,7 @@ namespace Tutorial7___Custom_Shape
             // setting this to true may reduce the performance significantly)
             scene.PreferPerPixelLighting = true;
 
-            KeyboardInput.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
+            KeyboardInput.Instance.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
 
             base.Initialize();
         }
@@ -330,7 +330,7 @@ namespace Tutorial7___Custom_Shape
             // camera as well using key presses. I commented it out here because
             // the light direction manipulation uses key press as well
             //genericInputNode.Translation = GenericInput.Translation;
-            genericInputNode.Rotation = GenericInput.Rotation;
+            genericInputNode.Rotation = GenericInput.Instance.Rotation;
 
             base.Update(gameTime);
         }

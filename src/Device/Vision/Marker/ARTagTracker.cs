@@ -48,6 +48,7 @@ using Tao.FreeGlut;
 
 using Microsoft.Xna.Framework;
 
+using GoblinXNA.Helpers;
 using GoblinXNA.Device.Capture;
 
 namespace GoblinXNA.Device.Vision.Marker
@@ -84,6 +85,9 @@ namespace GoblinXNA.Device.Vision.Marker
         private int glWindowID;
         private bool glInitialized;
 
+        private float zNearPlane;
+        private float zFarPlane;
+
         #endregion
 
         #region Constructors
@@ -105,6 +109,9 @@ namespace GoblinXNA.Device.Vision.Marker
             initialized = false;
             glInitialized = false;
             artag_object_ids = new List<int>();
+
+            zNearPlane = 1.0f;
+            zFarPlane = 1025;
         }
 
         #endregion
@@ -220,8 +227,28 @@ namespace GoblinXNA.Device.Vision.Marker
                 float camera_dBottom = -camera_dTop;
 
                 return Matrix.CreatePerspectiveOffCenter(camera_dLeft, camera_dRight, camera_dBottom,
-                    camera_dTop, 1.0f, 1025);
+                    camera_dTop, zNearPlane, zFarPlane);
             }
+        }
+
+        /// <summary>
+        /// Gets or sets the near clipping plane used to compute CameraProjection.
+        /// The default value is 1.0f.
+        /// </summary>
+        public float ZNearPlane
+        {
+            get { return zNearPlane; }
+            set { zNearPlane = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the far clipping plane used to compute CameraProjection.
+        /// The default value is 1025.
+        /// </summary>
+        public float ZFarPlane
+        {
+            get { return zFarPlane; }
+            set { zFarPlane = value; }
         }
 
         #endregion
@@ -378,7 +405,7 @@ namespace GoblinXNA.Device.Vision.Marker
         {
             // make sure we are initialized
             if (!initialized)
-                throw new MarkerException("MarkerTracker is not initialized. Call InitTracker(...)");
+                throw new MarkerException("ARTagTracker is not initialized. Call InitTracker(...)");
 
             if (markerConfigs.Length != 1)
                 throw new MarkerException(GetAssocMarkerUsage());
@@ -422,6 +449,10 @@ namespace GoblinXNA.Device.Vision.Marker
             // make sure we are initialized
             if (!initialized)
                 throw new MarkerException("MarkerTracker is not initialized. Call InitTracker(...)");
+
+            if (captureDevice.Format != GoblinXNA.Device.Capture.ImageFormat.R8G8B8_24)
+                throw new MarkerException("ARTagTracker only supports R8G8B8_24 format. The format: "
+                    + captureDevice.Format + " is not supported by ARTagTracker");
 
             if (captureDevice == null)
                 return;

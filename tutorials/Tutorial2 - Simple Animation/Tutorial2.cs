@@ -88,7 +88,7 @@ namespace Tutorial2___Simple_Animation
             scene.PreferPerPixelLighting = true;
 
             // Add a keyboard press handler for user input
-            KeyboardInput.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
+            KeyboardInput.Instance.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
 
             base.Initialize();
         }

@@ -183,6 +183,8 @@ namespace GoblinXNA.Physics
         private List<String> materialPairs;
         private IDictionary<IntPtr, IPhysicsMaterial> materials;
 
+        private IDictionary<IntPtr, Joint> joints;
+
         private IDictionary<CollisionPair, CollisionCallback> collisionCallbacks;
 
         private List<PickedObject> pickedObjects;
@@ -233,6 +235,9 @@ namespace GoblinXNA.Physics
             materialPairs = new List<string>();
             materials = new Dictionary<IntPtr, IPhysicsMaterial>();
 
+            joints = new Dictionary<IntPtr, Joint>();
+            jointsToBeAdded = new List<Joint>();
+
             pickedObjects = new List<PickedObject>();
 
             forces = new Dictionary<IntPtr, Stack<Vector3>>();
@@ -243,8 +248,6 @@ namespace GoblinXNA.Physics
             treeCollisionMap = new Dictionary<IPhysicsObject,Newton.NewtonTreeCollision>();
 
             collisionMesh = new List<List<Vector3>>();
-
-            jointsToBeAdded = new List<Joint>();
 
             transformCallback = delegate(IntPtr body, float[] pMatrix)
             {
@@ -479,6 +482,7 @@ namespace GoblinXNA.Physics
 
             List<IPhysicsObject> physObjs = new List<IPhysicsObject>(objectIDs.Keys);
             List<IPhysicsMaterial> physMats = new List<IPhysicsMaterial>(materials.Values);
+            List<Joint> physJoint = new List<Joint>(joints.Values);
 
             objectIDs.Clear();
             reverseIDs.Clear();
@@ -488,11 +492,18 @@ namespace GoblinXNA.Physics
             materialPairs.Clear();
             materialIDs.Clear();
 
+            joints.Clear();
+            jointsToBeAdded.Clear();
+
             foreach (IPhysicsMaterial physMat in physMats)
                 AddPhysicsMaterial(physMat);
 
+            foreach (Joint joint in physJoint)
+                CreateJoint(joint.Child, joint.Parent, joint.Info);
+
             foreach (IPhysicsObject physObj in physObjs)
                 AddPhysicsObject(physObj);
+            
         }
 
         public void AddPhysicsObject(IPhysicsObject physObj)
@@ -977,6 +988,8 @@ namespace GoblinXNA.Physics
         {
             Newton.NewtonDestroyAllBodies(nWorld);
             Newton.NewtonMaterialDestroyAllGroupID(nWorld);
+            foreach (IntPtr joint in joints.Keys)
+                Newton.NewtonDestroyJoint(nWorld, joint);
             Newton.NewtonDestroy(nWorld);
         }
 
@@ -1250,6 +1263,45 @@ namespace GoblinXNA.Physics
 
             treeCollisionMap.Add(physObj, callback);
         }
+
+        /// <summary>
+        /// Calculates the closest point between two physics object.
+        /// </summary>
+        /// <param name="objA">A physics object to calculate the closest point</param>
+        /// <param name="objB">Another physics object to calculate the closest point</param>
+        /// <param name="contactA">The closest point to objA</param>
+        /// <param name="contactB">The closest point to objB</param>
+        /// <param name="normalAB">The separating vector normal</param>
+        /// <returns>1 if the two objects are disjoint and the closest point can be found. 
+        /// 0 if the two objects are intersecting.</returns>
+        public int GetClosestPoint(IPhysicsObject objA, IPhysicsObject objB, ref Vector3 contactA,
+            ref Vector3 contactB, ref Vector3 normalAB)
+        {
+            IntPtr bodyA = GetBody(objA);
+            IntPtr bodyB = GetBody(objB);
+
+            IntPtr collisionA = Newton.NewtonBodyGetCollision(bodyA);
+            IntPtr collisionB = Newton.NewtonBodyGetCollision(bodyB);
+            
+            float[] matrixA = new float[16];
+            float[] matrixB = new float[16];
+
+            Newton.NewtonBodyGetMatrix(bodyA, matrixA);
+            Newton.NewtonBodyGetMatrix(bodyB, matrixB);
+
+            float[] pointA = new float[3];
+            float[] pointB = new float[3];
+            float[] normAB = new float[3];
+
+            int ret = Newton.NewtonCollisionClosestPoint(nWorld, collisionA, matrixA, collisionB, 
+                matrixB, pointA, pointB, normAB);
+
+            contactA = new Vector3(pointA[0], pointA[1], pointA[2]);
+            contactB = new Vector3(pointB[0], pointB[1], pointB[2]);
+            normalAB = new Vector3(normAB[0], normAB[1], normAB[2]);
+
+            return ret;
+        }
         #endregion
 
         #region Helper Methods
@@ -1393,6 +1445,8 @@ namespace GoblinXNA.Physics
                     Newton.NewtonJointSetCollisionState(newtonJoint, 1);
 
                 Newton.NewtonJointSetStiffness(newtonJoint, joint.Info.Stiffness);
+
+                joints.Add(newtonJoint, joint);
 
                 removeList.Add(joint);
             }

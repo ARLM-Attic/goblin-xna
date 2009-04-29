@@ -47,50 +47,51 @@ namespace GoblinXNA.Device.Generic
     {
         #region Member Fields
 
-        private static String identifier;
-        private static bool isAvailable;
-        private static Vector3 translation;
-        private static Quaternion rotation;
+        private String identifier;
+        private bool isAvailable;
+        private Vector3 translation;
+        private Quaternion rotation;
 
-        private static Keys forwardKey;
-        private static Keys backwardKey;
-        private static Keys leftKey;
-        private static Keys rightKey;
-        private static Keys upKey;
-        private static Keys downKey;
+        private Keys forwardKey;
+        private Keys backwardKey;
+        private Keys leftKey;
+        private Keys rightKey;
+        private Keys upKey;
+        private Keys downKey;
 
-        private static bool forwardPressed;
-        private static bool backwardPressed;
-        private static bool leftPressed;
-        private static bool rightPressed;
-        private static bool upPressed;
-        private static bool downPressed;
-        private static bool moveSmoothly;
+        private bool forwardPressed;
+        private bool backwardPressed;
+        private bool leftPressed;
+        private bool rightPressed;
+        private bool upPressed;
+        private bool downPressed;
+        private bool moveSmoothly;
 
-        private static float sngWalk;
-        private static float sngStrafe;
+        private float sngWalk;
+        private float sngStrafe;
 
-        private static float moveSpeed;
-        private static float pitchSpeed;
-        private static float yawSpeed;
-        private static int deltaX;
-        private static int deltaY;
+        private float moveSpeed;
+        private float pitchSpeed;
+        private float yawSpeed;
+        private int deltaX;
+        private int deltaY;
 
-        private static bool useGenericInput;
+        private bool useGenericInput;
 
-        private static Point prevMouseLocation;
+        private Point prevMouseLocation;
+        private static GenericInput input;
 
         #endregion
 
         #region Static Constructors
 
         /// <summary>
-        /// A static constructor.
+        /// A private constructor.
         /// </summary>
         /// <remarks>
         /// Don't instantiate this constructor.
         /// </remarks>
-        static GenericInput()
+        private GenericInput()
         {
             forwardKey = Keys.W;
             backwardKey = Keys.S;
@@ -119,7 +120,7 @@ namespace GoblinXNA.Device.Generic
 
             prevMouseLocation = new Point(-1, -1);
 
-            MouseInput.MouseDragEvent += 
+            MouseInput.Instance.MouseDragEvent += 
                 delegate(int button, Point startLocation, Point currentLocation)
                 {
                     if (button == MouseInput.RightButton)
@@ -140,7 +141,7 @@ namespace GoblinXNA.Device.Generic
                     }
                 };
 
-            MouseInput.MousePressEvent +=
+            MouseInput.Instance.MousePressEvent +=
                 delegate(int button, Point mouseLocation)
                 {
                     if (button == MouseInput.RightButton)
@@ -150,7 +151,7 @@ namespace GoblinXNA.Device.Generic
                     }
                 };
 
-            KeyboardInput.KeyPressEvent += 
+            KeyboardInput.Instance.KeyPressEvent += 
                 delegate(Keys key, KeyModifier modifier)
                 {
                     if (key == forwardKey)
@@ -167,7 +168,7 @@ namespace GoblinXNA.Device.Generic
                         downPressed = true;
                 };
 
-            KeyboardInput.KeyReleaseEvent += 
+            KeyboardInput.Instance.KeyReleaseEvent += 
                 delegate(Keys key, KeyModifier modifier)
                 {
                     if (key == forwardKey)
@@ -203,7 +204,7 @@ namespace GoblinXNA.Device.Generic
             get { return isAvailable; }
         }
 
-        public static Vector3 Translation
+        public Vector3 Translation
         {
             get 
             {
@@ -212,7 +213,7 @@ namespace GoblinXNA.Device.Generic
             }
         }
 
-        public static Quaternion Rotation
+        public Quaternion Rotation
         {
             get 
             {
@@ -224,9 +225,9 @@ namespace GoblinXNA.Device.Generic
         public Matrix WorldTransformation
         {
             get
-            {   
-                KeyboardInput.InitialRepetitionWait = 100;
-                KeyboardInput.RepetitionWait = 100;
+            {
+                KeyboardInput.Instance.InitialRepetitionWait = 100;
+                KeyboardInput.Instance.RepetitionWait = 100;
                 useGenericInput = true;
                 return Matrix.Transform(Matrix.CreateTranslation(translation),
                     rotation);
@@ -236,7 +237,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the key used to move forward.
         /// </summary>
-        public static Keys ForwardKey
+        public Keys ForwardKey
         {
             get { return forwardKey; }
             set { forwardKey = value; }
@@ -245,7 +246,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the key used to move backward.
         /// </summary>
-        public static Keys BackwardKey
+        public Keys BackwardKey
         {
             get { return backwardKey; }
             set { backwardKey = value; }
@@ -254,7 +255,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the key used to move left.
         /// </summary>
-        public static Keys LeftKey
+        public Keys LeftKey
         {
             get { return leftKey; }
             set { leftKey = value; }
@@ -263,7 +264,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the key used to move right.
         /// </summary>
-        public static Keys RightKey
+        public Keys RightKey
         {
             get { return rightKey; }
             set { rightKey = value; }
@@ -272,7 +273,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the key used to move upward.
         /// </summary>
-        public static Keys UpKey
+        public Keys UpKey
         {
             get { return upKey; }
             set { upKey = value; }
@@ -281,7 +282,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the key used to move downward.
         /// </summary>
-        public static Keys DownKey
+        public Keys DownKey
         {
             get { return downKey; }
             set { downKey = value; }
@@ -290,7 +291,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets whether to move smoothly by introducing slight slidings.
         /// </summary>
-        public static bool MoveSmoothly
+        public bool MoveSmoothly
         {
             get { return moveSmoothly; }
             set { moveSmoothly = value; }
@@ -299,7 +300,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets the move speed (how far it moves for each key type).
         /// </summary>
-        public static float MoveSpeed
+        public float MoveSpeed
         {
             get { return moveSpeed; }
             set { moveSpeed = value; }
@@ -308,7 +309,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets how fast it pitches.
         /// </summary>
-        public static float PitchSpeed
+        public float PitchSpeed
         {
             get { return pitchSpeed; }
             set { pitchSpeed = value; }
@@ -317,15 +318,40 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets or sets how fast it yaws.
         /// </summary>
-        public static float YawSpeed
+        public float YawSpeed
         {
             get { return yawSpeed; }
             set { yawSpeed = value; }
         }
 
+        /// <summary>
+        /// Gets the instantiation of GenericInput class.
+        /// </summary>
+        public static GenericInput Instance
+        {
+            get
+            {
+                if (input == null)
+                {
+                    input = new GenericInput();
+                }
+
+                return input;
+            }
+        }
+
         #endregion
 
-        #region Update
+        #region Public Methods
+
+        /// <summary>
+        /// Resets the translation and rotation.
+        /// </summary>
+        public void Reset()
+        {
+            translation = Vector3.Zero;
+            rotation = Quaternion.Identity;
+        }
 
         public void Update(GameTime gameTime, bool deviceActive)
         {
@@ -395,6 +421,10 @@ namespace GoblinXNA.Device.Generic
 
                 sngWalk = sngStrafe = 0;
             }
+        }
+
+        public void Dispose()
+        {
         }
 
         #endregion

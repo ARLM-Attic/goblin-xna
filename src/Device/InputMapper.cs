@@ -44,7 +44,10 @@ namespace GoblinXNA.Device
     /// <summary>
     /// A class that maps all of the available input devices to a set of unified functions.
     /// </summary>
-    public class InputMapper
+    /// <remarks>
+    /// InputMapper is a singleton class, so you should access this class through Instance property.
+    /// </remarks>
+    public class InputMapper : IDisposable
     {
         /// <summary>
         /// An identifier string for the mouse device.
@@ -63,65 +66,33 @@ namespace GoblinXNA.Device
         /// </summary>
         public static String MouseAndKeyboard = DeviceEnumerator.MouseAndKeyboard;
 
-        /// <summary>
-        /// An identifier string for station 0 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation0 = DeviceEnumerator.InterSenseStation0;
+        private DeviceEnumerator enumerator;
+
+        private static InputMapper mapper;
 
         /// <summary>
-        /// An identifier string for station 1 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation1 = DeviceEnumerator.InterSenseStation1;
-
-        /// <summary>
-        /// An identifier string for station 2 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation2 = DeviceEnumerator.InterSenseStation2;
-
-        /// <summary>
-        /// An identifier string for station 3 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation3 = DeviceEnumerator.InterSenseStation3;
-
-        /// <summary>
-        /// An identifier string for station 4 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation4 = DeviceEnumerator.InterSenseStation4;
-
-        /// <summary>
-        /// An identifier string for station 5 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation5 = DeviceEnumerator.InterSenseStation5;
-
-        /// <summary>
-        /// An identifier string for station 6 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation6 = DeviceEnumerator.InterSenseStation6;
-
-        /// <summary>
-        /// An identifier string for station 7 of the InterSense tracker.
-        /// </summary>
-        public static String InterSenseStation7 = DeviceEnumerator.InterSenseStation7;
-
-        /// <summary>
-        /// An identifier string for the Global Positioning System.
-        /// </summary>
-        /// <remarks>
-        /// Not supported yet.
-        /// </remarks>
-        public static String GPS = DeviceEnumerator.GPS;
-
-        private static DeviceEnumerator enumerator;
-
-        /// <summary>
-        /// A static constructor.
+        /// A private constructor.
         /// </summary>
         /// <remarks>
         /// Don't instantiate this.
         /// </remarks>
-        static InputMapper()
+        private InputMapper()
         {
             enumerator = new DeviceEnumerator();
+        }
+
+        /// <summary>
+        /// Gets the instantiation of InputMapper class.
+        /// </summary>
+        public static InputMapper Instance
+        {
+            get
+            {
+                if (mapper == null)
+                    mapper = new InputMapper();
+
+                return mapper;
+            }
         }
 
         /// <summary>
@@ -129,7 +100,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="identifier">A string identifier for a 6DOF input device</param>
         /// <returns></returns>
-        public static Matrix GetWorldTransformation(String identifier)
+        public Matrix GetWorldTransformation(String identifier)
         {
             if (!enumerator.Available6DOFDevices.ContainsKey(identifier))
                 return Matrix.Identity;
@@ -146,7 +117,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="identifier">A string identifier for a non-6DOF input device</param>
         /// <param name="data"></param>
-        public static void TriggerInputDeviceDelegates(String identifier, byte[] data)
+        public void TriggerInputDeviceDelegates(String identifier, byte[] data)
         {
             if (enumerator.AvailableDevices.ContainsKey(identifier))
                 enumerator.AvailableDevices[identifier].TriggerDelegates(data);
@@ -157,7 +128,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="identifier">A string identifier for a non-6DOF input device</param>
         /// <returns></returns>
-        public static bool ContainsInputDevice(String identifier)
+        public bool ContainsInputDevice(String identifier)
         {
             return enumerator.AvailableDevices.ContainsKey(identifier);
         }
@@ -167,7 +138,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="identifier">A string identifier for a 6DOF input device</param>
         /// <returns></returns>
-        public static bool Contains6DOFInputDevice(String identifier)
+        public bool Contains6DOFInputDevice(String identifier)
         {
             return enumerator.Available6DOFDevices.ContainsKey(identifier);
         }
@@ -177,7 +148,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="device">An input device to be added</param>
         /// <exception cref="GoblinException">If duplicate device identifier exists</exception>
-        public static void AddInputDevice(InputDevice device)
+        public void AddInputDevice(InputDevice device)
         {
             if (!enumerator.AdditionalDevices.ContainsKey(device.Identifier))
                 enumerator.AdditionalDevices.Add(device.Identifier, device);
@@ -190,7 +161,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="device">A 6DOF input device to be added</param>
         /// <exception cref="GoblinException">If duplicate device identifier exists</exception>
-        public static void Add6DOFInputDevice(InputDevice_6DOF device)
+        public void Add6DOFInputDevice(InputDevice_6DOF device)
         {
             if (!enumerator.Additional6DOFDevices.ContainsKey(device.Identifier))
                 enumerator.Additional6DOFDevices.Add(device.Identifier, device);
@@ -202,7 +173,7 @@ namespace GoblinXNA.Device
         /// Reenumerates all of the available input devices. You should call this function after you
         /// add your own input devices.
         /// </summary>
-        public static void Reenumerate()
+        public void Reenumerate()
         {
             enumerator.Reenumerate();
         }
@@ -212,9 +183,21 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="gameTime"></param>
         /// <param name="deviceActive"></param>
-        public static void Update(GameTime gameTime, bool deviceActive)
+        public void Update(GameTime gameTime, bool deviceActive)
         {
             enumerator.Update(gameTime, deviceActive);
+        }
+
+        /// <summary>
+        /// Disposes all of the enumerated 6DOF and non-6DOF input devices.
+        /// </summary>
+        public void Dispose()
+        {
+            foreach (InputDevice device in enumerator.AvailableDevices.Values)
+                device.Dispose();
+
+            foreach (InputDevice_6DOF device in enumerator.Available6DOFDevices.Values)
+                device.Dispose();
         }
     }
 }

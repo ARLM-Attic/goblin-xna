@@ -4,7 +4,7 @@ GoblinXNAInstallationGuide.docx.
 We strongly recommend to read the artag_rev2.doc which comes with the ARTag SDK, and run their demos to
 have better understanding of how ARTag works. 
 
-The ARTag.cf file contains bunch of marker (fiducial) configurations, and you are welcome to
+The NewARTag.cf file contains bunch of marker (fiducial) configurations, and you are welcome to
 change the configurations, but for now, please leave those as it is, otherwise, you may have some
 problems rendering the tracked objects. (For detailed descrption of the .cf file format, please see
 below)

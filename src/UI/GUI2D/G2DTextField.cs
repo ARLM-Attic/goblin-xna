@@ -130,7 +130,7 @@ namespace GoblinXNA.UI.UI2D
                 case Keys.Enter:
                     break;
                 default:
-                    Text += "" + KeyboardInput.KeyToChar(key, modifier.ShiftKeyPressed);
+                    Text += "" + KeyboardInput.Instance.KeyToChar(key, modifier.ShiftKeyPressed);
                     break;
             }
         }

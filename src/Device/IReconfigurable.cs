@@ -41,6 +41,6 @@ namespace GoblinXNA.Device
     /// </summary>
     internal interface IReconfigurable
     {
-        bool Reconfigure();
+        bool Reconfigure(params object[] newConfigParams);
     }
 }

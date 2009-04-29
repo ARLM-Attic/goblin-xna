@@ -1,3 +1,75 @@
+Version 3.2 (4/24/09)
+
+1. New Support
+
+   a) Added Vuzix's iWear VR920 (which is a stereoscopic display with orientation tracking) support, and the 
+      classes can be found in GoblinXNA.Device.iWear package.
+
+   b) Added GetClosestPoint(..) method in NewtonPhysics which calculates the closest points between two
+      physics object.
+
+   c) Added additional placement options for Notifier class. Now it allows custom starting location and
+      transition direction.
+
+   d) Added a "tools" folder, and the visual debugging tool (SceneGraphDisplay) is included.
+
+   e) Added ImageFormat enum in IVideoCapture class that specifies the format of ImagePtr property, which
+      will be passed to the marker tracker library. ImageFormat parameter is added to the InitVideoCapture(...)
+      function. Prior to this change, the format of ImagePtr was always R8G8B8_24 format which works for
+      ARTag.
+
+   f) Added tutorial 13 for iWear VR920 stereo demo.
+
+   g) Added LeftEyeVideoID, RightEyeVideoID, LeftEyeVideoImageShift, and RightEyeVideoImageShift properties 
+      to Scene class in order to support stereo video overlay.
+
+   h) Added VideoVisibleArea property to Scene class so that the visible area of the video image rendered on the
+      background can be modified. By default, it rendres the entire video image when ShowCameraImage is set to
+      true.
+
+
+2. Modifications
+
+   a) Removed audioDeviceID parameter from IVideoCapture's InitVideoCapture(...) function since it's unlikely
+      that anyone will use the audio input that comes with the webcam. Also, if you see the discussion post,
+      it puts weird restriction on the resolution of the video device when audio device is used, so it's more
+      harmful than useful to have the audioDeviceID parameter.
+
+   b) Changed MarkerNode constructors' last parameter's type from "params String[]" to "params Object[]".
+
+   c) GenericInput, KeyboardInput, MouseInput, GPS, InterSense, and InputMapper classes are now singleton 
+      classes, so you should use the Instance property to access their instantiations. 
+
+   d) GPS and InterSense classes are not automatically initialized by the InputMapper class anymore, so you
+      need to create their instance and initialize them yourself, and add them to InputMapper class through 
+      InputMapper.AddInputDevice(...) or InputMapper.Add6DOFInputDevice(...) functions if you want to use either 
+      InterSense or GPS device. After you add them, make sure to call InputMapper.Reenumerate() function. 
+
+   e) Due to the change above, you don't need the InterSenseEnable, InterSenseHost, or InterSensePort setting
+      variables in the setting file to use InterSense anymore. Instead, you should directly pass those parameters
+      (host name and port number) to InterSense constructor if you want to connect to it through network server.
+
+   f) Removed InputDeviceDriver class since it's not used anymore.
+
+   g) Modified several tutorials due to the changes above.
+
+   h) Modified the ground marker array for tutorial 8.
+
+   i) IMarkerTracker interface now requires ZNearPlane and ZFarPlane property.
+
+
+3. Improvements & Bug Fixes
+
+   a) Fixed tutorial 11 problem, and tutorial 8 problem (incorrect ground size).
+
+   b) Fixed undeterministic behavior when adding nodes. If a node is added to the scene graph while the scene
+      graph is being traversed, it can cause undeterministic behavior. This problem has been fixed.
+
+   c) Fixed re-addition of Newton joints when RestartSimulation() is called in NewtonPhysics. 
+
+
+-----------------------------------------------------------------------------------------------------------------
+
 Version 3.1 (2/18/09)
 
 

@@ -110,7 +110,8 @@ namespace GoblinXNA.Device.Generic
     /// <example>
     /// An example of adding a mouse press event handler:
     /// 
-    /// MouseInput.MousePressEvent += new HandleMousePress(MousePressHandler);
+    /// MouseInput mouseInput = MouseInput.Instance;
+    /// mouseInput.MousePressEvent += new HandleMousePress(MousePressHandler);
     ///
     /// private void MousePressHandler(int button, Point mouseLocation)
     /// {
@@ -121,6 +122,9 @@ namespace GoblinXNA.Device.Generic
     ///    }
     /// }
     /// </example>
+    /// <remarks>
+    /// MouseInput is a singleton class, so you should access this class through Instance property.
+    /// </remarks>
     public class MouseInput : InputDevice
     {
         #region Constants
@@ -149,27 +153,29 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Mouse state, set every frame in the Update method.
         /// </summary>
-        private static MouseState mouseState;
-        private static bool mousePressed;
+        private MouseState mouseState;
+        private bool mousePressed;
 
         /// <summary>
         /// Mouse wheel delta this frame. We do not get the total scroll value, but we usually 
         /// need the current delta!
         /// </summary>
-        private static int mouseWheelDelta;
-        private static int mouseWheelValue;
+        private int mouseWheelDelta;
+        private int mouseWheelValue;
 
         // Start dragging pos, will be set when we just pressed the left mouse button. Used for the MouseDraggingAmount property.		
-        private static Point startDraggingPos;
-        private static Point prevDraggingPos;
-        private static int dragButton;
+        private Point startDraggingPos;
+        private Point prevDraggingPos;
+        private int dragButton;
 
         // X and y movements of the mouse this frame		
-        private static float lastMouseX;
-        private static float lastMouseY;
+        private float lastMouseX;
+        private float lastMouseY;
 
-        private static bool onlyTrackInsideWindow;
-        private static bool onlyTrackWhenFocused;
+        private bool onlyTrackInsideWindow;
+        private bool onlyTrackWhenFocused;
+
+        private static MouseInput input;
 
         #endregion
 
@@ -177,42 +183,42 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// An event to add or remove mouse click delegate/callback functions
         /// </summary>
-        public static event HandleMouseClick MouseClickEvent;
+        public event HandleMouseClick MouseClickEvent;
 
         /// <summary>
         /// An event to add or remove mouse press delegate/callback functions
         /// </summary>
-        public static event HandleMousePress MousePressEvent;
+        public event HandleMousePress MousePressEvent;
 
         /// <summary>
         /// An event to add or remove mouse release delegate/callback functions
         /// </summary>
-        public static event HandleMouseRelease MouseReleaseEvent;
+        public event HandleMouseRelease MouseReleaseEvent;
 
         /// <summary>
         /// An event to add or remove mouse move delegate/callback functions
         /// </summary>
-        public static event HandleMouseMove MouseMoveEvent;
+        public event HandleMouseMove MouseMoveEvent;
 
         /// <summary>
         /// An event to add or remove mouse drag delegate/callback functions
         /// </summary>
-        public static event HandleMouseDrag MouseDragEvent;
+        public event HandleMouseDrag MouseDragEvent;
 
         /// <summary>
         /// An event to add or remove mouse wheel move delegate/callback functions
         /// </summary>
-        public static event HandleMouseWheelMove MouseWheelMoveEvent;
+        public event HandleMouseWheelMove MouseWheelMoveEvent;
         #endregion
 
-        #region Static Constructors
+        #region Constructors
         /// <summary>
-        /// A static constructor.
+        /// A private constructor.
         /// </summary>
         /// <remarks>
         /// Don't instatiate this constructor.
         /// </remarks>
-        static MouseInput()
+        private MouseInput()
         {
             mousePressed = false;
             mouseWheelDelta = 0;
@@ -234,7 +240,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets whether the left mouse button is currently pressed.
         /// </summary>
-        private static bool MouseLeftButtonPressed
+        private bool MouseLeftButtonPressed
         {
             get { return mouseState.LeftButton == ButtonState.Pressed; }
         }
@@ -242,7 +248,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets whether the right mouse button is currently pressed.
         /// </summary>
-        private static bool MouseRightButtonPressed
+        private bool MouseRightButtonPressed
         {
             get { return mouseState.RightButton == ButtonState.Pressed; }
         }
@@ -250,7 +256,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets whether the middle mouse button is currently pressed.
         /// </summary>
-        private static bool MouseMiddleButtonPressed
+        private bool MouseMiddleButtonPressed
         {
             get { return mouseState.MiddleButton == ButtonState.Pressed; }
         }
@@ -258,7 +264,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets whether the left mouse button is currently released.
         /// </summary>
-        private static bool MouseLeftButtonReleased
+        private bool MouseLeftButtonReleased
         {
             get { return mouseState.LeftButton == ButtonState.Released; }
         }
@@ -266,7 +272,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets whether the right mouse button is currently released.
         /// </summary>
-        private static bool MouseRightButtonReleased
+        private bool MouseRightButtonReleased
         {
             get { return mouseState.RightButton == ButtonState.Released; }
         }
@@ -274,7 +280,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets whether the middle mouse button is currently released.
         /// </summary>
-        private static bool MouseMiddleButtonReleased
+        private bool MouseMiddleButtonReleased
         {
             get { return mouseState.MiddleButton == ButtonState.Released; }
         }
@@ -282,7 +288,7 @@ namespace GoblinXNA.Device.Generic
         /// <summary>
         /// Gets the current mouse position in the screen coordinate.
         /// </summary>
-        private static Point MouseLocation
+        private Point MouseLocation
         {
             get { return new Point(mouseState.X, mouseState.Y); }
         }
@@ -305,7 +311,7 @@ namespace GoblinXNA.Device.Generic
         /// Gets or sets whether to handle mouse events only if the mouse cursor is inside
         /// the window. The default value is true.
         /// </summary>
-        public static bool OnlyHandleInsideWindow
+        public bool OnlyHandleInsideWindow
         {
             get { return onlyTrackInsideWindow; }
             set { onlyTrackInsideWindow = value; }
@@ -315,10 +321,26 @@ namespace GoblinXNA.Device.Generic
         /// Gets or sets whether to handle mouse events only if the current window is
         /// focused. The default value is true.
         /// </summary>
-        public static bool OnlyTrackWhenFocused
+        public bool OnlyTrackWhenFocused
         {
             get { return onlyTrackWhenFocused; }
             set { onlyTrackWhenFocused = value; }
+        }
+
+        /// <summary>
+        /// Gets the instantiation of MouseInput class.
+        /// </summary>
+        public static MouseInput Instance
+        {
+            get
+            {
+                if (input == null)
+                {
+                    input = new MouseInput();
+                }
+
+                return input;
+            }
         }
 
         #endregion
@@ -398,7 +420,7 @@ namespace GoblinXNA.Device.Generic
         /// <param name="mouseLocation"></param>
         /// <exception cref="GoblinException"></exception>
         /// <returns></returns>
-        public static byte[] GetNetworkData(MouseEventType type, int button, Point mouseLocation)
+        public byte[] GetNetworkData(MouseEventType type, int button, Point mouseLocation)
         {
             byte btype = (byte)type;
             if (btype > 2)
@@ -425,7 +447,7 @@ namespace GoblinXNA.Device.Generic
         /// </summary>
         /// <param name="mouseLocation"></param>
         /// <returns></returns>
-        public static byte[] GetNetworkData(Point mouseLocation)
+        public byte[] GetNetworkData(Point mouseLocation)
         {
             // 1 byte for type and 2 (short) * 2 bytes for mouseLocation
             byte[] data = new byte[5];
@@ -448,7 +470,7 @@ namespace GoblinXNA.Device.Generic
         /// <param name="startLocation"></param>
         /// <param name="currentLocation"></param>
         /// <returns></returns>
-        public static byte[] GetNetworkData(int button, Point startLocation,
+        public byte[] GetNetworkData(int button, Point startLocation,
             Point currentLocation)
         {
             // 1 byte for type, 1 byte for button, 2 (short) * 2 bytes for startLocation,
@@ -475,7 +497,7 @@ namespace GoblinXNA.Device.Generic
         /// <param name="delta"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static byte[] GetNetworkData(int delta, int value)
+        public byte[] GetNetworkData(int delta, int value)
         {
             // 1 byte for type, 2 (short) bytes for delta, and 2 (short) bytes for value
             byte[] data = new byte[5];
@@ -490,9 +512,6 @@ namespace GoblinXNA.Device.Generic
             return data;
         }
 
-        #endregion
-
-        #region Update
         public void Update(GameTime gameTime, bool deviceActive)
         {
             if (onlyTrackWhenFocused && !deviceActive)
@@ -590,6 +609,12 @@ namespace GoblinXNA.Device.Generic
             if (MouseRightButtonReleased && MouseLeftButtonReleased && MouseMiddleButtonReleased)
                 mousePressed = false;
         }
+
+        public void Dispose()
+        {
+            // Nothing to dispose
+        }
+
         #endregion
     }
 }

@@ -66,6 +66,47 @@ namespace GoblinXNA.Device.Capture
         _120Hz,
         _240Hz
     };
+
+    /// <summary>
+    /// The format of the image that will be passed to the marker tracker.
+    /// </summary>
+    public enum ImageFormat
+    {
+        /// <summary>
+        /// 8-bit Grayscale format.
+        /// </summary>
+        GRAYSCALE_8,
+
+        /// <summary>
+        /// 16-bit RGB format. 5 bits for R, 6 bits for G, and 5 bits for B channel.
+        /// </summary>
+        R5G6B5_16,
+
+        /// <summary>
+        /// 24-bit RGB format. 8 bits for each R, G, and B channel.
+        /// </summary>
+        R8G8B8_24,
+
+        /// <summary>
+        /// 24-bit BGR format. 8 bits for each B, G, and R channel.
+        /// </summary>
+        B8G8R8_24,
+
+        /// <summary>
+        /// 32-bit ABGR format. 8 bits for each A (alpha), B, G, and R channel.
+        /// </summary>
+        A8B8G8R8_32,
+
+        /// <summary>
+        /// 32-bit RGBA format. 8 bits for each R, G, B, and A (alpha) channel.
+        /// </summary>
+        R8G8B8A8_32,
+
+        /// <summary>
+        /// 32-bit BGRA format. 8 bits for each B, G, R, and A (alpha) channel.
+        /// </summary>
+        B8G8R8A8_32
+    };
     #endregion
 
     /// <summary>
@@ -94,14 +135,14 @@ namespace GoblinXNA.Device.Capture
         int VideoDeviceID { get; }
 
         /// <summary>
-        /// Gets the audio device ID.
-        /// </summary>
-        int AudioDeviceID { get; }
-
-        /// <summary>
         /// Gets whether to use grayscale.
         /// </summary>
         bool GrayScale { get; }
+
+        /// <summary>
+        /// Gets the image pointer format.
+        /// </summary>
+        ImageFormat Format { get; }
 
         /// <summary>
         /// Gets whether the device is initialized.
@@ -132,15 +173,15 @@ namespace GoblinXNA.Device.Capture
         /// the first video capture device plugged into the computer is assigned ID of 0, and the next 
         /// one is assigned ID of 1. If you're using the cameras embedded on a laptop or other mobile PC, 
         /// usually the front camera is assigned ID of 0, and the back camera is assigned ID of 1.</param>
-        /// <param name="audioDeviceID">The device ID of the audio if audio is available. Set this
-        /// to 0 if you don't need the audio input.</param>
         /// <param name="frameRate">The desired framerate to use</param>
         /// <param name="resolution">The resolution of the live video image to use. Some resolution is
         /// not supported by certain cameras, and an exception will be thrown in that case</param>
+        /// <param name="format">The format of how the ImagePtr property, which will be passed to
+        /// the marker tracker, will be stored (e.g., ARTag uses R8G8B8_24 format)</param>
         /// <param name="grayscale">Indicates whether to use grayscale mode. If the camera only supports 
         /// black & white, then this must be set to false. Otherwise, an exception will be thrown</param>
-        void InitVideoCapture(int videoDeviceID, int audioDeviceID, FrameRate frameRate, 
-            Resolution resolution, bool grayscale);
+        void InitVideoCapture(int videoDeviceID, FrameRate frameRate, Resolution resolution, 
+            ImageFormat format, bool grayscale);
 
         /// <summary>
         /// Gets an array of video image pixels in Microsoft.Xna.Framework.Graphics.SurfaceFormat.Bgr32 

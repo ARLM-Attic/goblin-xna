@@ -71,7 +71,7 @@ namespace Tutorial12___Advanced_Physics
             // Create a static camera far from the center of the scene
             CreateStaticCamera(false);
 
-            KeyboardInput.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
+            KeyboardInput.Instance.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
 
             State.ShowFPS = true;
 

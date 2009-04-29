@@ -64,7 +64,6 @@ namespace GoblinXNA.Device.Capture
         private PointF focalPoint;
 
         private int videoDeviceID;
-        private int audioDeviceID;
 
         private int cameraWidth;
         private int cameraHeight;
@@ -74,6 +73,7 @@ namespace GoblinXNA.Device.Capture
         private bool cameraInitialized;
         private Resolution resolution;
         private FrameRate frameRate;
+        private ImageFormat format;
         private int[] imageData;
 
         /// <summary>
@@ -102,7 +102,6 @@ namespace GoblinXNA.Device.Capture
         {
             cameraInitialized = false;
             videoDeviceID = -1;
-            audioDeviceID = -1;
             focalPoint = new PointF(0, 0);
 
             cameraWidth = 0;
@@ -138,11 +137,6 @@ namespace GoblinXNA.Device.Capture
             get { return videoDeviceID; }
         }
 
-        public int AudioDeviceID
-        {
-            get { return audioDeviceID; }
-        }
-
         public bool GrayScale
         {
             get { return grayscale; }
@@ -158,12 +152,17 @@ namespace GoblinXNA.Device.Capture
             get { return cameraImage; }
         }
 
+        public ImageFormat Format
+        {
+            get { return format; }
+        }
+
         #endregion
 
         #region Public Methods
 
-        public void InitVideoCapture(int videoDeviceID, int audioDeviceID, FrameRate framerate,
-            Resolution resolution, bool grayscale)
+        public void InitVideoCapture(int videoDeviceID, FrameRate framerate, Resolution resolution, 
+            ImageFormat format, bool grayscale)
         {
             if (cameraInitialized)
                 return;
@@ -172,7 +171,7 @@ namespace GoblinXNA.Device.Capture
             this.grayscale = grayscale;
             this.frameRate = framerate;
             this.videoDeviceID = videoDeviceID;
-            this.audioDeviceID = audioDeviceID;
+            this.format = format;
 
             switch (resolution)
             {
@@ -207,11 +206,24 @@ namespace GoblinXNA.Device.Capture
             }
  
             imageData = new int[cameraWidth * cameraHeight];
-            imageSize = cameraWidth * cameraHeight * ((grayscale) ? 1 : 3);
+            imageSize = cameraWidth * cameraHeight;
+            if (!grayscale)
+            {
+                switch (format)
+                {
+                    case ImageFormat.GRAYSCALE_8: break; // Nothing to do 
+                    case ImageFormat.R5G6B5_16: imageSize *= 2; break;
+                    case ImageFormat.B8G8R8_24:
+                    case ImageFormat.R8G8B8_24: imageSize *= 3; break;
+                    case ImageFormat.R8G8B8A8_32:
+                    case ImageFormat.B8G8R8A8_32:
+                    case ImageFormat.A8B8G8R8_32: imageSize *= 4; break;
+                }
+            }
             cameraImage = Marshal.AllocHGlobal(imageSize);
 
             Filters filters = null;
-            Filter videoDevice, audioDevice;
+            Filter videoDevice, audioDevice = null;
             try
             {
                 filters = new Filters();
@@ -228,15 +240,6 @@ namespace GoblinXNA.Device.Capture
             catch (Exception exp)
             {
                 throw new GoblinException("VideoDeviceID " + videoDeviceID + " is out of the range");
-            }
-
-            try
-            {
-                audioDevice = (audioDeviceID >= 0) ? filters.AudioInputDevices[audioDeviceID] : null;
-            }
-            catch (Exception exp)
-            {
-                throw new GoblinException("AudioDeviceID " + audioDeviceID + " is out of the range");
             }
             
             capture = new DCapture(videoDevice, audioDevice);
@@ -267,13 +270,6 @@ namespace GoblinXNA.Device.Capture
                         " is not supported. Maximum resolution supported is " + 
                         capture.VideoCaps.MaxFrameSize);
                 }
-            }
-
-            if (audioDevice != null)
-            {
-                capture.AudioCompressor = filters.AudioCompressors[1];
-                capture.AudioSamplingRate = 44100;
-                capture.AudioSampleSize = 16;
             }
 
             tmpPanel = new Panel();
@@ -417,20 +413,88 @@ namespace GoblinXNA.Device.Capture
             {
                 byte* src = (byte*)bmpDataSource.Scan0;
                 byte* dst = (byte*)cam_image;
-                for (int i = 0; i < height; i++)
+                int R = 0, G = 0, B = 0, A = 0;
+                switch (format)
                 {
-                    for (int j = 0; j < width * 3; j += 3)
-                    {
-                        *(dst + j) = *(src + j);
-                        *(dst + j + 1) = *(src + j + 1);
-                        *(dst + j + 2) = *(src + j + 2);
+                    case ImageFormat.GRAYSCALE_8:
+                        break;
+                    case ImageFormat.R5G6B5_16:
+                        for (int i = 0; i < height; i++)
+                        {
+                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 2)
+                            {
+                                *(dst + k) = (byte)((*(src + j) & 0xF8) | (*(src + j + 1) >> 5));
+                                *(dst + k + 1) = (byte)(((*(src + j + 1) & 0x1C) << 3) |
+                                    ((*(src + j + 2) & 0xF8) >> 3));
 
-                        imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                            (*(src + j + 1) << 8) | *(src + j);
-                    }
+                                imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
+                                    (*(src + j + 1) << 8) | *(src + j);
+                            }
 
-                    src -= (width * 3);
-                    dst += (width * 3);
+                            src -= (width * 3);
+                            dst += (width * 2);
+                        }
+                        break;
+                    case ImageFormat.B8G8R8_24:
+                    case ImageFormat.R8G8B8_24:
+                        if (format == ImageFormat.B8G8R8_24)
+                        {
+                            R = 2; G = 1; B = 0;
+                        }
+                        else
+                        {
+                            R = 0; G = 1; B = 2;
+                        }
+
+                        for (int i = 0; i < height; i++)
+                        {
+                            for (int j = 0; j < width * 3; j += 3)
+                            {
+                                *(dst + j) = *(src + j + R);
+                                *(dst + j + 1) = *(src + j + G);
+                                *(dst + j + 2) = *(src + j + B);
+
+                                imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
+                                    (*(src + j + 1) << 8) | *(src + j);
+                            }
+
+                            src -= (width * 3);
+                            dst += (width * 3);
+                        }
+                        break;
+                    case ImageFormat.A8B8G8R8_32:
+                    case ImageFormat.B8G8R8A8_32:
+                    case ImageFormat.R8G8B8A8_32:
+                        if (format == ImageFormat.A8B8G8R8_32)
+                        {
+                            A = 0; B = 1; G = 2; R = 3;
+                        }
+                        else if (format == ImageFormat.B8G8R8A8_32)
+                        {
+                            B = 0; G = 1; R = 2; A = 3;
+                        }
+                        else
+                        {
+                            R = 0; G = 1; B = 2; A = 3;
+                        }
+
+                        for (int i = 0; i < height; i++)
+                        {
+                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 4)
+                            {
+                                *(dst + k + R) = *(src + j);
+                                *(dst + k + G) = *(src + j + 1);
+                                *(dst + k + B) = *(src + j + 2);
+                                *(dst + k + A) = (byte)255;
+
+                                imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
+                                    (*(src + j + 1) << 8) | *(src + j);
+                            }
+
+                            src -= (width * 3);
+                            dst += (width * 4);
+                        }
+                        break;
                 }
             }
         }
@@ -458,17 +522,77 @@ namespace GoblinXNA.Device.Capture
             {
                 byte* src = (byte*)bmpDataSource.Scan0;
                 byte* dst = (byte*)cam_image;
-                for (int i = 0; i < height; i++)
+                int R = 0, G = 0, B = 0, A = 0;
+                switch (format)
                 {
-                    for (int j = 0; j < width * 3; j += 3)
-                    {
-                        *(dst + j) = *(src + j);
-                        *(dst + j + 1) = *(src + j + 1);
-                        *(dst + j + 2) = *(src + j + 2);
-                    }
+                    case ImageFormat.R5G6B5_16:
+                        for (int i = 0; i < height; i++)
+                        {
+                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 2)
+                            {
+                                *(dst + k) = (byte)((*(src + j) & 0xF8) | (*(src + j + 1) >> 5));
+                                *(dst + k + 1) = (byte)(((*(src + j + 1) & 0x1C) << 3) |
+                                    ((*(src + j + 2) & 0xF8) >> 3));
+                            }
 
-                    src -= (width * 3);
-                    dst += (width * 3);
+                            src -= (width * 3);
+                            dst += (width * 2);
+                        }
+                        break;
+                    case ImageFormat.B8G8R8_24:
+                    case ImageFormat.R8G8B8_24:
+                        if (format == ImageFormat.B8G8R8_24)
+                        {
+                            R = 2; G = 1; B = 0;
+                        }
+                        else
+                        {
+                            R = 0; G = 1; B = 2;
+                        }
+
+                        for (int i = 0; i < height; i++)
+                        {
+                            for (int j = 0; j < width * 3; j += 3)
+                            {
+                                *(dst + j) = *(src + j + R);
+                                *(dst + j + 1) = *(src + j + G);
+                                *(dst + j + 2) = *(src + j + B);
+                            }
+
+                            src -= (width * 3);
+                            dst += (width * 3);
+                        }
+                        break;
+                    case ImageFormat.A8B8G8R8_32:
+                    case ImageFormat.B8G8R8A8_32:
+                    case ImageFormat.R8G8B8A8_32:
+                        if (format == ImageFormat.A8B8G8R8_32)
+                        {
+                            A = 0; B = 1; G = 2; R = 3;
+                        }
+                        else if (format == ImageFormat.B8G8R8A8_32)
+                        {
+                            B = 0; G = 1; R = 2; A = 3;
+                        }
+                        else
+                        {
+                            R = 0; G = 1; B = 2; A = 3;
+                        }
+
+                        for (int i = 0; i < height; i++)
+                        {
+                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 4)
+                            {
+                                *(dst + k + R) = *(src + j);
+                                *(dst + k + G) = *(src + j + 1);
+                                *(dst + k + B) = *(src + j + 2);
+                                *(dst + k + A) = (byte)255;
+                            }
+
+                            src -= (width * 3);
+                            dst += (width * 4);
+                        }
+                        break;
                 }
             }
         }

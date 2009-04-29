@@ -43,12 +43,9 @@ namespace GoblinXNA.Device.InterSense
 	/// <summary>
 	/// Summary description for InterSenseStation.
 	/// </summary>
-	//[Concern("Input")]
-	public class InterSenseStation : InputDevice_6DOF
+	public class InterSenseStation
     {
         #region Member Fields
-        private String identifier;
-        private bool isAvailable;
 		private long nStationIndex;
 
 		//the head transform is: (0, -0.1397, -0.1524), as x,y,z in intersense format.
@@ -67,27 +64,14 @@ namespace GoblinXNA.Device.InterSense
 		{
 			nStationIndex = _nStationIndex;
 			matTRANSFORM_TRACKER2EYE = tracker_to_eye_transform;
-            identifier = "InterSenseStation" + _nStationIndex;
 
             matTRANSFORM_TRACKER2EYE = Matrix.Identity;
             mat = Matrix.Identity;
-            isAvailable = false;
         }
 
         #endregion
 
         #region Properties
-
-        public String Identifier
-        {
-            get { return identifier; }
-            set { identifier = value; }
-        }
-
-        public bool IsAvailable
-        {
-            get { return isAvailable; }
-        }
 
         public Matrix WorldTransformation
         {
@@ -108,30 +92,12 @@ namespace GoblinXNA.Device.InterSense
 		{
 			Debug.Assert(nStationIndex != -1);
 			state = dataISense.Station[nStationIndex];
-            isAvailable = CheckAvailability();
 			CreateDXTransformationMatrix();
-        }
-
-        public void Update(GameTime gameTime, bool deviceActive)
-        {
         }
 
         #endregion
 
         #region Private Methods
-
-        private bool CheckAvailability()
-        {
-            for (int i = 0; i < state.Position.Length; i++)
-                if (state.Position[i] != 0)
-                    return true;
-
-            for (int i = 0; i < state.Orientation.Length; i++)
-                if (state.Orientation[i] != 0)
-                    return true;
-
-            return false;
-        }
 
         // Position[0],[1], and [3] correspond to x, y, and z,
         // so you might expect Orientation[0], [1], and [2] to

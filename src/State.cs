@@ -522,27 +522,6 @@ namespace GoblinXNA
             writer.WriteAttributeString("value", "Audio");
             writer.WriteEndElement();
 
-            writer.WriteComment("Specifies whether to enable the InterSense tracking if available");
-            writer.WriteComment("You don't need to specify this if not using InterSense");
-            writer.WriteStartElement("var");
-            writer.WriteAttributeString("name", "EnableInterSense");
-            writer.WriteAttributeString("value", "false");
-            writer.WriteEndElement();
-
-            writer.WriteComment("Specifies the host machine address where InterSense server is running");
-            writer.WriteComment("You don't need to specify this if not using InterSense through a remote machine");
-            writer.WriteStartElement("var");
-            writer.WriteAttributeString("name", "InterSenseHost");
-            writer.WriteAttributeString("value", "123.45.67.890");
-            writer.WriteEndElement();
-
-            writer.WriteComment("Specifies the port number to use if using InterSense through a remote machine");
-            writer.WriteComment("You don't need to specify this if not using InterSense through a remote machine");
-            writer.WriteStartElement("var");
-            writer.WriteAttributeString("name", "InterSensePort");
-            writer.WriteAttributeString("value", "1234");
-            writer.WriteEndElement();
-
             writer.WriteEndElement(); // "Goblin XNA Settings" element
 
             writer.WriteEndDocument();

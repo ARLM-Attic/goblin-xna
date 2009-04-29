@@ -117,7 +117,7 @@ namespace Tutorial10___Networking
             // whenever ReadyToSend is set to true.
             scene.AddNetworkObject(mouseNetworkObj);
 
-            MouseInput.MousePressEvent += new HandleMousePress(MouseInput_MousePressEvent);
+            MouseInput.Instance.MousePressEvent += new HandleMousePress(MouseInput_MousePressEvent);
 
             base.Initialize();
         }

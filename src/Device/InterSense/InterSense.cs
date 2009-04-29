@@ -46,19 +46,115 @@ namespace GoblinXNA.Device.InterSense
 	/// <summary>
 	/// A driver class for accessing the InterSense trackers.
 	/// </summary>
-	public class InterSense : InputDeviceDriver, IDisposable
-	{
-		/*public const int nINDEX_STATION_1					= 0;
-		public const int nINDEX_STATION_2_HAND				= 1; // Hand tracker
-		public const int nINDEX_STATION_3_HMD				= 2; // Tracker attached to HMD
-		public const int nINDEX_STATION_4_WIRELESS			= 3; // Wireless*/
+	public class InterSense : InputDevice_6DOF
+    {
+        #region "StationArray internal class"
+        /// <summary>
+        /// Manages the array of stations. Uses lazy allocation to allocate
+        /// and update only stations that are actually used.
+        /// </summary>
+        public class StationArray
+        {
+            public StationArray(StationInfo[] info)
+            {
+                this.info = info;
+            }
+
+            public bool isActive(long index)
+            {
+                return stations[index] != null;
+            }
+
+            public void SetData(ISDllBridge.ISD_TRACKER_DATA_TYPE dataISense)
+            {
+                foreach (InterSenseStation station in stations)
+                {
+                    if (station != null)
+                        station.SetData(dataISense);
+                }
+            }
+
+            // Array indexer
+            public InterSenseStation this[long index]
+            {
+                get
+                {
+                    if (stations[index] == null)
+                        stations[index] = new InterSenseStation(index, info[index].transform);
+
+                    return stations[index];
+                }
+            }
+
+            // DATA
+            private StationInfo[] info = null;
+            private InterSenseStation[] stations = new InterSenseStation[ISDllBridge.ISD_MAX_STATIONS];
+        }
+        #endregion
+
+        #region "StationInfo internal class"
+        /// <summary>
+        /// This class maintains a mapping of name->index, for use in serialization
+        /// </summary>
+        public class StationInfo
+        {
+            public StationInfo()
+            { }
+            public StationInfo(string name, int index, Matrix headTransform)
+            {
+                this.name = name;
+                this.index = index;
+                this.transform = headTransform;
+            }
+
+            [XmlElement]
+            public string name;
+
+            [XmlElement]
+            public long index;
+
+            [XmlElement("head_transform")]
+            public Matrix transform;
+        }
+        #endregion
+
+        #region "ConnectionInfo internal class"
+        public class ConnectionInfo
+        {
+            public ConnectionInfo()
+            { }
+            public ConnectionInfo(string host, int port, bool preferNetwork, bool tryBoth)
+            {
+                this.preferNetwork = preferNetwork;
+                this.tryBoth = tryBoth;
+                this.host = host;
+                this.port = port;
+            }
+
+            [XmlElement]
+            public string host;
+
+            [XmlElement]
+            public int port;
+
+            [XmlElement("prefer_network")]
+            public bool preferNetwork;
+
+            [XmlElement("try_both")]
+            public bool tryBoth;
+        }
+        #endregion
+
+        #region Memmber Fields
+
+        private String identifier;
 
 		[XmlElement("connection")]
-		public ConnectionInfo connInfo;
+		private ConnectionInfo connInfo;
 		
 		[XmlArray("stations")]
 		[XmlArrayItem(typeof(StationInfo))]
-		public StationInfo[]	stationInfo;    
+		private StationInfo[]	stationInfo;    
 
 		private Hashtable		stationHash = new Hashtable(ISDllBridge.ISD_MAX_STATIONS);
 		private StationArray	stationArray;
@@ -66,118 +162,23 @@ namespace GoblinXNA.Device.InterSense
 		//depending on our connection type, we will use 
 		private IntPtr isenseHandle = IntPtr.Zero;
 		private InterSenseSocket isenseSocket = null;
-		
-		#region "StationArray internal class"
-		/// <summary>
-		/// Manages the array of stations. Uses lazy allocation to allocate
-		/// and update only stations that are actually used.
-		/// </summary>
-		public class StationArray
+
+        private static InterSense interSense;
+        private int curStationID;
+
+        #endregion
+
+        #region Constructors
+
+        /// <summary>
+        /// A private constructor.
+        /// </summary>
+        private InterSense()
 		{
-			public StationArray(StationInfo[] info)
-			{
-				this.info = info;
-			}
-
-			public bool isActive(long index)
-			{
-				return stations[index] != null;
-			}
-
-			public void SetData(ISDllBridge.ISD_TRACKER_DATA_TYPE dataISense)
-			{
-				foreach (InterSenseStation station in stations)
-				{
-					if (station != null)
-						station.SetData(dataISense);
-				}
-			}
-
-			// Array indexer
-			public InterSenseStation this[long index]
-			{
-				get 
-				{ 
-					if (stations[index] == null)
-						stations[index] = new InterSenseStation(index,info[index].transform);
-
-					return stations[index]; 
-				}
-			}
-
-			// DATA
-			private StationInfo[]	info = null;
-			private InterSenseStation[] stations = new InterSenseStation[ISDllBridge.ISD_MAX_STATIONS];
-		}
-		#endregion
-
-		#region "StationInfo internal class"
-		/// <summary>
-		/// This class maintains a mapping of name->index, for use in serialization
-		/// </summary>
-		public class StationInfo
-		{
-			public StationInfo()
-			{}
-			public StationInfo(string name, int index, Matrix headTransform)
-			{
-				this.name = name;
-				this.index = index;
-				this.transform = headTransform;
-			}
-
-			[XmlElement]
-			public string	name;           
-
-			[XmlElement]
-			public long		index;          
-
-			[XmlElement("head_transform")]
-			public Matrix	transform;      
-		}
-		#endregion
-		
-		#region "ConnectionInfo internal class"
-		public class ConnectionInfo
-		{
-			public ConnectionInfo()
-			{}
-			public ConnectionInfo(string host, int port, bool preferNetwork, bool tryBoth)
-			{
-				this.preferNetwork = preferNetwork;
-				this.tryBoth = tryBoth;
-				this.host = host;
-				this.port = port;
-			}
-			
-			[XmlElement]
-			public string	host;               
-
-			[XmlElement]
-			public int		port;               
-
-			[XmlElement("prefer_network")]
-			public bool		preferNetwork;
-
-			[XmlElement("try_both")]
-			public bool		tryBoth;
-		}
-		#endregion
-
-		public InterSense() : this("InterSense") { }
-
-		public InterSense(string unique_identifier)
-		{
-			identifier = unique_identifier;
-
-            if (!(State.GetSettingVariable("InterSenseHost").Equals("") ||
-                State.GetSettingVariable("InterSensePort").Equals("")))
-            {
-                connInfo = new ConnectionInfo(State.GetSettingVariable("InterSenseHost"),
-                    int.Parse(State.GetSettingVariable("InterSensePort")), true, true);
-            }
-            else
-                connInfo = null;
+            identifier = "InterSense";
+            curStationID = 0;
+            
+            connInfo = null;
 
 			stationInfo = new StationInfo[ISDllBridge.ISD_MAX_STATIONS];
 			for(int i=0;i<stationInfo.Length;i++)
@@ -186,30 +187,69 @@ namespace GoblinXNA.Device.InterSense
 				stationHash[stationInfo[i].name] = stationInfo[i].index;
 			}
 			stationArray = new StationArray(stationInfo);
-		}
+        }
 
+        #endregion
 
-		public override void Dispose()
-		{
-			// Close the socket (if open)
-			if (isenseSocket != null)
-			{
-				isenseSocket.Dispose();
-				isenseSocket = null;
-			}
+        #region Properties
 
-			// Close the serial port (if open)
-			if (isenseHandle != IntPtr.Zero)
-			{
-				ISDllBridge.ISD_CloseTracker(isenseHandle);
-				isenseHandle = IntPtr.Zero;
-			}
-		}
+        public String Identifier
+        {
+            get { return identifier; }
+        }
 
-		/// <summary>
+        public bool IsAvailable
+        {
+            get { return isenseSocket != null || isenseHandle != IntPtr.Zero; }
+        }
+
+        /// <summary>
+        /// Gets or sets the station ID to track. This value will affect the transformation returned
+        /// from WorldTransformation property. If CurrentStationID is set to 2, then the transformation
+        /// returned from WorldTransformation property is the one from station 3 (always CurrentStationID + 1).
+        /// By default, this value is 0.
+        /// </summary>
+        public int CurrentStationID
+        {
+            get { return curStationID; }
+            set { curStationID = value; }
+        }
+
+        /// <summary>
+        /// Gets the transformation of an InterSense tracker station defined by CurrentStationID property.
+        /// </summary>
+        /// <see cref="CurrentStationID"/>
+        public Matrix WorldTransformation
+        {
+            get
+            {
+                return ((InterSenseStation)stationArray[(long)stationHash["InterSenseStation" + curStationID]]).
+                    WorldTransformation;
+            }
+        }
+
+        /// <summary>
+        /// Gets the instance of InterSense tracker.
+        /// </summary>
+        public static InterSense Instance
+        {
+            get
+            {
+                if (interSense == null)
+                    interSense = new InterSense();
+
+                return interSense;
+            }
+        }
+
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
 		/// This gets called after deserialization
 		/// </summary>
-		override public void InitAfterDeserialization()
+		public void InitAfterDeserialization()
 		{
 			//build the hash from the name mapping
 			foreach(StationInfo i in stationInfo)
@@ -217,44 +257,28 @@ namespace GoblinXNA.Device.InterSense
 			stationArray = new StationArray(stationInfo);
 		}
 
-		/// <summary>
-		/// Given a station name, returns the InputDevice that accesses its data
-		/// </summary>
-		/// <param name="input_uid"></param>
-		/// <returns></returns>
-		override public InputDevice_6DOF Get6DOFInputByName(string input_uid)
-		{
-			//do lazy initialization
-			if (!Init())        
-				return null;
-			
-			if (stationHash[input_uid] == null)
-				return null;
-
-			//because of lazy allocation, we need to access the stationArray once first
-			//to make it created, then call Update to fill in data for it
-			//then we can return the station
-			InterSenseStation ret = stationArray[(long)stationHash[input_uid]];
-			//Log.Write("Performing initial retrieval of data.");
-			if (!Update(0))
-				return null;
-			
-			return ret;
-		}
-
-        public override InputDevice GetInputByName(string input_uid)
+        /// <summary>
+        /// Initializes InterSense tracker through serial port.
+        /// </summary>
+        /// <returns></returns>
+        public bool Initialize()
         {
-            throw new GoblinException("InterSense does not return InputDevice. " +
-                "Instead, use get6DOFInputDeviceName");
+            return Initialize("", -1);
         }
-
-		//public override bool 
-		public bool Init()
+		
+        /// <summary>
+        /// Initializes InterSense tracker through an InterSense server. 
+        /// </summary>
+        /// <param name="host">The host name of the InterSense server to connect to.</param>
+        /// <param name="port">The port number to use for the connection.</param>
+        /// <returns></returns>
+		public bool Initialize(String host, int port)
 		{
-			if (IsInited())
-			{
+			if (IsAvailable)
 				return true;
-			}
+
+            if(!host.Equals(""))
+                connInfo = new ConnectionInfo(host, port, true, true);
 
             Log.Write("Connecting to InterSense...", Log.LogLevel.Log);
 
@@ -303,11 +327,10 @@ namespace GoblinXNA.Device.InterSense
 			{
 				isenseHandle = ISDllBridge.ISD_OpenTracker(IntPtr.Zero, 0, true, false);
 			}
-			catch (DllNotFoundException)
+			catch (DllNotFoundException ex)
 			{
-				/*MyTrace.Log(TraceLevel.Warning,
-					"Failed to connect to InterSense via serial port: {0}",
-					ex.Message);*/
+                Log.Write("Failed to connect to InterSense via serial port: " + ex.Message, 
+                    Log.LogLevel.Warning);
 			}
 
 			if (isenseHandle == IntPtr.Zero)
@@ -327,8 +350,7 @@ namespace GoblinXNA.Device.InterSense
 					true); 
 				if (!bRet)
 				{
-					/*MyTrace.Log(TraceLevel.Error, "ISD_GetStationConfig({0}) failed.",
-						i);*/
+                    Log.Write("ISD_GetStationConfig() failed.", Log.LogLevel.Warning);
 					return false;
 				}
 
@@ -341,8 +363,7 @@ namespace GoblinXNA.Device.InterSense
 
 				if (!bRet)
 				{
-					/*MyTrace.Log(TraceLevel.Error, "ISD_SetStationConfig({0}) failed.",
-						i);*/
+                    Log.Write("ISD_SetStationConfig() failed.", Log.LogLevel.Warning);
 					return false;
 				}
 			}
@@ -350,21 +371,10 @@ namespace GoblinXNA.Device.InterSense
 			return true;
 		}
 
-		public bool IsInited()
+		public void Update(GameTime gameTime, bool deviceActive)
 		{
-			return isenseSocket != null || isenseHandle != IntPtr.Zero;
-		}
-
-		/// <summary>
-		/// Updates all its mapped inputs
-		/// </summary>
-		/// <param name="elapsed_seconds"></param>
-		override public bool Update(float elapsed_seconds)
-		{
-			if (!IsInited())
-			{
-				return false;
-			}
+			if (!IsAvailable)
+				return;
 
 			ISDllBridge.ISD_TRACKER_DATA_TYPE dataISense;
 			bool bSuccess = false;
@@ -374,9 +384,7 @@ namespace GoblinXNA.Device.InterSense
 			if (isenseSocket != null)
 			{
 				if (!isenseSocket.IsConnected())
-				{
-					return false;
-				}
+					return;
 
 				// Pass the station array so that we know that stations to
 				// request data for in the network message
@@ -384,7 +392,7 @@ namespace GoblinXNA.Device.InterSense
 				if (bSuccess)
 				{
 					stationArray.SetData(dataISense);
-					return true;
+					return;
 				}
 				else
 				{
@@ -404,8 +412,25 @@ namespace GoblinXNA.Device.InterSense
 					stationArray.SetData(dataISense);
 				}
 			}
+        }
 
-			return bSuccess;
-		}
-	}
+        public void Dispose()
+        {
+            // Close the socket (if open)
+            if (isenseSocket != null)
+            {
+                isenseSocket.Dispose();
+                isenseSocket = null;
+            }
+
+            // Close the serial port (if open)
+            if (isenseHandle != IntPtr.Zero)
+            {
+                ISDllBridge.ISD_CloseTracker(isenseHandle);
+                isenseHandle = IntPtr.Zero;
+            }
+        }
+
+        #endregion
+    }
 }

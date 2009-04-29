@@ -248,6 +248,20 @@ namespace GoblinXNA.UI
                                 y += yGap;
                             }
                             break;
+                        case Notifier.NotifierPlacement.TopMiddle:
+                            y = 0;
+                            for (int i = messages.Count - 1; i >= 0; i--)
+                            {
+                                color = Notifier.Color;
+                                if (messages[i].StartFadeOut)
+                                    color = new Color(color.R, color.G, color.B,
+                                        (byte)messages[i].FadeOutInterpolator.Value);
+                                UI2DRenderer.WriteText(new Vector2(0, y), messages[i].Message, color,
+                                    Notifier.Font, Vector2.One, GoblinEnums.HorizontalAlignment.Center,
+                                    GoblinEnums.VerticalAlignment.None);
+                                y += yGap;
+                            }
+                            break;
                         case Notifier.NotifierPlacement.TopLeft:
                             for (int i = messages.Count - 1; i >= 0; i--)
                             {
@@ -275,6 +289,20 @@ namespace GoblinXNA.UI
                                 y -= yGap;
                             }
                             break;
+                        case Notifier.NotifierPlacement.BottomMiddle:
+                            y = State.Height - yGap;
+                            for (int i = messages.Count - 1; i >= 0; i--)
+                            {
+                                color = Notifier.Color;
+                                if (messages[i].StartFadeOut)
+                                    color = new Color(color.R, color.G, color.B,
+                                        (byte)messages[i].FadeOutInterpolator.Value);
+                                UI2DRenderer.WriteText(new Vector2(0, y), messages[i].Message, color,
+                                    Notifier.Font, Vector2.One, GoblinEnums.HorizontalAlignment.Center,
+                                    GoblinEnums.VerticalAlignment.None);
+                                y -= yGap;
+                            }
+                            break;
                         case Notifier.NotifierPlacement.BottomLeft:
                             y = State.Height - yGap;
                             for (int i = messages.Count - 1; i >= 0; i--)
@@ -287,6 +315,22 @@ namespace GoblinXNA.UI
                                     Notifier.Font, Vector2.One, GoblinEnums.HorizontalAlignment.Left,
                                     GoblinEnums.VerticalAlignment.None);
                                 y -= yGap;
+                            }
+                            break;
+                        case Notifier.NotifierPlacement.Custom:
+                            x = Notifier.CustomStartLocation.X;
+                            y = Notifier.CustomStartLocation.Y;
+                            for (int i = messages.Count - 1; i >= 0; i--)
+                            {
+                                color = Notifier.Color;
+                                if (messages[i].StartFadeOut)
+                                    color = new Color(color.R, color.G, color.B,
+                                        (byte)messages[i].FadeOutInterpolator.Value);
+                                UI2DRenderer.WriteText(new Vector2(x, y), messages[i].Message, color,
+                                    Notifier.Font, Vector2.One, GoblinEnums.HorizontalAlignment.Right,
+                                    GoblinEnums.VerticalAlignment.None);
+                                x -= Notifier.CustomAppearDirection.X;
+                                y += Notifier.CustomAppearDirection.Y;
                             }
                             break;
                     }

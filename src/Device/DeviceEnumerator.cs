@@ -71,66 +71,8 @@ namespace GoblinXNA.Device
         /// <see cref="GoblinXNA.Device.Generic.GenericInput"/>
         public static String MouseAndKeyboard   = "GenericInput";
 
-        /// <summary>
-        /// A string constant for station 0 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation0 = "InterSenseStation0";
-
-        /// <summary>
-        /// A string constant for station 1 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation1 = "InterSenseStation1";
-
-        /// <summary>
-        /// A string constant for station 2 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation2 = "InterSenseStation2";
-
-        /// <summary>
-        /// A string constant for station 3 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation3 = "InterSenseStation3";
-
-        /// <summary>
-        /// A string constant for station 4 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation4 = "InterSenseStation4";
-
-        /// <summary>
-        /// A string constant for station 5 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation5 = "InterSenseStation5";
-
-        /// <summary>
-        /// A string constant for station 6 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation6 = "InterSenseStation6";
-
-        /// <summary>
-        /// A string constant for station 7 of InterSense tracker
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.InterSense.InterSense"/>
-        public static String InterSenseStation7 = "InterSenseStation7";
-
-        /// <summary>
-        /// A string constant for GPS device
-        /// </summary>
-        /// <remarks>
-        /// GPS is not supported yet.
-        /// </remarks>
-        public static String GPS                = "GPS";
-
         protected Dictionary<String, InputDevice> availableDevices;
         protected Dictionary<String, InputDevice_6DOF> available6DOFDevices;
-
-        protected InterSense.InterSense interSense;
 
         protected Dictionary<String, InputDevice> additionalDevices;
         protected Dictionary<String, InputDevice_6DOF> additional6DOFDevices;
@@ -187,39 +129,19 @@ namespace GoblinXNA.Device
         /// </remarks>
         public void Reenumerate()
         {
-            // First clean up previously enumerated devices
-            if (interSense != null)
-                interSense.Dispose();
-
             availableDevices.Clear();
             available6DOFDevices.Clear();
 
             // Add all of the non-6DOF input devices if available
-            MouseInput mouseInput = new MouseInput();
+            MouseInput mouseInput = MouseInput.Instance;
             if (mouseInput.IsAvailable)
                 availableDevices.Add(Mouse, mouseInput);
 
-            KeyboardInput keyboardInput = new KeyboardInput();
+            KeyboardInput keyboardInput = KeyboardInput.Instance;
             if (keyboardInput.IsAvailable)
                 availableDevices.Add(Keyboard, keyboardInput);
 
-            // Add all of the 6DOF input devices if available
-            if (State.GetSettingVariable("EnableInterSense").Equals("true"))
-            {
-                interSense = new InterSense.InterSense();
-                if (interSense.Init())
-                {
-                    String[] stations = {InterSenseStation0, InterSenseStation1,
-                    InterSenseStation2, InterSenseStation3, InterSenseStation4,
-                    InterSenseStation5, InterSenseStation6, InterSenseStation7};
-                    foreach (String stationName in stations)
-                        if (interSense.Get6DOFInputByName(stationName) != null)
-                            available6DOFDevices.Add(stationName,
-                                interSense.Get6DOFInputByName(stationName));
-                }
-            }
-
-            GenericInput genericInput = new GenericInput();
+            GenericInput genericInput = GenericInput.Instance;
             if(genericInput.IsAvailable)
                 available6DOFDevices.Add(MouseAndKeyboard, genericInput);
 
@@ -242,23 +164,14 @@ namespace GoblinXNA.Device
             foreach (InputDevice inputDevice in availableDevices.Values)
                 inputDevice.Update(gameTime, deviceActive);
 
-            if(interSense != null && interSense.IsInited())
-                interSense.Update((float)(gameTime.ElapsedGameTime.TotalMilliseconds / 1000));
-
             foreach (InputDevice_6DOF inputDevice6DOF in available6DOFDevices.Values)
                 inputDevice6DOF.Update(gameTime, deviceActive);
         }
 
-        #region IDisposable Members
-
         public void Dispose()
         {
-            if (interSense != null)
-                interSense.Dispose();
             availableDevices.Clear();
             available6DOFDevices.Clear();
         }
-
-        #endregion
     }
 }

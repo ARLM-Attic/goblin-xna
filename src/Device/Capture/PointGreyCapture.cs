@@ -58,7 +58,6 @@ namespace GoblinXNA.Device.Capture
         private PointF focalPoint;
 
         private int videoDeviceID;
-        private int audioDeviceID;
 
         private int cameraWidth;
         private int cameraHeight;
@@ -68,6 +67,7 @@ namespace GoblinXNA.Device.Capture
         private bool cameraInitialized;
         private Resolution resolution;
         private FrameRate frameRate;
+        private ImageFormat format;
         private int[] imageData;
 
         /// <summary>
@@ -90,7 +90,6 @@ namespace GoblinXNA.Device.Capture
         {
             cameraInitialized = false;
             videoDeviceID = -1;
-            audioDeviceID = -1;
             focalPoint = new PointF(0, 0);
 
             cameraWidth = 0;
@@ -126,11 +125,6 @@ namespace GoblinXNA.Device.Capture
             get { return videoDeviceID; }
         }
 
-        public int AudioDeviceID
-        {
-            get { return audioDeviceID; }
-        }
-
         public bool GrayScale
         {
             get { return grayscale; }
@@ -144,6 +138,11 @@ namespace GoblinXNA.Device.Capture
         public IntPtr ImagePtr
         {
             get { return cameraImage; }
+        }
+
+        public ImageFormat Format
+        {
+            get { return format; }
         }
 
         /// <summary>
@@ -174,8 +173,8 @@ namespace GoblinXNA.Device.Capture
 
         #region Public Methods
 
-        public void InitVideoCapture(int videoDeviceID, int audioDeviceID, FrameRate framerate,
-            Resolution resolution, bool grayscale)
+        public void InitVideoCapture(int videoDeviceID, FrameRate framerate, Resolution resolution, 
+            ImageFormat format, bool grayscale)
         {
             if (cameraInitialized)
                 return;
@@ -184,7 +183,7 @@ namespace GoblinXNA.Device.Capture
             this.grayscale = grayscale;
             this.frameRate = framerate;
             this.videoDeviceID = videoDeviceID;
-            this.audioDeviceID = audioDeviceID;
+            this.format = format;
 
             switch (resolution)
             {
@@ -219,7 +218,20 @@ namespace GoblinXNA.Device.Capture
             }
 
             imageData = new int[cameraWidth * cameraHeight];
-            imageSize = cameraWidth * cameraHeight * ((grayscale) ? 1 : 3);
+            imageSize = cameraWidth * cameraHeight;
+            if (!grayscale)
+            {
+                switch (format)
+                {
+                    case ImageFormat.GRAYSCALE_8: break;
+                    case ImageFormat.R5G6B5_16: imageSize *= 2; break;
+                    case ImageFormat.B8G8R8_24:
+                    case ImageFormat.R8G8B8_24: imageSize *= 3; break;
+                    case ImageFormat.R8G8B8A8_32:
+                    case ImageFormat.B8G8R8A8_32:
+                    case ImageFormat.A8B8G8R8_32: imageSize *= 4; break;
+                }
+            }
             cameraImage = Marshal.AllocHGlobal(imageSize);
 
             flyCapture = new PGRFlyCapture();
@@ -301,7 +313,21 @@ namespace GoblinXNA.Device.Capture
                 {
                     failureCount = 0;
                     if (copyToImagePtr)
-                        cameraImage = (IntPtr)flyImage.pData;
+                    {
+                        switch (format)
+                        {
+                            case ImageFormat.R5G6B5_16:
+                                break;
+                            case ImageFormat.B8G8R8_24:
+                            case ImageFormat.R8G8B8_24:
+                                cameraImage = (IntPtr)flyImage.pData;
+                                break;
+                            case ImageFormat.A8B8G8R8_32:
+                            case ImageFormat.B8G8R8A8_32:
+                            case ImageFormat.R8G8B8A8_32:
+                                break;
+                        }
+                    }
 
                     if (returnImage)
                     {

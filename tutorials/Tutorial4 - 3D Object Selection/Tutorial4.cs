@@ -72,7 +72,7 @@ namespace Tutorial4___3D_Object_Selection
             CreateObjects();
 
             // Add a mouse click callback function to perform ray picking when mouse is clicked
-            MouseInput.MouseClickEvent += new HandleMouseClick(MouseClickHandler);
+            MouseInput.Instance.MouseClickEvent += new HandleMouseClick(MouseClickHandler);
 
             base.Initialize();
         }

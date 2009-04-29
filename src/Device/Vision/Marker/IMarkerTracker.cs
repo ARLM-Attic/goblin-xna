@@ -93,6 +93,16 @@ namespace GoblinXNA.Device.Vision.Marker
         Matrix CameraProjection { get; }
 
         /// <summary>
+        /// Gets or sets the near clipping plane used to compute CameraProjection.
+        /// </summary>
+        float ZNearPlane { get; set; }
+
+        /// <summary>
+        /// Gets or sets the far clipping plane used to compute CameraProjection.
+        /// </summary>
+        float ZFarPlane { get; set; }
+
+        /// <summary>
         /// Initilizes the marker tracker with a set of configuration parameters.
         /// </summary>
         /// <param name="configs">A set of configuration parameters</param>

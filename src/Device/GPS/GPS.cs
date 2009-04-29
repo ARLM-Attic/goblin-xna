@@ -68,63 +68,40 @@ namespace GoblinXNA.Device.GPS
     /// based GPS devices.  To use, create a new instance of the GPS and add a GPSListener
     /// delegate or poll the object.
     /// </summary>
-    public class GPS : InputDevice, IDisposable
+    public class GPS : InputDevice
     {
         # region Member Fields
 
         private String gpsPort;  
         private SerialPort sp;
         private int baudRate;
-        private string latitude = "no data";
-        private string longitude = "no data";
-        private string elevation = "no data";
-        private String timeStamp = "no Data";
-        private GPSState state = GPSState.NoGPS;
-        private bool keepAlive = false;  // if set, try to find GPS device if lost
+        private string latitude;
+        private string longitude;
+        private string elevation;
+        private String timeStamp;
+        private GPSState state;
+        private bool keepAlive;  // if set, try to find GPS device if lost
         private GPSListener dataListener;
 
         private System.Timers.Timer heartbeat;
         private DateTime lastMessage;
+
+        private static GPS gps;
 
         # endregion
 
         # region Constructors
 
         /// <summary>
-        /// Creates a GPS receiver with baud rate of 38400 through the specified 'port'.
+        /// A private constructor.
         /// </summary>
-        /// <param name="port">Serial port associated with GPS. ex: COM6:</param>
-        public GPS(string port) : this(port, 38400) { }
-
-        /// <summary>
-        /// Creates a GPS receiver with the specified 'baud' rate through the specified 'port'.
-        /// </summary>
-        /// <param name="port">Serial port associated with GPS. ex: COM6</param>
-        /// <param name="baud">Baud rate for GPS serial port communication</param>
-        public GPS(string port, int baud) {
+        private GPS() {
             
-            // create a new serial port using the specified port and baud rate
-            // I currently don't catch exceptions in creating the GPS so the user
-            // needs to do this.  
-            sp = new SerialPort(port, baud);
-            baudRate = baud;
-            gpsPort = port;
-
-            // create an event handler to listen to data as it comes in
-            sp.DataReceived += new SerialDataReceivedEventHandler(AsynchronousReader);
-
-            // Try to open the serial port.  If it works and keepalive is true,
-            // create a heartbeat timer.  This provides robustness in the case that
-            // the GPS disappears for a moment from the serial port but isn't 
-            // necessary
-            try
-            {
-                sp.Open();
-            }
-            catch (Exception e)
-            {
-                Log.Write(e.Message, Log.LogLevel.Warning);
-            }
+            longitude = "no data";
+            elevation = "no data";
+            timeStamp = "no Data";
+            state = GPSState.NoGPS;
+            keepAlive = false;
         }
 
         # endregion
@@ -164,6 +141,17 @@ namespace GoblinXNA.Device.GPS
             get { return (state == GPSState.Connected); }
         }
 
+        public static GPS Instance
+        {
+            get
+            {
+                if (gps == null)
+                    gps = new GPS();
+
+                return gps;
+            }
+        }
+
         /// <summary>
         /// Gets the serial port associated with this GPS receiver.
         /// </summary>
@@ -180,6 +168,9 @@ namespace GoblinXNA.Device.GPS
             get { return baudRate; }
         }
 
+        /// <summary>
+        /// Gets or sets whether to try to automatically find GPS if lost.
+        /// </summary>
         public bool KeepAlive
         {
             get { return keepAlive; }
@@ -204,6 +195,46 @@ namespace GoblinXNA.Device.GPS
         # endregion
 
         #region Methods
+
+        /// <summary>
+        /// Initializes a GPS receiver with baud rate of 38400 through the specified 'port'.
+        /// </summary>
+        /// <param name="port">Serial port associated with GPS. ex: COM6:</param>
+        public void Initialize(String port)
+        {
+            Initialize(port, 38400);
+        }
+
+        /// <summary>
+        /// Initializes a GPS receiver with the specified 'baud' rate through the specified 'port'.
+        /// </summary>
+        /// <param name="port">Serial port associated with GPS. ex: COM6</param>
+        /// <param name="baud">Baud rate for GPS serial port communication</param>
+        public void Initialize(String port, int baud)
+        {
+            // create a new serial port using the specified port and baud rate
+            // I currently don't catch exceptions in creating the GPS so the user
+            // needs to do this.  
+            sp = new SerialPort(port, baud);
+            baudRate = baud;
+            gpsPort = port;
+
+            // create an event handler to listen to data as it comes in
+            sp.DataReceived += new SerialDataReceivedEventHandler(AsynchronousReader);
+
+            // Try to open the serial port.  If it works and keepalive is true,
+            // create a heartbeat timer.  This provides robustness in the case that
+            // the GPS disappears for a moment from the serial port but isn't 
+            // necessary
+            try
+            {
+                sp.Open();
+            }
+            catch (Exception e)
+            {
+                Log.Write(e.Message, Log.LogLevel.Warning);
+            }
+        }
 
         /// <summary>
         /// Adds a listener to the GPS object so we can report coordinates as they come in
@@ -422,7 +453,7 @@ namespace GoblinXNA.Device.GPS
 
         public void TriggerDelegates(byte[] data)
         {
-
+            throw new GoblinException("TriggerDelegates for GPS not implemented yet.");
         }
 
         public void Dispose()
@@ -433,7 +464,6 @@ namespace GoblinXNA.Device.GPS
             sp = null;
         }
 
-        //public void StopGPS() { }
         # endregion
     }
 }

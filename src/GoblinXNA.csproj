@@ -65,13 +65,21 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\bin\DShowNET.dll</HintPath>
     </Reference>
-    <Reference Include="Lidgren.Network, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+    <Reference Include="Lidgren.Network, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
     <Reference Include="Microsoft.Xna.Framework, Version=3.0.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Content.Pipeline, Version=3.0.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Game, Version=3.0.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=MSIL" />
     <Reference Include="NewtonWrapper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\bin\NewtonWrapper.dll</HintPath>
+    </Reference>
+    <Reference Include="NyARToolkitCS, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="NyARToolkitCS.sandbox, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -89,7 +97,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\bin\Tao.OpenGl.dll</HintPath>
     </Reference>
-    <Reference Include="XNAnimation, Version=0.7.0.0, Culture=neutral, PublicKeyToken=0c21691816f8c6d0, processorArchitecture=x86" />
+    <Reference Include="XNAnimation, Version=0.7.0.0, Culture=neutral, PublicKeyToken=0c21691816f8c6d0, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Device\Capture\DirectShowCapture.cs" />
@@ -104,7 +114,6 @@
     <Compile Include="Device\Generic\MouseInput.cs" />
     <Compile Include="Device\GPS\GPS.cs" />
     <Compile Include="Device\InputDevice.cs" />
-    <Compile Include="Device\InputDeviceDriver.cs" />
     <Compile Include="Device\InputDevice_6DOF.cs" />
     <Compile Include="Device\InputMapper.cs" />
     <Compile Include="Device\InterSense\InterSense.cs" />
@@ -112,10 +121,14 @@
     <Compile Include="Device\InterSense\InterSenseStation.cs" />
     <Compile Include="Device\InterSense\ISDllBridge.cs" />
     <Compile Include="Device\IReconfigurable.cs" />
+    <Compile Include="Device\iWear\iWearDllBridge.cs" />
+    <Compile Include="Device\iWear\iWearTracker.cs" />
     <Compile Include="Device\Util\DESPredictor.cs" />
     <Compile Include="Device\Util\IPredictor.cs" />
     <Compile Include="Device\Util\ISmoother.cs" />
-    <Compile Include="Device\Vision\Marker\ARTagDllBridge.cs" />
+    <Compile Include="Device\Vision\Marker\ARTagDllBridge.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Device\Vision\Marker\ARTagTracker.cs" />
     <Compile Include="Device\Vision\Marker\IMarkerTracker.cs" />
     <Compile Include="Device\Vision\Marker\MarkerBase.cs" />

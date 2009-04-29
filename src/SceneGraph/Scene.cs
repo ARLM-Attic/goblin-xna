@@ -153,6 +153,8 @@ namespace GoblinXNA.SceneGraph
         protected Texture2D backgroundTexture;
         protected Color backgroundColor;
 
+        protected List<LightSource> globalLightSources;
+
         /// <summary>
         /// For stereo rendering
         /// </summary>
@@ -162,7 +164,9 @@ namespace GoblinXNA.SceneGraph
         protected bool readyToUpdateTracker;
         protected int[] videoImage;
 
-        protected List<MarkerNode> markerNodes;
+        // Indicates whether the scene graph is currently being processed. This is used
+        // to avoid adding a node while processing (removing while processing is acceptable)
+        protected bool processing;
 
         #region For Augmented Reality Scene
         protected bool showCameraImage;
@@ -173,8 +177,28 @@ namespace GoblinXNA.SceneGraph
         protected bool overlayAndTrackerUseSameID;
         protected Dictionary<int, int> videoIDs;
         protected bool freezeVideo;
+
+        // These variables are used to avoid updating the tracker while changing the video overlay
+        // ID or tracker ID, or visa versa
         protected bool waitForVideoIDChange;
         protected bool waitForTrackerUpdate;
+
+        // These variables are used for synchronizing the threaded (if State.MultiCore is true)
+        // tracker update with the actual frame update
+        protected uint trackerUpdateCount;
+        protected uint frameUpdateCount;
+
+        #region For Stereo Augmented Reality
+        protected int leftEyeVideoID;
+        protected int rightEyeVideoID;
+        protected bool singleVideoStereo;
+        protected int actualLeftEyeVideoID;
+        protected int actualRightEyeVideoID;
+        protected int leftEyeVideoImageShift;
+        protected int rightEyeVideoImageShift;
+        protected Rectangle videoVisibleArea;
+        #endregion
+
         #endregion
 
         #endregion
@@ -204,7 +228,6 @@ namespace GoblinXNA.SceneGraph
             needTransparencySort = false;
             renderedEffects = new List<ParticleNode>();
             occluderGroup = new List<GeometryNode>();
-            markerNodes = new List<MarkerNode>();
 
             networkObjects = new Dictionary<String, NetObj>();
             cameraNode = null;
@@ -212,6 +235,7 @@ namespace GoblinXNA.SceneGraph
 
             globalLights = new List<LightNode>();
             localLights = new Stack<LightNode>();
+            globalLightSources = new List<LightSource>();
 
             lodNodes = new List<LODNode>();
 
@@ -261,6 +285,20 @@ namespace GoblinXNA.SceneGraph
             waitForVideoIDChange = false;
             waitForTrackerUpdate = false;
 
+            trackerUpdateCount = 0;
+            frameUpdateCount = 0;
+
+            leftEyeVideoID = -1;
+            rightEyeVideoID = -1;
+            actualLeftEyeVideoID = -1;
+            actualRightEyeVideoID = -1;
+            leftEyeVideoImageShift = 0;
+            rightEyeVideoImageShift = 0;
+            singleVideoStereo = true;
+            videoVisibleArea = new Rectangle(0, 0, State.Width, State.Height);
+
+            processing = false;
+
             if (State.IsMultiCore)
             {
                 updateThread = new Thread(UpdateTracker);
@@ -292,7 +330,6 @@ namespace GoblinXNA.SceneGraph
                 opaqueGroups.Clear();
                 renderedEffects.Clear();
                 occluderGroup.Clear();
-                markerNodes.Clear();
             }
         }
 
@@ -344,6 +381,10 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Gets or sets the marker tracking system.
         /// </summary>
+        /// <remarks>
+        /// If you already assigned the CameraNode, then its projection matrix will be modified
+        /// to match the projection matrix of the marker tracker.
+        /// </remarks>
         public IMarkerTracker MarkerTracker
         {
             get { return tracker; }
@@ -357,19 +398,17 @@ namespace GoblinXNA.SceneGraph
                         "to Scene.MarkerTracker");
 
                 tracker = value;
-                MarkerBase.Base.Tracker = tracker;
-
-                MarkerBase.Base.InitCameraNode();
+                MarkerBase.Instance.Tracker = tracker;
 
                 if (cameraNode == null)
                 {
-                    RootNode.AddChild(MarkerBase.Base.CameraNode);
-                    CameraNode = (CameraNode)MarkerBase.Base.CameraNode;
+                    MarkerBase.Instance.InitCameraNode();
+                    RootNode.AddChild(MarkerBase.Instance.CameraNode);
+                    CameraNode = (CameraNode)MarkerBase.Instance.CameraNode;
                 }
                 else
                 {
-                    throw new GoblinException("You shouldn't assign your own camera node " +
-                        "when using marker tracking");
+                    cameraNode.Camera.Projection = tracker.CameraProjection;
                 }
             }
         }
@@ -569,31 +608,34 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         public List<IVideoCapture> VideoCapture
         {
-            get { return MarkerBase.Base.VideoCaptures; }
+            get { return MarkerBase.Instance.VideoCaptures; }
         }
 
         /// <summary>
         /// Gets or sets whether to show camera captured physical image in the background.
-        /// (By default, this is false. If showing camera image, then needs
-        /// to be set to true before initializing the marker tracker using InitMarkerTracker method)
+        /// (By default, this is false. If showing camera image, then needs to be set to true 
+        /// before initializing the marker tracker using InitMarkerTracker method)
         /// </summary>
         /// <remarks>
         /// If you want to show a static image used by the tracker, you need to set the 
-        /// Scene.OverlayVideoID to -1.
+        /// Scene.OverlayVideoID to -1. Use VideoVisibleArea property to define the visible
+        /// video rendered on the background if you prefer to render only a part of the video
+        /// image instead of the entire image on the background.
         /// </remarks>
         /// <see cref="OverlayVideoID"/>
+        /// <seealso cref="VideoVisibleArea"/>
         public bool ShowCameraImage
         {
             get { return showCameraImage; }
             set 
             {
-                //if (value && (MarkerBase.Base.VideoCaptures.Count == 0))
+                //if (value && (MarkerBase.Instance.VideoCaptures.Count == 0))
                 //    throw new GoblinException("You need to add at least one video capture device " +
                 //        "before you can show the camera image");
 
                 showCameraImage = value;
-                if (showCameraImage && !MarkerBase.Base.RenderInitialized)
-                    MarkerBase.Base.InitRendering();
+                if (showCameraImage && !MarkerBase.Instance.RenderInitialized)
+                    MarkerBase.Instance.InitRendering();
             }
         }
 
@@ -614,7 +656,7 @@ namespace GoblinXNA.SceneGraph
                 waitForVideoIDChange = true;
                 if (value < 0)
                 {
-                    MarkerBase.Base.ActiveCaptureDevice = -1;
+                    MarkerBase.Instance.ActiveCaptureDevice = -1;
                     actualOverlayVideoID = -1;
                     overlayVideoID = -1;
                     overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
@@ -627,7 +669,7 @@ namespace GoblinXNA.SceneGraph
 
                 actualOverlayVideoID = videoIDs[value];
                 overlayVideoID = value;
-                MarkerBase.Base.ActiveCaptureDevice = actualOverlayVideoID;
+                MarkerBase.Instance.ActiveCaptureDevice = actualOverlayVideoID;
 
                 overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
                 waitForVideoIDChange = false;
@@ -669,6 +711,88 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Gets or sets the video ID for left eye to use for stereo augmented reality. If you use 
+        /// single camera for stereo, then you should set both LeftEyeVideoID and RightEyeVideoID to 
+        /// the same video ID. 
+        /// </summary>
+        /// <see cref="RightEyeVideoID"/>
+        public int LeftEyeVideoID
+        {
+            get { return leftEyeVideoID; }
+            set 
+            {
+                if (!videoIDs.ContainsKey(value))
+                    throw new GoblinException("VideoID " + value + " does not exist");
+
+                actualLeftEyeVideoID = videoIDs[value];
+                leftEyeVideoID = value;
+
+                singleVideoStereo = (leftEyeVideoID == rightEyeVideoID);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the video ID for right eye to use for stereo augmented reality. If you use 
+        /// single camera for stereo, then you should set both LeftEyeVideoID and RightEyeVideoID to 
+        /// the same video ID.
+        /// </summary>
+        /// <see cref="LeftEyeVideoID"/>
+        public int RightEyeVideoID
+        {
+            get { return rightEyeVideoID; }
+            set
+            {
+                if (!videoIDs.ContainsKey(value))
+                    throw new GoblinException("VideoID " + value + " does not exist");
+
+                actualRightEyeVideoID = videoIDs[value];
+                rightEyeVideoID = value;
+
+                singleVideoStereo = (leftEyeVideoID == rightEyeVideoID);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the shift amount of the overlaid video image in pixels for left eye.
+        /// </summary>
+        /// <remarks>
+        /// Sets this property only if you want to do stereo video overlay using single camera.
+        /// </remarks>
+        public int LeftEyeVideoImageShift
+        {
+            get { return leftEyeVideoImageShift; }
+            set { leftEyeVideoImageShift = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the shift amount of the overlaid video image in pixels for right eye.
+        /// </summary>
+        /// <remarks>
+        /// Sets this property only if you want to do stereo video overlay using single camera.
+        /// </remarks>
+        public int RightEyeVideoImageShift
+        {
+            get { return rightEyeVideoImageShift; }
+            set { rightEyeVideoImageShift = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the visible area (in rectangle) of the video overlay image rendered on the background. 
+        /// The default is (0, 0, State.Width, State.Height) which fills the entire background with
+        /// the video image when ShowCameraImage is set to true. 
+        /// </summary>
+        /// <remarks>
+        /// If you modify the back buffer width and height after initializing Scene, make sure to 
+        /// modify this information as well so that the overlaid image fills the entire background.
+        /// This property can be used to render only a part of the video image instead of full image.
+        /// </remarks>
+        public Rectangle VideoVisibleArea
+        {
+            get { return videoVisibleArea; }
+            set { videoVisibleArea = value; }
+        }
+
+        /// <summary>
         /// Gets or sets whether to freeze currently active video streaming. 
         /// </summary>
         /// <remarks>
@@ -678,6 +802,14 @@ namespace GoblinXNA.SceneGraph
         {
             get { return freezeVideo; }
             set { freezeVideo = value; }
+        }
+
+        /// <summary>
+        /// Indicates whether the scene graph is currently being traversed.
+        /// </summary>
+        internal bool Processing
+        {
+            get { return processing; }
         }
 
         #endregion
@@ -699,13 +831,15 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Prepares the scene for rendering by traversing the entire scene graph using pre-order traversal.
         /// </summary>
-        protected virtual void PrepareSceneForRendering()
+        protected virtual void PrepareSceneForRendering(float elapsedTime)
         {
             localLights.Clear();
             globalLights.Clear();
 
             trackMarkers = false;
-            RecursivePrepareForRendering(rootNode, Matrix.Identity, Matrix.Identity, false);
+            processing = true;
+            RecursivePrepareForRendering(rootNode, Matrix.Identity, Matrix.Identity, false, elapsedTime);
+            processing = false;
         }
 
         /// <summary>
@@ -715,16 +849,16 @@ namespace GoblinXNA.SceneGraph
         /// <returns></returns>
         protected virtual bool IsWithinViewFrustum(BoundingSphere boundingVolume)
         {
-            /*if (showCameraImage)
+            if (showCameraImage)
                 return true;
             else
-            {*/
+            {
                 if (cameraNode.Stereo)
                     return cameraNode.RightBoundingFrustum.Intersects(boundingVolume) ||
                         cameraNode.LeftBoundingFrustum.Intersects(boundingVolume);
                 else
                     return cameraNode.BoundingFrustum.Intersects(boundingVolume);
-            //}
+            }
         }
 
         /// <summary>
@@ -734,8 +868,10 @@ namespace GoblinXNA.SceneGraph
         /// <param name="parentWorldTransformation"></param>
         /// <param name="markerTransform"></param>
         /// <param name="calculateAll"></param>
+        /// <param name="elapsedTime"></param>
         protected virtual void RecursivePrepareForRendering(Node node,
-            Matrix parentWorldTransformation, Matrix markerTransform, bool calculateAll)
+            Matrix parentWorldTransformation, Matrix markerTransform, bool calculateAll,
+            float elapsedTime)
         {
             Matrix parentTransformation = parentWorldTransformation;
             Matrix parentMarkerTransform = markerTransform;
@@ -901,15 +1037,12 @@ namespace GoblinXNA.SceneGraph
             {
                 trackMarkers = true;
                 MarkerNode markerNode = (MarkerNode)node;
-                //markerNode.Update();
+                markerNode.Update(elapsedTime);
                 parentMarkerTransform = Matrix.Multiply(markerNode.WorldTransformation,
                     markerTransform);
 
                 if(markerNode.Optimize && !markerNode.MarkerFound)
                     pruneForMarkerNode = true;
-
-                if (!markerNodes.Contains(markerNode))
-                    markerNodes.Add(markerNode);
             }
             else if (node is TrackerNode)
             {
@@ -956,7 +1089,7 @@ namespace GoblinXNA.SceneGraph
                 BranchNode bNode = (BranchNode)node;
                 if (switchPass >= 0)
                     RecursivePrepareForRendering(bNode.Children[switchPass], parentTransformation,
-                        parentMarkerTransform, isWorldTransformationDirty || calculateAll);
+                        parentMarkerTransform, isWorldTransformationDirty || calculateAll, elapsedTime);
                 else
                 {
                     if (!(bNode.Prune || pruneForMarkerNode))
@@ -985,7 +1118,8 @@ namespace GoblinXNA.SceneGraph
                         {
                             if(!(child is LightNode))
                                 RecursivePrepareForRendering(child, parentTransformation,
-                                    parentMarkerTransform, isWorldTransformationDirty || calculateAll);
+                                    parentMarkerTransform, isWorldTransformationDirty || calculateAll,
+                                    elapsedTime);
                         }
 
                         // Pops off the local lights from the stack
@@ -1010,8 +1144,6 @@ namespace GoblinXNA.SceneGraph
                 renderedEffects.Remove((ParticleNode)node);
                 ((ParticleNode)node).IsRendered = false;
             }
-            else if (node is MarkerNode)
-                markerNodes.Remove((MarkerNode)node);
 
             if(node is BranchNode)
                 foreach (Node child in ((BranchNode)node).Children)
@@ -1230,7 +1362,11 @@ namespace GoblinXNA.SceneGraph
                     triangleCount += occluderNode.Model.TriangleCount;
                     occluderNode.Model.Render(occluderNode.WorldTransformation *
                         occluderNode.MarkerTransform, new Material());
-                    occluderNode.ShouldRender = false;
+                    // If it's stereo rendering, then we want to set this back to false only after
+                    // drawing the left eye view (renderLeftView is NOTted because it's rendering
+                    // left eye view, renderLeftView is already set to false at this point
+                    if(!(cameraNode.Stereo && !renderLeftView))
+                        occluderNode.ShouldRender = false;
                 }
             }
 
@@ -1241,8 +1377,47 @@ namespace GoblinXNA.SceneGraph
             if (showCameraImage)
             {
                 spriteBatch.Begin();
-                spriteBatch.Draw(MarkerBase.Base.BackgroundTexture,
-                    new Rectangle(0, 0, State.Width, State.Height), Color.White);
+
+                int x = videoVisibleArea.X, y = videoVisibleArea.Y, width = videoVisibleArea.Width,
+                    height = videoVisibleArea.Height;
+                Texture2D image = MarkerBase.Instance.BackgroundTexture;
+                // If not doing stereo video overlay
+                if (leftEyeVideoID >= 0 && rightEyeVideoID >= 0)
+                {
+                    // In RenderScene, renderLeftView is already flipped, so we'll take care of right eye
+                    // video if renderLeftView is true, and left eye video if false
+                    if (renderLeftView)
+                    {
+                        if (!singleVideoStereo)
+                        {
+                            // If right eye video is not the default overlaid video, then
+                            // we use the additional image
+                            if (rightEyeVideoID != overlayVideoID)
+                            {
+                                image = MarkerBase.Instance.AdditionalBackgroundTexture;
+                            }
+                        }
+
+                        x += rightEyeVideoImageShift;
+                    }
+                    else
+                    {
+                        if (!singleVideoStereo)
+                        {
+                            // If left eye video is not the default overlaid video, then
+                            // we use the additional image
+                            if (leftEyeVideoID != overlayVideoID)
+                            {
+                                image = MarkerBase.Instance.AdditionalBackgroundTexture;
+                            }
+                        }
+
+                        x += leftEyeVideoImageShift;
+                    }
+                }
+
+                spriteBatch.Draw(image, new Rectangle(x, y, width, height), Color.White);
+
                 spriteBatch.End();
             }
             else if (backgroundTexture != null)
@@ -1286,7 +1461,11 @@ namespace GoblinXNA.SceneGraph
                                 node.Model.Shader.SetParameters(environment);
                             node.Model.Render(node.WorldTransformation * node.MarkerTransform, node.Material);
 
-                            node.ShouldRender = false;
+                            // If it's stereo rendering, then we want to set this back to false only after
+                            // drawing the left eye view (renderLeftView is NOTted because it's rendering
+                            // left eye view, renderLeftView is already set to false at this point
+                            if (!(cameraNode.Stereo && !renderLeftView))
+                                node.ShouldRender = false;
 
                             if (renderAabb && node.AddToPhysicsEngine && (physicsEngine != null))
                                     RenderAabb(node.MarkerTransform, 
@@ -1330,7 +1509,11 @@ namespace GoblinXNA.SceneGraph
                         transparentNode.Model.Render(transparentNode.WorldTransformation
                             * transparentNode.MarkerTransform, transparentNode.Material);
 
-                        transparentNode.ShouldRender = false;
+                        // If it's stereo rendering, then we want to set this back to false only after
+                        // drawing the left eye view (renderLeftView is NOTted because it's rendering
+                        // left eye view, renderLeftView is already set to false at this point
+                        if (!(cameraNode.Stereo && !renderLeftView))
+                            transparentNode.ShouldRender = false;
 
                         if (renderAabb && transparentNode.AddToPhysicsEngine && (physicsEngine != null))
                                 RenderAabb(transparentNode.MarkerTransform,
@@ -1350,7 +1533,12 @@ namespace GoblinXNA.SceneGraph
                 if (particle.ShouldRender)
                 {
                     particle.Render();
-                    particle.ShouldRender = false;
+
+                    // If it's stereo rendering, then we want to set this back to false only after
+                    // drawing the left eye view (renderLeftView is NOTted because it's rendering
+                    // left eye view, renderLeftView is already set to false at this point
+                    if (!(cameraNode.Stereo && !renderLeftView))
+                        particle.ShouldRender = false;
                 }
             }
 
@@ -1375,7 +1563,15 @@ namespace GoblinXNA.SceneGraph
                 while (true)
                 {
                     if (readyToUpdateTracker)
+                    {
+                        // Synchronize the frame update with tracker update
+                        while (trackerUpdateCount > frameUpdateCount) 
+                        {
+                            Thread.Sleep(10);
+                        }
                         UpdateTrackerAndImage();
+                        trackerUpdateCount++;
+                    }
                 }
             }
             else
@@ -1395,7 +1591,7 @@ namespace GoblinXNA.SceneGraph
                 if (tracker == null)
                 {
                     if(!freezeVideo)
-                        videoImage = MarkerBase.Base.VideoCaptures[actualOverlayVideoID].
+                        videoImage = MarkerBase.Instance.VideoCaptures[actualOverlayVideoID].
                             GetImageTexture(true, false);
                 }
                 else
@@ -1410,9 +1606,9 @@ namespace GoblinXNA.SceneGraph
                         else
                         {
                             if (!freezeVideo)
-                                videoImage = MarkerBase.Base.VideoCaptures[actualOverlayVideoID].
+                                videoImage = MarkerBase.Instance.VideoCaptures[actualOverlayVideoID].
                                     GetImageTexture(true, true);
-                            tracker.ProcessImage(MarkerBase.Base.VideoCaptures[actualOverlayVideoID]);
+                            tracker.ProcessImage(MarkerBase.Instance.VideoCaptures[actualOverlayVideoID]);
                         }
                     }
                     else
@@ -1420,7 +1616,7 @@ namespace GoblinXNA.SceneGraph
                         if (actualOverlayVideoID < 0)
                             videoImage = tracker.StaticImage;
                         else if (!freezeVideo)
-                            videoImage = MarkerBase.Base.VideoCaptures[actualOverlayVideoID].
+                            videoImage = MarkerBase.Instance.VideoCaptures[actualOverlayVideoID].
                                 GetImageTexture(true, false);
 
                         if (actualTrackerVideoID < 0)
@@ -1428,10 +1624,18 @@ namespace GoblinXNA.SceneGraph
                         else
                         {
                             if(!freezeVideo)
-                                MarkerBase.Base.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
-                            tracker.ProcessImage(MarkerBase.Base.VideoCaptures[actualTrackerVideoID]);
+                                MarkerBase.Instance.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
+                            tracker.ProcessImage(MarkerBase.Instance.VideoCaptures[actualTrackerVideoID]);
                         }
                     }
+                }
+
+                // Update 2nd camera's video image if using two cameras for stereoscopic view
+                if (cameraNode.Stereo && !singleVideoStereo)
+                {
+                    MarkerBase.Instance.UpdateAdditionalImage(MarkerBase.Instance.VideoCaptures[
+                        (leftEyeVideoID == overlayVideoID) ? actualRightEyeVideoID : actualLeftEyeVideoID].
+                        GetImageTexture(true, false));
                 }
             }
             else if (trackMarkers && (tracker != null))
@@ -1441,8 +1645,8 @@ namespace GoblinXNA.SceneGraph
                 else
                 {
                     if (!freezeVideo)
-                        MarkerBase.Base.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
-                    tracker.ProcessImage(MarkerBase.Base.VideoCaptures[actualTrackerVideoID]);
+                        MarkerBase.Instance.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
+                    tracker.ProcessImage(MarkerBase.Instance.VideoCaptures[actualTrackerVideoID]);
                 }
             }
             waitForTrackerUpdate = false;
@@ -1530,6 +1734,12 @@ namespace GoblinXNA.SceneGraph
                 });
         }
 
+        /// <summary>
+        /// Renders the detailed collision mesh obtained from the physics engine for each
+        /// GeometryNode added to the physics engine for debugging.
+        /// </summary>
+        /// <param name="worldTransform"></param>
+        /// <param name="collisionMesh"></param>
         protected void RenderColMesh(Matrix worldTransform, List<List<Vector3>> collisionMesh)
         {
             int count = 0;
@@ -1640,13 +1850,13 @@ namespace GoblinXNA.SceneGraph
                 throw new GoblinException("You should initialize the video capture device first " +
                     "before you add it");
 
-            MarkerBase.Base.VideoCaptures.Add(decoder);
+            MarkerBase.Instance.VideoCaptures.Add(decoder);
 
             overlayVideoID = decoder.VideoDeviceID;
             trackerVideoID = decoder.VideoDeviceID;
             actualOverlayVideoID = videoIDs.Count;
             actualTrackerVideoID = videoIDs.Count;
-            MarkerBase.Base.ActiveCaptureDevice = actualOverlayVideoID;
+            MarkerBase.Instance.ActiveCaptureDevice = actualOverlayVideoID;
             videoIDs.Add(decoder.VideoDeviceID, actualOverlayVideoID);
             overlayAndTrackerUseSameID = true;
         }
@@ -1666,13 +1876,61 @@ namespace GoblinXNA.SceneGraph
             screen.Save(filename, format);
         }
 
+        /// <summary>
+        /// Only renders the 3D scene. Unlike the Draw function, this function doesn't perform physics
+        /// update or scene graph updates. It simply renders the 3D scene. This method is useful when you
+        /// need to render the scene more than once (e.g., when rendering multiple viewport or stereoscopic
+        /// view).
+        /// </summary>
+        /// <param name="renderUI">Whether to render 2D UI</param>
+        public void RenderScene(bool renderUI)
+        {
+            if (cameraNode.Stereo)
+            {
+                if (renderLeftView)
+                {
+                    State.ViewMatrix = cameraNode.LeftCompoundViewMatrix;
+                    State.ProjectionMatrix = ((StereoCamera)cameraNode.Camera).LeftProjection;
+                    renderLeftView = false;
+                }
+                else
+                {
+                    State.ViewMatrix = cameraNode.RightCompoundViewMatrix;
+                    State.ProjectionMatrix = ((StereoCamera)cameraNode.Camera).RightProjection;
+                    renderLeftView = true;
+                }
+            }
+            else
+            {
+                State.ViewMatrix = cameraNode.CompoundViewMatrix;
+                State.ProjectionMatrix = cameraNode.Camera.Projection;
+            }
+
+            State.CameraTransform = cameraNode.WorldTransformation;
+
+            try
+            {
+                if (enableShadowMapping)
+                    RenderShadows(globalLightSources);
+            }
+            catch (Exception) { }
+
+            RenderSceneGraph(globalLightSources);
+
+            if (renderUI)
+            {
+                GameTime tmpTime = new GameTime();
+                uiRenderer.Draw(tmpTime);
+            }
+        }
+
         #endregion
 
         #region Override Methods
 
         public override void Update(GameTime gameTime)
         {
-            InputMapper.Update(gameTime, this.Game.IsActive);
+            InputMapper.Instance.Update(gameTime, this.Game.IsActive);
 
             foreach (ParticleNode particle in renderedEffects)
                 particle.Update(gameTime);
@@ -1835,13 +2093,11 @@ namespace GoblinXNA.SceneGraph
             if (updatePhysicsEngine)
                 physicsEngine.Update((float)gameTime.ElapsedRealTime.TotalSeconds);
 
-            
-            for (int i = 0; i < markerNodes.Count; i++)
-                markerNodes[i].Update((float)gameTime.ElapsedGameTime.TotalMilliseconds);
             if (showCameraImage && (videoImage != null))
-                MarkerBase.Base.UpdateRendering(videoImage);
+                MarkerBase.Instance.UpdateRendering(videoImage);
 
-            PrepareSceneForRendering();
+            PrepareSceneForRendering((float)gameTime.ElapsedGameTime.TotalMilliseconds);
+            frameUpdateCount++;
 
             // If the camera position changed, then we need to re-sort the transparency group
             if (!prevCameraTrans.Equals(cameraNode.WorldTransformation.Translation))
@@ -1849,7 +2105,7 @@ namespace GoblinXNA.SceneGraph
 
             prevCameraTrans = cameraNode.WorldTransformation.Translation;
 
-            List<LightSource> globalLightSources = new List<LightSource>();
+            globalLightSources.Clear();
             foreach (LightNode lightNode in globalLights)
             {
                 foreach (LightSource lightSource in lightNode.LightSources)
@@ -1872,37 +2128,7 @@ namespace GoblinXNA.SceneGraph
                 if (lodNode.AutoComputeLevelOfDetail)
                     lodNode.Update(cameraNode.WorldTransformation.Translation);
 
-            if (cameraNode.Stereo)
-            {
-                if (renderLeftView)
-                {
-                    State.ViewMatrix = cameraNode.LeftCompoundViewMatrix;
-                    State.ProjectionMatrix = ((StereoCamera)cameraNode.Camera).LeftProjection;
-                    renderLeftView = false;
-                }
-                else
-                {
-                    State.ViewMatrix = cameraNode.RightCompoundViewMatrix;
-                    State.ProjectionMatrix = ((StereoCamera)cameraNode.Camera).RightProjection;
-                    renderLeftView = true;
-                }
-            }
-            else
-            {
-                State.ViewMatrix = cameraNode.CompoundViewMatrix;
-                State.ProjectionMatrix = cameraNode.Camera.Projection;
-            }
-
-            State.CameraTransform = cameraNode.WorldTransformation;
-
-            try
-            {
-                if (enableShadowMapping)
-                    RenderShadows(globalLightSources);
-            }
-            catch (Exception exp) { }
-
-            RenderSceneGraph(globalLightSources);
+            RenderScene(false);
         }
 
         protected override void Dispose(bool disposing)
@@ -1932,9 +2158,10 @@ namespace GoblinXNA.SceneGraph
                 networkClient.Shutdown();
 
             if (markerModuleInited)
-                MarkerBase.Base.Dispose();
+                MarkerBase.Instance.Dispose();
 
             Sound.Dispose();
+            InputMapper.Instance.Dispose();
 
             base.Dispose(disposing);
         }
