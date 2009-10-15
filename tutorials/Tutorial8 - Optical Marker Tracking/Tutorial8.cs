@@ -24,9 +24,25 @@ using GoblinXNA.Helpers;
 namespace Tutorial8___Optical_Marker_Tracking
 {
     /// <summary>
-    /// This tutorial demonstrates how to use the ARTag optical marker tracker library with
-    /// our Goblin XNA framework. Please read the README.txt included with this project before
-    /// running this tutorial.
+    /// An enum that indicates which marker tracking library to use.
+    /// </summary>
+    enum MarkerLibrary
+    {
+        /// <summary>
+        /// ARTag library developed by Mark Fiala
+        /// </summary>
+        ARTag,
+        /// <summary>
+        /// ALVAR library developed by VTT
+        /// </summary>
+        ALVAR
+    }
+
+    /// <summary>
+    /// This tutorial demonstrates how to use both the ALVAR and ARTag optical marker tracker 
+    /// library with our Goblin XNA framework. Please read the README.pdf included with this 
+    /// project before running this tutorial. If you're using ARTag, please remove calib.xml
+    /// from the solution explorer so that you can successfully build the project. 
     /// </summary>
     public class Tutorial8 : Microsoft.Xna.Framework.Game
     {
@@ -35,6 +51,7 @@ namespace Tutorial8___Optical_Marker_Tracking
         Scene scene;
         MarkerNode groundMarkerNode, toolbarMarkerNode;
         GeometryNode boxNode;
+        MarkerLibrary markerLibrary;
 
         public Tutorial8()
         {
@@ -58,6 +75,9 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             // Use the newton physics engine to perform collision detection
             scene.PhysicsEngine = new NewtonPhysics();
+
+            // Use ALVAR marker tracking library
+            markerLibrary = MarkerLibrary.ALVAR;
 
             // Set up optical marker tracking
             // Note that we don't create our own camera when we use optical marker
@@ -93,7 +113,7 @@ namespace Tutorial8___Optical_Marker_Tracking
         {
             // Create a directional light source
             LightSource lightSource = new LightSource();
-            lightSource.Direction = new Vector3(-1, -1, -1);
+            lightSource.Direction = new Vector3(1, -1, -1);
             lightSource.Diffuse = Color.White.ToVector4();
             lightSource.Specular = new Vector4(0.6f, 0.6f, 0.6f, 1);
 
@@ -120,12 +140,25 @@ namespace Tutorial8___Optical_Marker_Tracking
             // the marker tracker
             scene.AddVideoCaptureDevice(captureDevice);
 
-            // Create a optical marker tracker that uses ARTag library
-            ARTagTracker tracker = new ARTagTracker();
-            // Set the configuration file to look for the marker specifications
-            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, 
-                captureDevice.Height, false, "NewARTag.cf");
+            IMarkerTracker tracker = null;
 
+            if (markerLibrary == MarkerLibrary.ALVAR)
+            {
+                // Create an optical marker tracker that uses ALVAR library
+                tracker = new ALVARMarkerTracker();
+                ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+                tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+            }
+            else
+            {
+                // Create an optical marker tracker that uses ARTag library
+                tracker = new ARTagTracker();
+                // Set the configuration file to look for the marker specifications
+                tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
+                    captureDevice.Height, false, "ARTag.cf");
+            }
+
+            // Set the marker tracker to use for our scene
             scene.MarkerTracker = tracker;
 
             // Display the camera image in the background. Note that this parameter should
@@ -136,7 +169,10 @@ namespace Tutorial8___Optical_Marker_Tracking
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            groundNode.Model = new Box(100, 80, 0.1f);
+            if (markerLibrary == MarkerLibrary.ALVAR)
+                groundNode.Model = new Box(95, 59, 0.1f);
+            else
+                groundNode.Model = new Box(85, 66, 0.1f);
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 
@@ -151,11 +187,7 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             groundNode.Material = groundMaterial;
 
-            TransformNode groundTransNode = new TransformNode();
-            groundTransNode.Translation = new Vector3(42.5f, 33, 0);
-
-            groundMarkerNode.AddChild(groundTransNode);
-            groundTransNode.AddChild(groundNode);
+            groundMarkerNode.AddChild(groundNode);
         }
 
         private void CreateObjects()
@@ -172,9 +204,26 @@ namespace Tutorial8___Optical_Marker_Tracking
             sphereNode.Model.CastShadows = true;
             sphereNode.Model.ReceiveShadows = true;
 
-            // Create a marker node to track a ground marker array. Since we expect that the 
-            // ground marker array won't move very much, we use a small smoothing alpha.
-            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
+            // Create a marker node to track a ground marker array. 
+            if (markerLibrary == MarkerLibrary.ALVAR)
+            {
+                // Create an array to hold a list of marker IDs that are used in the marker
+                // array configuration (even though these are already specified in the configuration
+                // file, ALVAR still requires this array)
+                int[] ids = new int[28];
+                for (int i = 0; i < ids.Length; i++)
+                    ids[i] = i;
+
+                groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.txt", ids);
+            }
+            else
+            {
+                groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
+
+                // Since we expect that the ground marker array won't move very much, we use a 
+                // small smoothing alpha.
+                groundMarkerNode.Smoother = new DESSmoother(0.2f, 0.1f, 1, 1);
+            }
 
             // Since the ground marker's size is 80x52 ARTag units, in order to move the sphere model
             // to the center of the ground marker, we shift it by 40x26 units and also make it
@@ -210,10 +259,24 @@ namespace Tutorial8___Optical_Marker_Tracking
             boxNode.Model.CastShadows = true;
             boxNode.Model.ReceiveShadows = true;
 
-            // Create a marker node to track a toolbar marker array. Since we expect that the 
-            // toolbar marker array will move a lot, we use a large smoothing alpha.
-            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1");
-            toolbarMarkerNode.Smoother = new DESSmoother(0.8f, 0.8f);
+            // Create a marker node to track a toolbar marker array.
+            if (markerLibrary == MarkerLibrary.ALVAR)
+            {
+                int[] ids = new int[2];
+                ids[0] = 29;
+                ids[1] = 30;
+
+                toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "Toolbar.txt", ids);
+            }
+            else
+            {
+                toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1");
+
+                // Since we expect that the toolbar marker array will move a lot, we use a large 
+                // smoothing alpha.
+                toolbarMarkerNode.Smoother = new DESSmoother(0.8f, 0.8f, 1, 1);
+            }
+
             scene.RootNode.AddChild(toolbarMarkerNode);
 
             // Create a material to apply to the box model
@@ -288,7 +351,12 @@ namespace Tutorial8___Optical_Marker_Tracking
                     // appear right on top of the left marker of the toolbar marker array, we shift by
                     // half of each dimension of the 8x8x8 box model.  The approach used here requires that
                     // the ground marker array remains visible at all times.
-                    Matrix mat = Matrix.CreateTranslation(new Vector3(4, 4, 4)) * 
+                    Vector3 shiftVector = Vector3.Zero;
+                    if (markerLibrary == MarkerLibrary.ALVAR)
+                        shiftVector = new Vector3(4, -4, 4);
+                    else
+                        shiftVector = new Vector3(4, 4, 4);
+                    Matrix mat = Matrix.CreateTranslation(shiftVector) * 
                         toolbarMarkerNode.WorldTransformation * 
                         Matrix.Invert(groundMarkerNode.WorldTransformation);
 

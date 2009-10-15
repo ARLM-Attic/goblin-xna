@@ -109,7 +109,7 @@ namespace GoblinXNA.SceneGraph
         /// in each dimension, no rotation, and no translation.
         /// </summary>
         /// <param name="name">The name of this transform node</param>
-        public TransformNode(String name) : this(name, Vector3.Zero, Quaternion.Identity) { }
+        public TransformNode(String name) : this(name, new Vector3(), Quaternion.Identity) { }
 
         /// <summary>
         /// Creates a scene graph node that defines the transform of its children with scaling of 1
@@ -292,6 +292,24 @@ namespace GoblinXNA.SceneGraph
         {
             get { return isReadOnly; }
             set { isReadOnly = value; }
+        }
+
+        #endregion
+
+        #region Override Properties
+
+        public override bool Enabled
+        {
+            get
+            {
+                return base.Enabled;
+            }
+            set
+            {
+                base.Enabled = value;
+                if (value)
+                    isWorldTransformationDirty = true;
+            }
         }
 
         #endregion

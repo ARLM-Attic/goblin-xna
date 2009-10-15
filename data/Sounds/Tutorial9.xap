@@ -1,7 +1,7 @@
-Signature = XACT2;
-Version = 16;
-Content Version = 43;
-Release = August 2007;
+Signature = XACT3;
+Version = 17;
+Content Version = 45;
+Release = March 2009;
 
 Options
 {
@@ -161,7 +161,7 @@ Global Settings
         Value = 0.000000;
         Initial Value = 0.000000;
         Min = 0.000000;
-        Max = 15.000001;
+        Max = 15000.000000;
     }
 
     Variable
@@ -178,7 +178,7 @@ Global Settings
         Value = 0.000000;
         Initial Value = 0.000000;
         Min = 0.000000;
-        Max = 15.000001;
+        Max = 15000.000000;
     }
 
     Variable
@@ -214,6 +214,91 @@ Global Settings
         Min = 0.000000;
         Max = 1000000.000000;
     }
+
+    RPC
+    {
+        Name = RPC Preset;
+    }
+
+    RPC
+    {
+        Name = DistanceCurve;
+
+        RPC Curve
+        {
+            Name = Sound::934b5c57-b960-4fc2-9f4f-d5cafe4f509e;
+            Property = 0;
+            Sound = 1;
+            Line Color = 4293332094;
+            Viewable = 1;
+
+            Variable Entry
+            {
+                Name = Distance;
+            }
+
+            RPC Point
+            {
+                X = 0.000000;
+                Y = 0.000000;
+                Curve = 0;
+            }
+
+            RPC Point
+            {
+                X = 7.000000;
+                Y = -10.000000;
+                Curve = 0;
+            }
+
+            RPC Point
+            {
+                X = 100.000000;
+                Y = -9600.000000;
+                Curve = 0;
+            }
+        }
+    }
+
+    RPC
+    {
+        Name = DopplerCurve;
+
+        RPC Curve
+        {
+            Name = Sound::f2eefb71-a38d-48cf-8fa6-cdd6da3b81ca;
+            Property = 1;
+            Sound = 1;
+            Line Color = 4281611650;
+            Viewable = 1;
+
+            Variable Entry
+            {
+                Name = DopplerPitchScalar;
+            }
+
+            RPC Point
+            {
+                X = 0.000000;
+                Y = -205.000000;
+                Curve = 0;
+            }
+
+            RPC Point
+            {
+                X = 1.000000;
+                Y = 0.000000;
+                Curve = 0;
+            }
+
+            RPC Point
+            {
+                X = 4.000000;
+                Y = 672.000000;
+                Curve = 0;
+            }
+        }
+    }
 }
 
 Wave Bank
@@ -231,8 +316,8 @@ Wave Bank
     PC Bank Last Modified High = 0;
     Header Last Modified Low = 0;
     Header Last Modified High = 0;
-    Bank Last Revised Low = 2150655488;
-    Bank Last Revised High = 29924647;
+    Bank Last Revised Low = 4000435942;
+    Bank Last Revised High = 29982115;
 
     Wave
     {
@@ -265,6 +350,8 @@ Sound Bank
     Windows File = Win\Sound Bank.xsb;
     Xbox Bank Path Edited = 0;
     Windows Bank Path Edited = 0;
+    Header Last Modified High = 0;
+    Header Last Modified Low = 0;
 
     Sound
     {
@@ -281,6 +368,7 @@ Sound Bank
         Track
         {
             Volume = 0;
+            Use Filter = 0;
 
             Play Wave Event
             {
@@ -318,7 +406,7 @@ Sound Bank
 
         Variation
         {
-            Variation Type = 3;
+            Variation Type = 2;
             Variation Table Type = 1;
             New Variation on Loop = 0;
         }

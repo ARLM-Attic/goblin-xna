@@ -37,6 +37,8 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -90,15 +92,15 @@ namespace GoblinXNA.Graphics.Geometry
             if (!hasInner)
             {
                 VertexPositionNormal front = new VertexPositionNormal();
-                front.Position = new Vector3(0, 0, 0);
-                front.Normal = new Vector3(0, 1, 0);
+                front.Position = Vector3Helper.Get(0, 0, 0);
+                front.Normal = Vector3Helper.Get(0, 1, 0);
                 vertices.Add(front);
 
                 if (twoSided)
                 {
                     VertexPositionNormal back = new VertexPositionNormal();
-                    back.Position = new Vector3(0, 0, 0);
-                    back.Normal = new Vector3(0, -1, 0);
+                    back.Position = Vector3Helper.Get(0, 0, 0);
+                    back.Normal = Vector3Helper.Get(0, -1, 0);
                     vertices.Add(back);
                 }
             }
@@ -112,21 +114,21 @@ namespace GoblinXNA.Graphics.Geometry
                 if (hasInner)
                 {
                     VertexPositionNormal inside = new VertexPositionNormal();
-                    inside.Position = new Vector3(cos * inner, 0, sin * inner);
-                    inside.Normal = new Vector3(0, 1, 0);
+                    inside.Position = Vector3Helper.Get(cos * inner, 0, sin * inner);
+                    inside.Normal = Vector3Helper.Get(0, 1, 0);
                     vertices.Add(inside);
 
                     if (twoSided)
-                        vertices.Add(new VertexPositionNormal(inside.Position, new Vector3(0, -1, 0)));
+                        vertices.Add(new VertexPositionNormal(inside.Position, Vector3Helper.Get(0, -1, 0)));
                 }
 
                 VertexPositionNormal outside = new VertexPositionNormal();
-                outside.Position = new Vector3(cos * outer, 0, sin * outer);
-                outside.Normal = new Vector3(0, 1, 0);
+                outside.Position = Vector3Helper.Get(cos * outer, 0, sin * outer);
+                outside.Normal = Vector3Helper.Get(0, 1, 0);
                 vertices.Add(outside);
 
                 if (twoSided)
-                    vertices.Add(new VertexPositionNormal(outside.Position, new Vector3(0, -1, 0)));
+                    vertices.Add(new VertexPositionNormal(outside.Position, Vector3Helper.Get(0, -1, 0)));
             }
 
             mesh.VertexDeclaration = new VertexDeclaration(State.Device,

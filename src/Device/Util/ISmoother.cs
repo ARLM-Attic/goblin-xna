@@ -49,7 +49,7 @@ namespace GoblinXNA.Device.Util
         /// </summary>
         /// <param name="p">The original position</param>
         /// <param name="q">The original rotation</param>
-        /// <returns>A smoothed/filterd matrix</returns>
-        Matrix FilterMatrix(Vector3 p, Quaternion q);
+        /// <param name="result">A smoothed/filterd matrix</param>
+        void FilterMatrix(ref Vector3 p, ref Quaternion q, out Matrix result);
     }
 }

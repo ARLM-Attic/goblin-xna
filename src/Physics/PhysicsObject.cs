@@ -89,8 +89,8 @@ namespace GoblinXNA.Physics
             mass = 1.0f;
             shape = ShapeType.Box;
             shapeData = new List<float>();
-            momentOfInertia = Vector3.Zero;
-            centerOfMass = Vector3.Zero;
+            momentOfInertia = new Vector3();
+            centerOfMass = new Vector3();
             pickable = false;
             collidable = false;
             interactable = false;
@@ -103,8 +103,8 @@ namespace GoblinXNA.Physics
             initialWorldTransform = Matrix.Identity;
             compoundInitialWorldTransform = Matrix.Identity;
 
-            initialLinearVelocity = Vector3.Zero;
-            initialAngularVelocity = Vector3.Zero;
+            initialLinearVelocity = new Vector3();
+            initialAngularVelocity = new Vector3();
 
             linearDamping = 0.0f;
             angularDamping = -Vector3.One;

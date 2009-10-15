@@ -37,6 +37,8 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -86,7 +88,7 @@ namespace GoblinXNA.Graphics.Geometry
                 for (countB = 0, theta = 0; countB < slices; theta += thetaIncr, countB++)
                 {
                     VertexPositionNormal vert = new VertexPositionNormal();
-                    vert.Position = new Vector3((float)(radius * Math.Sin(thai) * Math.Cos(theta)),
+                    vert.Position = Vector3Helper.Get((float)(radius * Math.Sin(thai) * Math.Cos(theta)),
                         (float)(radius * Math.Cos(thai)), (float)(radius * Math.Sin(thai) * Math.Sin(theta)));
                     vert.Normal = Vector3.Normalize(vert.Position);
                     vertices.Add(vert);
@@ -94,9 +96,9 @@ namespace GoblinXNA.Graphics.Geometry
             }
 
             // Add north pole vertex
-            vertices.Add(new VertexPositionNormal(new Vector3(0, radius, 0), new Vector3(0, 1, 0)));
+            vertices.Add(new VertexPositionNormal(Vector3Helper.Get(0, radius, 0), Vector3Helper.Get(0, 1, 0)));
             // Add south pole vertex
-            vertices.Add(new VertexPositionNormal(new Vector3(0, -radius, 0), new Vector3(0, -1, 0)));
+            vertices.Add(new VertexPositionNormal(Vector3Helper.Get(0, -radius, 0), Vector3Helper.Get(0, -1, 0)));
 
             mesh.VertexDeclaration = new VertexDeclaration(State.Device,
                 VertexPositionNormal.VertexElements);

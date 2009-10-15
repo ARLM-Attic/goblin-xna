@@ -58,10 +58,22 @@ namespace GoblinXNA.Shaders
     public class SimpleEffectShader : IShader
     {
         #region Member Fields
-        Matrix worldMatrix;
-        Matrix viewMatrix;
-        Matrix projectionMatrix;
-        BasicEffect basicEffect;
+
+        private Matrix worldMatrix;
+        private Matrix viewMatrix;
+        private Matrix projectionMatrix;
+        private BasicEffect basicEffect;
+        private List<LightSource> lightSources;
+
+        #region Temporary Variables
+
+        private Matrix tmpMat1;
+        private Matrix tmpMat2;
+        private Matrix tmpMat3;
+        private Vector3 tmpVec1;
+
+        #endregion
+
         #endregion
 
         #region Constructors
@@ -79,6 +91,7 @@ namespace GoblinXNA.Shaders
             viewMatrix = State.ViewMatrix;
 
             basicEffect = new BasicEffect(State.Device, null);
+            lightSources = new List<LightSource>();
         }
         #endregion
 
@@ -154,7 +167,7 @@ namespace GoblinXNA.Shaders
         public void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
         {
             bool ambientSet = false;
-            List<LightSource> lightSources = new List<LightSource>();
+            lightSources.Clear();
             LightNode lNode = null;
             Vector4 ambientLightColor = new Vector4(0, 0, 0, 1);
 
@@ -180,8 +193,14 @@ namespace GoblinXNA.Shaders
 
                         LightSource source = new LightSource();
                         source.Diffuse = light.Diffuse;
-                        source.Direction = ((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+
+                        tmpVec1 = light.Direction;
+                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                        tmpMat2 = lNode.WorldTransformation;
+                        MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
+                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+
+                        source.Direction = tmpMat3.Translation;
                         source.Specular = light.Specular;
 
                         lightSources.Add(source);
@@ -214,8 +233,14 @@ namespace GoblinXNA.Shaders
 
                         LightSource source = new LightSource();
                         source.Diffuse = light.Diffuse;
-                        source.Direction = ((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+
+                        tmpVec1 = light.Direction;
+                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                        tmpMat2 = lNode.WorldTransformation;
+                        MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
+                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+
+                        source.Direction = tmpMat3.Translation;
                         source.Specular = light.Specular;
 
                         lightSources.Add(source);
@@ -240,8 +265,7 @@ namespace GoblinXNA.Shaders
                 {
                     lights[i].Enabled = true;
                     lights[i].DiffuseColor = Vector3Helper.GetVector3(lightSources[i].Diffuse);
-                    lights[i].Direction =
-                        lightSources[i].Direction;
+                    lights[i].Direction = lightSources[i].Direction;
                     lights[i].SpecularColor = Vector3Helper.GetVector3(lightSources[i].Specular);
                     atLeastOneLight = true;
                 }

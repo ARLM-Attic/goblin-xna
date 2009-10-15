@@ -18,13 +18,19 @@ using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Physics;
 using GoblinXNA.Sounds;
 using GoblinXNA.UI;
+using GoblinXNA.UI.UI3D;
+
+// 3D Text rendering library from http://nuclexframework.codeplex.com/
+// Nuclex.Fonts used here is modified a little bit to better suite Goblin
+// framework, and compiled using XNA Game Studio 3.1 instead of 3.0 
+using Nuclex.Fonts;
 
 namespace Tutorial9___Advanced_Features
 {
     /// <summary>
     /// This tutorial demonstrates some of the advanced features provided by Goblin XNA framework,
-    /// including sound, physics material settings using the wrapped Newton physics library, and
-    /// debugging. 
+    /// including sound, physics material settings using the wrapped Newton physics library,
+    /// 3D text rendering, and debugging. 
     /// </summary>
     public class Tutorial9 : Microsoft.Xna.Framework.Game
     {
@@ -33,6 +39,11 @@ namespace Tutorial9___Advanced_Features
         int shooterID = 0;
         Material shooterMat;
         Model boxModel;
+        int collisionCount = 0;
+        // A font to render a 3D text
+        VectorFont vectorFont;
+        // A list of 3D texts to display
+        List<Text3DInfo> text3ds;
 
         public Tutorial9()
         {
@@ -68,6 +79,8 @@ namespace Tutorial9___Advanced_Features
             // Initialize the XNA audio engine
             Sound.Initialize("Tutorial9");
 
+            text3ds = new List<Text3DInfo>();
+
             // Set up the lights used in the scene
             CreateLights();
 
@@ -90,10 +103,36 @@ namespace Tutorial9___Advanced_Features
                 Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
             {
                 if (contactSpeed > 2)
+                    collisionCount++;
+
+                // When a cube box collides with the ground, it can have more than 1 contact points
+                // depending on the collision surface, so we only play sound and add 3D texts once
+                // every four contacts to avoid multiple sound play or text addition for one surface
+                // contact
+                if (collisionCount >= 4)
                 {
+                    // Set the collision sound volume based on the contact speed
                     Sound.SetVolume("Default", contactSpeed);
                     Sound.Play("rubber_ball_01");
+                    // Print a text message on the screen
                     Notifier.AddMessage("Contact with speed of " + contactSpeed);
+
+                    // Create a 3D text to be rendered
+                    Text3DInfo text3d = new Text3DInfo();
+                    text3d.Text = "BOOM!!";
+                    // The larger the contact speed, the longer the 3D text will stay displayed
+                    text3d.Duration = contactSpeed * 500;
+                    text3d.ElapsedTime = 0;
+                    // Scale down the vector font since it's quite large, and display the text
+                    // above the contact position
+                    text3d.Transform = Matrix.CreateScale(0.03f) *
+                        Matrix.CreateTranslation(contactPosition + Vector3.UnitY * 4);
+
+                    // Add this 3D text to the display list
+                    text3ds.Add(text3d);
+
+                    // Reset the count
+                    collisionCount = 0;
                 }
             };
 
@@ -284,6 +323,13 @@ namespace Tutorial9___Advanced_Features
             scene.RootNode.AddChild(shootBox);
         }
 
+        protected override void LoadContent()
+        {
+            base.LoadContent();
+
+            vectorFont = Content.Load<VectorFont>("Arial-24-Vector");
+        }
+
         /// <summary>
         /// UnloadContent will be called once per game and is the place to unload
         /// all content.
@@ -300,6 +346,23 @@ namespace Tutorial9___Advanced_Features
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            float elapsedMsecs = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+
+            // Create a list of 3D text to remove
+            List<Text3DInfo> removeList = new List<Text3DInfo>();
+            for (int i = 0; i < text3ds.Count; i++)
+            {
+                // Increment the elapsed time
+                text3ds[i].ElapsedTime += elapsedMsecs;
+                // If the elapsed time becomes larger than the duration, then remove the
+                // 3D text from the display list
+                if (text3ds[i].ElapsedTime > text3ds[i].Duration)
+                    removeList.Add(text3ds[i]);
+            }
+
+            for (int i = 0; i < removeList.Count; i++)
+                text3ds.Remove(removeList[i]);
+
             base.Update(gameTime);
         }
 
@@ -309,7 +372,38 @@ namespace Tutorial9___Advanced_Features
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
+            if (text3ds.Count > 0)
+            {
+                // Catch exception in case text3ds becomes empty after deletion in Update
+                try
+                {
+                    Text3DInfo[] text3DArray = new Text3DInfo[text3ds.Count];
+                    // Copy the display list to an array since the display list can be modified
+                    // at any time
+                    text3ds.CopyTo(text3DArray);
+
+                    // Render the 3D texts in the display list in outline style with red color
+                    foreach (Text3DInfo text3d in text3DArray)
+                        UI3DRenderer.Write3DText(text3d.Text, vectorFont, UI3DRenderer.Text3DStyle.Outline,
+                            Color.Red, text3d.Transform);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
             base.Draw(gameTime);
+        }
+
+        /// <summary>
+        /// A class to store 3D text information.
+        /// </summary>
+        private class Text3DInfo
+        {
+            public String Text;
+            public float Duration;
+            public float ElapsedTime;
+            public Matrix Transform;
         }
     }
 }

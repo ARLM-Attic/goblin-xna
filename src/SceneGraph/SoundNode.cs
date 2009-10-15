@@ -64,7 +64,7 @@ namespace GoblinXNA.SceneGraph
             : base(name)
         {
             worldTransformation = Matrix.Identity;
-            velocity = Vector3.Zero;
+            velocity = new Vector3();
         }
 
         /// <summary>

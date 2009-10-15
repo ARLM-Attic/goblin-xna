@@ -120,10 +120,10 @@ namespace GoblinXNA.Network
         void SendMessage(byte[] msg, List<String> ipAddresses, bool reliable, bool inOrder);
 
         /// <summary>
-        /// Receives a list of messages in byte arrays.
+        /// Concatenates received messages in byte arrays to the passed list.
         /// </summary>
-        /// <returns>A list of received messages in array of bytes</returns>
-        List<byte[]> ReceiveMessage();
+        /// <param name="messages">Received messages in array of bytes</param>
+        void ReceiveMessage(ref List<byte[]> messages);
 
         /// <summary>
         /// Shuts down the server.

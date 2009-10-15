@@ -37,6 +37,8 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -51,7 +53,7 @@ namespace GoblinXNA.Graphics.Geometry
         /// <param name="ydim">Y dimension</param>
         /// <param name="zdim">Z dimension</param>
         public Box(float xdim, float ydim, float zdim)
-            : this(new Vector3(xdim, ydim, zdim))
+            : base(CreateBox(xdim, ydim, zdim))
         {
         }
 
@@ -60,7 +62,7 @@ namespace GoblinXNA.Graphics.Geometry
         /// </summary>
         /// <param name="length">Length of each side of the cube</param>
         public Box(float length)
-            : this(new Vector3(length, length, length))
+            : base(CreateBox(length, length, length))
         {
         }
 
@@ -69,32 +71,36 @@ namespace GoblinXNA.Graphics.Geometry
         /// </summary>
         /// <param name="dimension">Dimension of the box geometry</param>
         public Box(Vector3 dimension)
-            : base(CreateBox(dimension))
+            : base(CreateBox(dimension.X, dimension.Y, dimension.Z))
         {
         }
 
-        private static PrimitiveMesh CreateBox(Vector3 dimension)
+        private static PrimitiveMesh CreateBox(float xdim, float ydim, float zdim)
         {
             PrimitiveMesh mesh = new PrimitiveMesh();
 
             VertexPositionNormal[] vertices = new VertexPositionNormal[24];
-            Vector3 halfExtent = dimension / 2;
+            Vector3 halfExtent = new Vector3(); 
+            
+            halfExtent.X = xdim / 2;
+            halfExtent.Y = ydim / 2;
+            halfExtent.Z = zdim / 2;
 
-            Vector3 v0 = new Vector3(-halfExtent.X, -halfExtent.Y, -halfExtent.Z);
-            Vector3 v1 = new Vector3(halfExtent.X, -halfExtent.Y, -halfExtent.Z);
-            Vector3 v2 = new Vector3(-halfExtent.X, halfExtent.Y, -halfExtent.Z);
-            Vector3 v3 = new Vector3(halfExtent.X, halfExtent.Y, -halfExtent.Z);
-            Vector3 v4 = new Vector3(halfExtent.X, halfExtent.Y, halfExtent.Z);
-            Vector3 v5 = new Vector3(-halfExtent.X, halfExtent.Y, halfExtent.Z);
-            Vector3 v6 = new Vector3(halfExtent.X, -halfExtent.Y, halfExtent.Z);
-            Vector3 v7 = new Vector3(-halfExtent.X, -halfExtent.Y, halfExtent.Z);
+            Vector3 v0 = Vector3Helper.Get(-halfExtent.X, -halfExtent.Y, -halfExtent.Z);
+            Vector3 v1 = Vector3Helper.Get(halfExtent.X, -halfExtent.Y, -halfExtent.Z);
+            Vector3 v2 = Vector3Helper.Get(-halfExtent.X, halfExtent.Y, -halfExtent.Z);
+            Vector3 v3 = Vector3Helper.Get(halfExtent.X, halfExtent.Y, -halfExtent.Z);
+            Vector3 v4 = Vector3Helper.Get(halfExtent.X, halfExtent.Y, halfExtent.Z);
+            Vector3 v5 = Vector3Helper.Get(-halfExtent.X, halfExtent.Y, halfExtent.Z);
+            Vector3 v6 = Vector3Helper.Get(halfExtent.X, -halfExtent.Y, halfExtent.Z);
+            Vector3 v7 = Vector3Helper.Get(-halfExtent.X, -halfExtent.Y, halfExtent.Z);
 
-            Vector3 nZ = new Vector3(0, 0, -1);
-            Vector3 pZ = new Vector3(0, 0, 1);
-            Vector3 nX = new Vector3(-1, 0, 0);
-            Vector3 pX = new Vector3(1, 0, 0);
-            Vector3 nY = new Vector3(0, -1, 0);
-            Vector3 pY = new Vector3(0, 1, 0);
+            Vector3 nZ = -Vector3.UnitZ;
+            Vector3 pZ = Vector3.UnitZ;
+            Vector3 nX = -Vector3.UnitX;
+            Vector3 pX = Vector3.UnitX;
+            Vector3 nY = -Vector3.UnitY;
+            Vector3 pY = Vector3.UnitY;
 
             vertices[0].Position = v0; vertices[1].Position = v1; 
             vertices[2].Position = v2; vertices[3].Position = v3; 

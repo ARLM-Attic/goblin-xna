@@ -232,10 +232,8 @@ namespace GoblinXNA.Network
             }
         }
 
-        public List<byte[]> ReceiveMessage()
+        public void ReceiveMessage(ref List<byte[]> messages)
         {
-            List<byte[]> messages = new List<byte[]>();
-
             NetMessageType type;
 
             try
@@ -281,8 +279,6 @@ namespace GoblinXNA.Network
             {
                 Log.Write("Socket exception is thrown in ReceiveMessage: " + se.StackTrace);
             }
-
-            return messages;
         }
 
         public void SendMessage(byte[] msg, bool reliable, bool inOrder)

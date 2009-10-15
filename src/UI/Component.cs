@@ -34,23 +34,176 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-using GoblinXNA.UI.Events;
-
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+
+using GoblinXNA.Device.Generic;
 
 namespace GoblinXNA.UI
 {
+    #region Enum
+
+    public enum SelectionType
+    {
+        Selection,
+        Deselection,
+        Mixed
+    }
+
+    #endregion
+
+    #region Event Delegates
+
+    /// <summary>
+    /// Invoked when the component is focused
+    /// </summary>
+    /// <param name="source"></param>
+    public delegate void FocusGained(object source);
+
+    /// <summary>
+    /// Invoked when the component loses focus
+    /// </summary>
+    /// <param name="source"></param>
+    public delegate void FocusLost(object source);
+
+    /// <summary>
+    /// Invoked when a component is added to the container
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="component"></param>
+    public delegate void ComponentAdded(object source, Component component);
+
+    /// <summary>
+    /// Invoked when a component is removed from the container
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="component"></param>
+    public delegate void ComponentRemoved(object source, Component component);
+
+    /// <summary>
+    /// Invoked when a certain action is performed
+    /// </summary>
+    /// <param name="source"></param>
+    public delegate void ActionPerformed(object source);
+
+    /// <summary>
+    /// Invoked when the target of the listener has changed its state
+    /// </summary>
+    /// <param name="source"></param>
+    public delegate void StateChanged(object source);
+
+    /// <summary>
+    /// Invoked when an item has been selected or deselected by the user
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="item"></param>
+    /// <param name="selected"></param>
+    public delegate void ItemStateChanged(object source, object item, bool selected);
+
+    /// <summary>
+    /// Invoked when caret position is updated
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="caretPosition"></param>
+    public delegate void CaretUpdate(object source, Point caretPosition);
+
+    /// <summary>
+    /// Invoked when key is pressed
+    /// </summary>
+    public delegate void KeyPressed(Keys key, KeyModifier modifier);
+
+    /// <summary>
+    /// Invoked when key is released
+    /// </summary>
+    public delegate void KeyReleased(Keys key, KeyModifier modifier);
+
+    /// <summary>
+    /// Invoked when key is typed
+    /// </summary>
+    public delegate void KeyTyped(Keys key, KeyModifier modifier);
+
+    /// <summary>
+    /// Invoked when the contents of the list has changed.
+    /// </summary>
+    public delegate void ContentsChanged(object source, int index0, int index1);
+
+    /// <summary>
+    /// Invoked when one or more elements are inserted in the indices from index0 to index1 in the data model.
+    /// </summary>
+    public delegate void IntervalAdded(object source, int index0, int index1);
+
+    /// <summary>
+    /// Invoked when one or more elements are removed from the indices between index0 and index1 in the data model.
+    /// </summary>
+    public delegate void IntervalRemoved(object source, int index0, int index1);
+
+    /// <summary>
+    /// Invoked when the value of the selection changes.
+    /// </summary>
+    /// <param name="evt"></param>
+    public delegate void ValueChanged(object src, SelectionType type, int firstIndex, int lastIndex, bool isAdjusting);
+
+    /// <summary>
+    /// Invoked when mouse is clicked within the bounds.
+    /// </summary>
+    public delegate void MouseClicked(int button, Point mouseLocation);
+
+    /// <summary>
+    /// Invoked when mouse enters in the bounds.
+    /// </summary>
+    public delegate void MouseEntered();
+
+    /// <summary>
+    /// Invoked when mouse exits from the bounds.
+    /// </summary>
+    public delegate void MouseExited();
+
+    /// <summary>
+    /// Invoked when mouse is pressed within the bounds.
+    /// </summary>
+    public delegate void MousePressed(int button, Point mouseLocation);
+
+    /// <summary>
+    /// Invoked when mouse is released within the bounds.
+    /// </summary>
+    public delegate void MouseReleased(int button, Point mouseLocation);
+
+    /// <summary>
+    /// Invoked when mouse is moved within the bounds.
+    /// </summary>
+    /// <param name="button">The button held down</param>
+    /// <param name="startLocation">The start mouse location of the dragging</param>
+    /// <param name="currentLocation">The current mouse location of the dragging</param>
+    public delegate void MouseDragged(int button, Point startLocation, Point currentLocation);
+
+    /// <summary>
+    /// Invoked when mouse is dragged within the bounds.
+    /// </summary>
+    /// <param name="mouseLocation">The location of the mouse in screen coordinate</param>
+    public delegate void MouseMoved(Point mouseLocation);
+
+    /// <summary>
+    /// Invoked when mouse wheel is moved if mouse wheel is available
+    /// </summary>
+    /// <param name="delta">The amount moved from previous mouse wheel</param>
+    /// <param name="value">The current mouse wheel value</param>
+    public delegate void MouseWheelMoved(int delta, int value);
+
+    #endregion
+
     /// <summary>
     /// An abstract UI component. This class cannot be instantiated.
     /// </summary>
     abstract public class Component
     {
         #region Member Fields
+
         /// <summary>
         /// Default color of the background
         /// </summary>
         public static Color DEFAULT_COLOR = Color.LightGray;
+
         /// <summary>
         /// Default transparency value for any colors associated with this component
         /// </summary>
@@ -60,53 +213,65 @@ namespace GoblinXNA.UI
         /// Parent component of this component for scene-graph-based drawing
         /// </summary>
         protected Component parent;
+
         /// <summary>
         /// Background color of this component if enabled
         /// </summary>
         protected Color backgroundColor;
+
         /// <summary>
         /// Background color of this component if not enabled
         /// </summary>
         protected Color disabledColor;
+
         /// <summary>
         /// Border color of this component's background
         /// </summary>
         protected Color borderColor;
+
         /// <summary>
         /// Indicator of whether to paint the border
         /// </summary>
         protected bool drawBorder;
+
         /// <summary>
         /// Indicator of whether to paint the background
         /// </summary>
         protected bool drawBackground;
+
         /// <summary>
         /// Transparency value in the range [0 -- 255]
         /// </summary>
         protected byte alpha;
+
         /// <summary>
         /// Indicator of whether this component is visible
         /// </summary>
         protected bool visible;
+
         /// <summary>
         /// Indicator of whether this component is enabled
         /// </summary>
         protected bool enabled;
+
         /// <summary>
         /// Indicator of whether this component is focused . 
         /// NOTE: This variable is useful only for indicating that the component
         /// should receive key input
         /// </summary>
         protected bool focused;
+
         /// <summary>
         /// Name of this component. 
         /// NOTE: Mostly used only for debugging (See ToString() method)
         /// </summary>
         protected String name;
+
         /// <summary>
         /// Label/Text associated with this component
         /// </summary>
         protected String label;
+
         /// <summary>
         /// Color of the texture (it's always Color.White, but it contains alpha info as well)
         /// </summary>
@@ -116,6 +281,7 @@ namespace GoblinXNA.UI
         /// Indicator of how label/text should be aligned horizontally
         /// </summary>
         protected GoblinEnums.HorizontalAlignment horizontalAlignment;
+
         /// <summary>
         /// Indicator of how label/text should be aligned vertically
         /// </summary>
@@ -125,36 +291,28 @@ namespace GoblinXNA.UI
         /// Label/Text color
         /// </summary>
         protected Color textColor;
+
         /// <summary>
         /// Transparency value of the label/text
         /// </summary>
         protected byte textAlpha;
+
         /// <summary>
         /// Indicator of whether a key is held down
         /// </summary>
         protected bool keyDown;
-
-        #region Event Listeners Fields
-        /// <summary>
-        /// A list of container listeners
-        /// </summary>
-        protected List<ContainerListener> containerListeners;
-        /// <summary>
-        /// A list of focus listeners
-        /// </summary>
-        protected List<FocusListener> focusListeners;
-        
-        #endregion
 
         /// <summary>
         /// Indicator of whether any mouse button is held down. 
         /// NOTE: Mainly used for detecting mouse dragging event
         /// </summary>
         protected bool mouseDown;
+
         /// <summary>
         /// Indicator of whether the mouse pointer is hovering on this component
         /// </summary>
         protected bool within;
+
         /// <summary>
         /// Indicator of whether the mouse has entered the bound of this component. 
         /// NOTE: Mainly used for detecting mouse enter and exit event
@@ -165,6 +323,20 @@ namespace GoblinXNA.UI
         /// An XNA class used for loading a texture for the background image
         /// </summary>
         protected Texture2D backTexture;
+        #endregion
+
+        #region Events
+
+        /// <summary>
+        /// An event triggered whenever a focus is gained on this component.
+        /// </summary>
+        public event FocusGained FocusGainedEvent;
+
+        /// <summary>
+        /// An event triggered whenever a focus is lost on this component.
+        /// </summary>
+        public event FocusLost FocusLostEvent;
+
         #endregion
 
         #region Constructors
@@ -178,9 +350,6 @@ namespace GoblinXNA.UI
         {
             this.alpha = (byte)(alpha * 255);
             this.backgroundColor= new Color(bgColor.R, bgColor.G, bgColor.B, this.alpha);
-
-            containerListeners = new List<ContainerListener>();
-            focusListeners = new List<FocusListener>();
          
             name = "Component";
             visible = true;
@@ -278,10 +447,7 @@ namespace GoblinXNA.UI
 
                 alpha = (byte)(value * 255);
 
-                backgroundColor = new Color(backgroundColor.R, backgroundColor.G, backgroundColor.B, alpha);
-                borderColor = new Color(borderColor.R, borderColor.G, borderColor.B, alpha);
-                disabledColor = new Color(disabledColor.R, disabledColor.G, disabledColor.B, alpha);
-                textureColor = new Color(255, 255, 255, alpha);
+                backgroundColor.A = borderColor.A = disabledColor.A = textureColor.A = alpha;
             }
         }
 
@@ -316,15 +482,14 @@ namespace GoblinXNA.UI
             get { return focused; }
             internal set
             {
-                focused = value;
-
-                foreach (FocusListener listener in focusListeners)
+                if (focused != value)
                 {
-                    FocusEvent evt = new FocusEvent(this);
+                    focused = value;
+
                     if (focused)
-                        listener.FocusGained(evt);
+                        InvokeFocusGainedEvent(this);
                     else
-                        listener.FocusLost(evt);
+                        InvokeFocusLostEvent(this);
                 }
             }
         }
@@ -344,6 +509,15 @@ namespace GoblinXNA.UI
                 drawBorder = false;
                 drawBackground = true;
             }
+        }
+
+        /// <summary>
+        /// Gets or sets the color of the background texture if set. The default color is Color.White.
+        /// </summary>
+        public virtual Color TextureColor
+        {
+            get { return textureColor; }
+            set { textureColor = value; }
         }
 
         /// <summary>
@@ -447,7 +621,7 @@ namespace GoblinXNA.UI
                         " Possible values: 0.0 - 1.0");
 
                 this.textAlpha = (byte)(value * 255);
-                textColor = new Color(textColor.R, textColor.G, textColor.B, textAlpha);
+                textColor.A = textAlpha;
             }
         }
 
@@ -469,61 +643,30 @@ namespace GoblinXNA.UI
             set { verticalAlignment = value; }
         }
 
-        /// <summary>
-        /// Gets a list of container listeners added to this component.
-        /// </summary>
-        public virtual List<ContainerListener> ContainerListeners
-        {
-            get { return containerListeners; }
-        }
-
-        /// <summary>
-        /// Gets a list of focus listeners added to this component.
-        /// </summary>
-        public virtual List<FocusListener> FocusListeners
-        {
-            get { return focusListeners; }
-        }
         #endregion
 
-        #region Event Listener Methods
+        #region Protected Methods
+
         /// <summary>
-        /// Add a listener for container events (componentAdded, componentRemoved).
+        /// Invokes focus gained event.
         /// </summary>
-        /// <param name="listener"></param>
-        public virtual void AddContainerListener(ContainerListener listener)
+        /// <param name="source">The class that invoked this event.</param>
+        protected void InvokeFocusGainedEvent(object source)
         {
-            if (listener != null && !containerListeners.Contains(listener))
-                containerListeners.Add(listener);
+            if (FocusGainedEvent != null)
+                FocusGainedEvent(source);
         }
 
         /// <summary>
-        /// Add a listener for focus events (focusGained, focusLost).
+        /// Invokes focus lost event.
         /// </summary>
-        /// <param name="listener"></param>
-        public virtual void AddFocusListener(FocusListener listener)
+        /// <param name="source">The class that invoked this event.</param>
+        protected void InvokeFocusLostEvent(object source)
         {
-            if (listener != null && !focusListeners.Contains(listener))
-                focusListeners.Add(listener);
-        }
-        
-        /// <summary>
-        /// Remove a specific container listener if already added.
-        /// </summary>
-        /// <param name="listener"></param>
-        public virtual void RemoveContainerListener(ContainerListener listener)
-        {
-            containerListeners.Remove(listener);
+            if (FocusLostEvent != null)
+                FocusLostEvent(source);
         }
 
-        /// <summary>
-        /// Remove a specific focus listener if already added.
-        /// </summary>
-        /// <param name="listener"></param>
-        public virtual void RemoveFocusListener(FocusListener listener)
-        {
-            focusListeners.Remove(listener);
-        }
         #endregion
     }
 }

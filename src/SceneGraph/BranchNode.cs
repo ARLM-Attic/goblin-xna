@@ -112,7 +112,7 @@ namespace GoblinXNA.SceneGraph
                 while (scene.Processing) { }
             }
             children.Add(node);
-            node.Enabled = this.Enabled;
+            //node.Enabled = this.Enabled;
             node.Parent = this;
             PropagateSceneGraph(node);
         }

@@ -37,6 +37,8 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -77,15 +79,15 @@ namespace GoblinXNA.Graphics.Geometry
 
             // Add top center vertex
             VertexPositionNormal topCenter = new VertexPositionNormal();
-            topCenter.Position = new Vector3(0, height / 2, 0);
-            topCenter.Normal = new Vector3(0, 1, 0);
+            topCenter.Position = Vector3Helper.Get(0, height / 2, 0);
+            topCenter.Normal = Vector3Helper.Get(0, 1, 0);
 
             vertices.Add(topCenter);
 
             // Add bottom center vertex
             VertexPositionNormal bottomCenter = new VertexPositionNormal();
-            bottomCenter.Position = new Vector3(0, -height / 2, 0);
-            bottomCenter.Normal = new Vector3(0, -1, 0);
+            bottomCenter.Position = Vector3Helper.Get(0, -height / 2, 0);
+            bottomCenter.Normal = Vector3Helper.Get(0, -1, 0);
 
             vertices.Add(bottomCenter);
 
@@ -107,20 +109,20 @@ namespace GoblinXNA.Graphics.Geometry
                     sin = (float)Math.Sin(angle);
 
                     VertexPositionNormal topSide = new VertexPositionNormal();
-                    topSide.Position = new Vector3(cos * top, height / 2, sin * top);
+                    topSide.Position = Vector3Helper.Get(cos * top, height / 2, sin * top);
                     topSide.Normal = Vector3.Normalize(topSide.Position - topCenter.Position);
 
                     VertexPositionNormal topSide2 = new VertexPositionNormal();
-                    topSide2.Position = new Vector3(cos * top, height / 2, sin * top);
+                    topSide2.Position = Vector3Helper.Get(cos * top, height / 2, sin * top);
                     topSide2.Normal = topCenter.Normal;
 
                     // Add bottom side vertices
                     VertexPositionNormal bottomSide = new VertexPositionNormal();
-                    bottomSide.Position = new Vector3(cos * bottom, -height / 2, sin * bottom);
+                    bottomSide.Position = Vector3Helper.Get(cos * bottom, -height / 2, sin * bottom);
                     bottomSide.Normal = Vector3.Normalize(bottomSide.Position - bottomCenter.Position);
 
                     VertexPositionNormal bottomSide2 = new VertexPositionNormal();
-                    bottomSide2.Position = new Vector3(cos * bottom, -height / 2, sin * bottom);
+                    bottomSide2.Position = Vector3Helper.Get(cos * bottom, -height / 2, sin * bottom);
                     bottomSide2.Normal = bottomCenter.Normal;
 
                     if (tilted)
@@ -150,11 +152,11 @@ namespace GoblinXNA.Graphics.Geometry
 
                     // Add bottom side vertices
                     VertexPositionNormal bottomSide = new VertexPositionNormal();
-                    bottomSide.Position = new Vector3(cos * bottom, -height / 2, sin * bottom);
+                    bottomSide.Position = Vector3Helper.Get(cos * bottom, -height / 2, sin * bottom);
                     bottomSide.Normal = Vector3.Normalize(bottomSide.Position - bottomCenter.Position);
 
                     VertexPositionNormal bottomSide2 = new VertexPositionNormal();
-                    bottomSide2.Position = new Vector3(cos * bottom, -height / 2, sin * bottom);
+                    bottomSide2.Position = Vector3Helper.Get(cos * bottom, -height / 2, sin * bottom);
                     bottomSide2.Normal = bottomCenter.Normal;
 
                     v = bottomSide.Normal;

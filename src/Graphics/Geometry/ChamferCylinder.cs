@@ -36,6 +36,8 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -71,8 +73,8 @@ namespace GoblinXNA.Graphics.Geometry
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 
             float halfH = height / 2;
-            Vector3 topCenter = new Vector3(0, halfH, 0);
-            Vector3 bottomCenter = new Vector3(0, -halfH, 0);
+            Vector3 topCenter = Vector3Helper.Get(0, halfH, 0);
+            Vector3 bottomCenter = Vector3Helper.Get(0, -halfH, 0);
 
             double thai = 0, theta = 0;
             double thaiIncr = Math.PI / slices;
@@ -85,7 +87,7 @@ namespace GoblinXNA.Graphics.Geometry
                 for (countB = 0, theta = 0; countB < slices; theta += thetaIncr, countB++)
                 {
                     VertexPositionNormal vert = new VertexPositionNormal();
-                    vert.Position = new Vector3((float)(halfH * Math.Sin(thai) * Math.Cos(theta) + radius * Math.Cos(theta)),
+                    vert.Position = Vector3Helper.Get((float)(halfH * Math.Sin(thai) * Math.Cos(theta) + radius * Math.Cos(theta)),
                         (float)(halfH * Math.Cos(thai)), 
                         (float)(halfH * Math.Sin(thai) * Math.Sin(theta) + radius * Math.Sin(theta)));
                     vert.Normal = Vector3.Normalize(vert.Position);

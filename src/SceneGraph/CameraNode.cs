@@ -78,6 +78,10 @@ namespace GoblinXNA.SceneGraph
             compoundViewMatrix = Matrix.Identity;
             leftCompoundMatrix = Matrix.Identity;
             rightCompoundMatrix = Matrix.Identity;
+
+            viewFrustum = new BoundingFrustum(camera.Projection);
+            leftViewFrustum = new BoundingFrustum(camera.Projection);
+            rightViewFrustum = new BoundingFrustum(camera.Projection);
         }
 
         /// <summary>
@@ -114,8 +118,11 @@ namespace GoblinXNA.SceneGraph
             get { return compoundViewMatrix; }
             internal set
             {
-                compoundViewMatrix = value;
-                viewFrustum = new BoundingFrustum(value * camera.Projection);
+                if (!compoundViewMatrix.Equals(value))
+                {
+                    compoundViewMatrix = value;
+                    viewFrustum = new BoundingFrustum(value * camera.Projection);
+                }
             }
         }
 
@@ -149,8 +156,11 @@ namespace GoblinXNA.SceneGraph
                 if (!isStereo)
                     throw new GoblinException("Use CompoundViewMatrix for mono (non-stereo) camera");
 
-                leftCompoundMatrix = value;
-                leftViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).LeftProjection);
+                if (!leftCompoundMatrix.Equals(value))
+                {
+                    leftCompoundMatrix = value;
+                    leftViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).LeftProjection);
+                }
             }
         }
 
@@ -172,8 +182,11 @@ namespace GoblinXNA.SceneGraph
                 if (!isStereo)
                     throw new GoblinException("Use CompoundViewMatrix for mono (non-stereo) camera");
 
-                rightCompoundMatrix = value;
-                rightViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).RightProjection);
+                if (!rightCompoundMatrix.Equals(value))
+                {
+                    rightCompoundMatrix = value;
+                    rightViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).RightProjection);
+                }
             }
         }
 

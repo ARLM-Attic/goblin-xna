@@ -213,6 +213,16 @@ namespace GoblinXNA.Physics
 
         private List<Joint> jointsToBeAdded;
         #endregion
+
+        #region Temporary Variables For Calculation
+
+        private Matrix tmpMat1 = Matrix.Identity;
+        private Matrix tmpMat2 = Matrix.Identity;
+        private Vector3 tmpVec1 = new Vector3();
+        private Vector3 tmpVec2 = new Vector3();
+
+        #endregion
+
         #endregion
 
         #region Constructors
@@ -222,7 +232,7 @@ namespace GoblinXNA.Physics
         public NewtonPhysics()
         {
             gravity = 9.8f;
-            gravityDir = new Vector3(0, -1, 0);
+            gravityDir = Vector3Helper.Get(0, -1, 0);
             useBoundingBox = false;
             worldSize = new BoundingBox(Vector3.One * -100, Vector3.One * 100);
 
@@ -255,17 +265,24 @@ namespace GoblinXNA.Physics
                     return;
 
                 ShapeType shape = reverseIDs[body].Shape;
+
+                tmpVec1 = scaleTable[body];
                 if ((shape == ShapeType.Box) || (shape == ShapeType.Sphere) || (shape == ShapeType.ConvexHull) 
                     || (shape == ShapeType.TriangleMesh))
                 {
-                    reverseIDs[body].PhysicsWorldTransform = Matrix.CreateScale(scaleTable[body]) *
-                        MatrixHelper.FloatsToMatrix(pMatrix);
+                    Matrix.CreateScale(ref tmpVec1, out tmpMat1);
+                    MatrixHelper.FloatsToMatrix(pMatrix, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat1);
+                    reverseIDs[body].PhysicsWorldTransform = tmpMat1;
                 }
                 else
                 {
-                    reverseIDs[body].PhysicsWorldTransform = Matrix.CreateScale(scaleTable[body]) *
-                        Matrix.CreateRotationZ(-MathHelper.PiOver2) *
-                        MatrixHelper.FloatsToMatrix(pMatrix);
+                    Matrix.CreateScale(ref tmpVec1, out tmpMat1);
+                    Matrix.CreateRotationZ(-MathHelper.PiOver2, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat1);
+                    MatrixHelper.FloatsToMatrix(pMatrix, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat1);
+                    reverseIDs[body].PhysicsWorldTransform = tmpMat1;
                 }
             };
 
@@ -278,7 +295,8 @@ namespace GoblinXNA.Physics
                     float Ixx = 0, Iyy = 0, Izz = 0, mass = 0;
 
                     Newton.NewtonBodyGetMassMatrix(pNewtonBody, ref mass, ref Ixx, ref Iyy, ref Izz);
-                    force = Vector3Helper.ToFloats(gravityDir * gravity * mass);
+
+                    force = Vector3Helper.ToFloats(Vector3Helper.Multiply(ref gravityDir, gravity * mass));
                 }
 
                 Vector3 tmp;
@@ -359,11 +377,11 @@ namespace GoblinXNA.Physics
                 Newton.NewtonMaterialGetContactTangentDirections(pMaterial, colObj1ContactTangentDir,
                     colObj2ContactTangentDir);
 
-                physMat.ContactProcessCallback(new Vector3(contactPos[0], contactPos[1], contactPos[2]),
-                    new Vector3(contactNormal[0], contactNormal[1], contactNormal[2]),
+                physMat.ContactProcessCallback(Vector3Helper.Get(contactPos[0], contactPos[1], contactPos[2]),
+                    Vector3Helper.Get(contactNormal[0], contactNormal[1], contactNormal[2]),
                     contactNormalSpeed, colObj1ContactTangentSpeed, colObj2ContactTangentSpeed,
-                    new Vector3(colObj1ContactTangentDir[0], colObj1ContactTangentDir[1], colObj1ContactTangentDir[2]),
-                    new Vector3(colObj2ContactTangentDir[0], colObj2ContactTangentDir[1], colObj2ContactTangentDir[2]));
+                    Vector3Helper.Get(colObj1ContactTangentDir[0], colObj1ContactTangentDir[1], colObj1ContactTangentDir[2]),
+                    Vector3Helper.Get(colObj2ContactTangentDir[0], colObj2ContactTangentDir[1], colObj2ContactTangentDir[2]));
 
                 return 1;
             };
@@ -385,7 +403,7 @@ namespace GoblinXNA.Physics
                 if (vertexCount > max)
                     Log.Write("More faceArray needed for drawing the collision mesh: " + vertexCount);
                 for (int i = 0; i < vertexCount && i < max; i++)
-                    verts.Add(new Vector3(faceArray[i * 3], faceArray[i * 3 + 1], faceArray[i * 3 + 2]));
+                    verts.Add(Vector3Helper.Get(faceArray[i * 3], faceArray[i * 3 + 1], faceArray[i * 3 + 2]));
 
                 collisionMesh.Add(verts);
             };
@@ -580,7 +598,7 @@ namespace GoblinXNA.Physics
                 Newton.NewtonBodySetMassMatrix(body, physObj.Mass, momentOfInertia.X,
                     momentOfInertia.Y, momentOfInertia.Z);
 
-                // set the relative position of center of mass if not Vector3.Zero
+                // set the relative position of center of mass if not new Vector3()
                 if (!physObj.CenterOfMass.Equals(Vector3.Zero))
                 {
                     float[] centerOfMass = {physObj.CenterOfMass.X, physObj.CenterOfMass.Y,
@@ -748,7 +766,7 @@ namespace GoblinXNA.Physics
                 Newton.NewtonBodySetMassMatrix(body, physObj.Mass, momentOfInertia.X,
                     momentOfInertia.Y, momentOfInertia.Z);
 
-                // set the center of mass if not Vector3.Zero
+                // set the center of mass if not new Vector3()
                 if (!physObj.CenterOfMass.Equals(Vector3.Zero))
                 {
                     float[] centerOfMass = {physObj.CenterOfMass.X, physObj.CenterOfMass.Y,
@@ -941,6 +959,8 @@ namespace GoblinXNA.Physics
             for(int i = 0; i < updateTime; i++)
                 Newton.NewtonUpdate(nWorld, updateTime);
 
+            float[] floats1 = new float[16];
+            float[] floats2 = new float[16];
             // Checks for collisions
             foreach (CollisionPair pair in collisionCallbacks.Keys)
             {
@@ -948,20 +968,27 @@ namespace GoblinXNA.Physics
                 {
                     IntPtr collision1 = Newton.NewtonBodyGetCollision(objectIDs[pair.CollisionObject1]);
                     IntPtr collision2 = Newton.NewtonBodyGetCollision(objectIDs[pair.CollisionObject2]);
-                    Vector3 invScale1 = scaleTable[objectIDs[pair.CollisionObject1]];
-                    invScale1 = new Vector3(1 / invScale1.X, 1 / invScale1.Y, 1 / invScale1.Z);
-                    Vector3 invScale2 = scaleTable[objectIDs[pair.CollisionObject2]];
-                    invScale2 = new Vector3(1 / invScale2.X, 1 / invScale2.Y, 1 / invScale2.Z);
+                    tmpVec1 = scaleTable[objectIDs[pair.CollisionObject1]];
+                    tmpVec1.X = 1 / tmpVec1.X; tmpVec1.Y = 1 / tmpVec1.Y; tmpVec1.Z = 1 / tmpVec1.Z;
+                    tmpVec2 = scaleTable[objectIDs[pair.CollisionObject2]];
+                    tmpVec2.X = 1 / tmpVec2.X; tmpVec2.Y = 1 / tmpVec2.Y; tmpVec2.Z = 1 / tmpVec2.Z;
 
                     float[] contacts = new float[3 * pair.MaxSize];
                     float[] normals = new float[3 * pair.MaxSize];
                     float[] penetrations = new float[pair.MaxSize];
+
+                    Matrix.CreateScale(ref tmpVec1, out tmpMat1);
+                    tmpMat2 = pair.CollisionObject1.PhysicsWorldTransform;
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat1);
+                    MatrixHelper.ToFloats(ref tmpMat1, floats1);
+
+                    Matrix.CreateScale(ref tmpVec2, out tmpMat1);
+                    tmpMat2 = pair.CollisionObject2.PhysicsWorldTransform;
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat1);
+                    MatrixHelper.ToFloats(ref tmpMat1, floats2);
+
                     int contactPts = Newton.NewtonCollisionCollide(nWorld, pair.MaxSize, collision1,
-                        MatrixHelper.ToFloats(Matrix.CreateScale(invScale1) *
-                        pair.CollisionObject1.PhysicsWorldTransform),
-                        collision2, MatrixHelper.ToFloats(Matrix.CreateScale(invScale2) *
-                        pair.CollisionObject2.PhysicsWorldTransform),
-                        contacts, normals, penetrations);
+                        floats1, collision2, floats2, contacts, normals, penetrations);
 
                     if (contactPts > 0)
                     {
@@ -971,8 +998,8 @@ namespace GoblinXNA.Physics
                         pair.Penetration = new List<float>();
                         for (int i = 0; i < pair.MaxSize * 3; i += 3)
                         {
-                            pair.Normals.Add(new Vector3(normals[i], normals[i + 1], normals[i + 2]));
-                            pair.Contacts.Add(new Vector3(contacts[i], contacts[i + 1], contacts[i + 2]));
+                            pair.Normals.Add(Vector3Helper.Get(normals[i], normals[i + 1], normals[i + 2]));
+                            pair.Contacts.Add(Vector3Helper.Get(contacts[i], contacts[i + 1], contacts[i + 2]));
                             pair.Penetration.Add(penetrations[i / 3]);
                         }
                         collisionCallbacks[pair](pair);
@@ -1031,12 +1058,15 @@ namespace GoblinXNA.Physics
 
             Newton.NewtonBodyGetAABB(objectIDs[physObj], min, max);
 
-            return new BoundingBox(new Vector3(min[0], min[1], min[2]), 
-                new Vector3(max[0], max[1], max[2]));
+            return new BoundingBox(Vector3Helper.Get(min[0], min[1], min[2]),
+                Vector3Helper.Get(max[0], max[1], max[2]));
         }
 
         public List<List<Vector3>> GetCollisionMesh(IPhysicsObject physObj)
         {
+            if (!objectIDs.ContainsKey(physObj))
+                return null;
+
             collisionMesh.Clear();
 
             Newton.NewtonBodyForEachPolygonDo(objectIDs[physObj], collisionIterator);
@@ -1296,9 +1326,9 @@ namespace GoblinXNA.Physics
             int ret = Newton.NewtonCollisionClosestPoint(nWorld, collisionA, matrixA, collisionB, 
                 matrixB, pointA, pointB, normAB);
 
-            contactA = new Vector3(pointA[0], pointA[1], pointA[2]);
-            contactB = new Vector3(pointB[0], pointB[1], pointB[2]);
-            normalAB = new Vector3(normAB[0], normAB[1], normAB[2]);
+            contactA = Vector3Helper.Get(pointA[0], pointA[1], pointA[2]);
+            contactB = Vector3Helper.Get(pointB[0], pointB[1], pointB[2]);
+            normalAB = Vector3Helper.Get(normAB[0], normAB[1], normAB[2]);
 
             return ret;
         }
@@ -1327,7 +1357,7 @@ namespace GoblinXNA.Physics
                         objectIDs[joint.Child], (joint.Parent != null) ?
                         objectIDs[joint.Parent] : IntPtr.Zero);
 
-                    if (ballJoint.Pin != Vector3.Zero)
+                    if (ballJoint.Pin != new Vector3())
                     {
                         float[] pin = new float[3];
                         pin[0] = ballJoint.Pin.X;
@@ -1468,7 +1498,8 @@ namespace GoblinXNA.Physics
             IntPtr collision = new IntPtr();
             Vector3 boundingBox = Vector3Helper.GetDimensions(physObj.Model.MinimumBoundingBox);
             float[] offsetMatrix = null;
-            if (physObj.Model.OffsetToOrigin)
+            if (!physObj.Model.OffsetToOrigin && !(physObj.Shape == ShapeType.TriangleMesh ||
+                physObj.Shape == ShapeType.ConvexHull))
             {
                 offsetMatrix = MatrixHelper.ToFloats(physObj.Model.OffsetTransform);
 
@@ -1769,12 +1800,12 @@ namespace GoblinXNA.Physics
         /// <returns></returns>
         protected Vector3 GetMomentOfInertia(IPhysicsObject physObj, Vector3 scale, IntPtr collision)
         {
-            Vector3 momentOfInertia = Vector3.Zero;
+            Vector3 momentOfInertia = new Vector3();
             Vector3 boundingBoxDimension = Vector3Helper.GetDimensions(physObj.Model.MinimumBoundingBox);
 
             if (useBoundingBox)
             {
-                Vector3 dimension = Vector3.Zero;
+                Vector3 dimension = new Vector3();
                 if (physObj.ShapeData.Count == 3)
                 {
                     dimension.X = physObj.ShapeData[0];

@@ -65,6 +65,13 @@ namespace GoblinXNA.Device.Util
         protected bool initialized;
         protected int restartCount;
 
+        #region Temporary Variables
+
+        protected Matrix tmpMat1;
+        protected Matrix tmpMat2;
+
+        #endregion
+
         #endregion
 
         #region Constructors
@@ -96,7 +103,7 @@ namespace GoblinXNA.Device.Util
             this.rotThreshold = rotThreshold;
             this.delta = delta;
 
-            prevRawP = Vector3.Zero;
+            prevRawP = new Vector3();
             prevRawQ = Quaternion.Identity;
 
             initialized = false;
@@ -131,7 +138,7 @@ namespace GoblinXNA.Device.Util
 
         #region Public Methods
 
-        public void UpdatePredictor(Vector3 p, Quaternion q)
+        public void UpdatePredictor(ref Vector3 p, ref Quaternion q)
         {
             if (initialized)
             {
@@ -200,21 +207,21 @@ namespace GoblinXNA.Device.Util
             }
         }
 
-        public Matrix GetPrediction(float t)
+        public void GetPrediction(float t, out Matrix result)
         {
-            Matrix prediction = Matrix.Identity;
             int tau = Math.Max((int)(t / delta), 1);
 
             float tmp = transAlpha * tau / (1 - transAlpha);
-            Vector3 Pt = (2 + tmp) * transSp - (1 + tmp) * transSp2;
+            Vector3 Pt = Vector3.Subtract(Vector3.Multiply(transSp, (2 + tmp)), 
+                Vector3.Multiply(transSp2, (1 + tmp)));
 
             tmp = rotAlpha * tau / (1 - rotAlpha);
             Quaternion Qt = Quaternion.Multiply(rotSq, (2 + tmp)) - Quaternion.Multiply(rotSq2, (1 + tmp));
             Qt.Normalize();
 
-            prediction = Matrix.CreateFromQuaternion(Qt) * Matrix.CreateTranslation(Pt);
-
-            return prediction;
+            Matrix.CreateFromQuaternion(ref Qt, out tmpMat1);
+            Matrix.CreateTranslation(ref Pt, out tmpMat2);
+            Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
         }
 
         #endregion

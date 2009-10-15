@@ -97,11 +97,11 @@ namespace GoblinXNA.Physics
             collisionGroupID = 0;
             materialName = "";
             mass = 1.0f;
-            centerOfMass = Vector3.Zero;
+            centerOfMass = new Vector3();
 
             shape = ShapeType.ConvexHull;
             shapeData = new List<float>();
-            momentOfInertia = Vector3.Zero;
+            momentOfInertia = new Vector3();
             pickable = false;
             collidable = false;
             interactable = false;
@@ -114,8 +114,8 @@ namespace GoblinXNA.Physics
             initialWorldTransform = Matrix.Identity;
             compoundInitialWorldTransform = Matrix.Identity;
 
-            initialLinearVelocity = Vector3.Zero;
-            initialAngularVelocity = Vector3.Zero;
+            initialLinearVelocity = new Vector3();
+            initialAngularVelocity = new Vector3();
 
             linearDamping = 0.0f;
             angularDamping = -Vector3.One;

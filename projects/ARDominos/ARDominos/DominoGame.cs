@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,7 +54,6 @@ using GoblinXNA.Sounds;
 using GoblinXNA.Helpers;
 
 using GoblinXNA.UI.UI2D;
-using GoblinXNA.UI.Events;
 
 using GoblinXNA.Device.Capture;
 using GoblinXNA.Device.Vision;
@@ -64,7 +63,22 @@ using GoblinXNA.Device.Util;
 namespace ARDominos
 {
     /// <summary>
-    /// The main domino game
+    /// An enum that indicates which marker tracking library to use.
+    /// </summary>
+    enum MarkerLibrary
+    {
+        /// <summary>
+        /// ARTag library developed by Mark Fiala
+        /// </summary>
+        ARTag,
+        /// <summary>
+        /// ALVAR library developed by VTT
+        /// </summary>
+        ALVAR
+    }
+
+    /// <summary>
+    /// The main domino game. 
     /// </summary>
     public class DominoGame : Microsoft.Xna.Framework.Game
     {
@@ -74,15 +88,10 @@ namespace ARDominos
         // A GoblinXNA scene graph
         static Scene scene;
 
-        // A transform node used to move around the scene in VR mode
-        TransformNode genericInputNode;
+        MarkerLibrary markerLibrary;
 
         // A marker node for tracking the ground plane (game board)
         MarkerNode markerNode;
-
-        // Marker nodes for the paddles which either acts as obstacle or direct 
-        // interaction tool
-        MarkerNode[] obstacleMarkerNodes;
 
         // The geometric model that represents the domino
         Model dominoModel;
@@ -145,8 +154,6 @@ namespace ARDominos
         // Three color states used for changing ball colors
         int rState = 0, gState = 1, bState = 0; // 0 = stay, 1 = up, 2 = down
 
-        Vector3 offset = new Vector3(-40, -27, 0);
-
         // The size of the domino
         Vector3 dominoSize = new Vector3(2.5f, 16, 8); // (3/8)x2x1 ratio
 
@@ -170,10 +177,6 @@ namespace ARDominos
 
         // A texture that has Columbia Computer Graphics and User Interface Lab's logo
         Texture2D cguiLogoTexture;
-
-        // The elapsed time since the game play is started in GameMode.Play mode
-        static double elapsedSecond = 0;
-        static double elapsedMinite = 0;
 
         // Whether the victory sound effect is played
         static bool victorySoundPlayed = false;
@@ -231,6 +234,11 @@ namespace ARDominos
             // Make the physics simulation space larger to 500x500 centered at the origin
             ((NewtonPhysics)scene.PhysicsEngine).WorldSize = new BoundingBox(Vector3.One * -250,
                 Vector3.One * 250);
+            // Increase the gravity
+            scene.PhysicsEngine.Gravity = 30.0f;
+
+            // Use ALVAR tracking library
+            markerLibrary = MarkerLibrary.ALVAR;
 
             // Creates several physics material to associate appropriate collision sounds for each
             // different materials
@@ -423,24 +431,19 @@ namespace ARDominos
             // Create 3D objects
             CreateObject();
 
-            GameModeActionListener gameListener = new GameModeActionListener();
-
-            // Create an action listener
-            ExtraModeActionListener modeListener = new ExtraModeActionListener();
-
             // Initialize the UI manager
-            uiManager.Initialize(scene, gameListener, modeListener);
+            uiManager.Initialize(scene, GameModeSwitched, ExtraModeSwitched);
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
 
-            MouseInput.MousePressEvent += new HandleMousePress(MousePressHandler);
-            MouseInput.MouseDragEvent += new HandleMouseDrag(MouseDragHandler);
-            MouseInput.MouseReleaseEvent += new HandleMouseRelease(MouseReleaseHandler);
-            MouseInput.MouseMoveEvent += new HandleMouseMove(MouseMoveHandler);
+            MouseInput.Instance.MousePressEvent += new HandleMousePress(MousePressHandler);
+            MouseInput.Instance.MouseDragEvent += new HandleMouseDrag(MouseDragHandler);
+            MouseInput.Instance.MouseReleaseEvent += new HandleMouseRelease(MouseReleaseHandler);
+            MouseInput.Instance.MouseMoveEvent += new HandleMouseMove(MouseMoveHandler);
 
-            KeyboardInput.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
-            KeyboardInput.KeyReleaseEvent += new HandleKeyRelease(KeyReleaseHandler);
+            KeyboardInput.Instance.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
+            KeyboardInput.Instance.KeyReleaseEvent += new HandleKeyRelease(KeyReleaseHandler);
 
             // Create a basic effect to draw the line for AdditionMode.LineDrawing
             basicEffect = new BasicEffect(graphics.GraphicsDevice, null);
@@ -534,12 +537,20 @@ namespace ARDominos
 
             // Remove balls fall off from the ground if they are certain distance away from the ground
             foreach (GeometryNode ballNode in balls)
-                if (ballNode.Physics.PhysicsWorldTransform.Translation.Z < -80)
+                if (ballNode.Physics.PhysicsWorldTransform.Translation.Z < -100 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.X < -180 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.X > 180 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.Y < -180 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.Y > 180)
                 {
                     ballNode.Material.Diffuse -= Vector4.UnitW;
                 }
             foreach (GeometryNode ballNode in heavyBalls)
-                if (ballNode.Physics.PhysicsWorldTransform.Translation.Z < -80)
+                if (ballNode.Physics.PhysicsWorldTransform.Translation.Z < -100 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.X < -180 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.X > 180 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.Y < -180 ||
+                    ballNode.Physics.PhysicsWorldTransform.Translation.Y > 180)
                 {
                     ballNode.Material.Diffuse -= Vector4.UnitW;
                 }
@@ -547,11 +558,12 @@ namespace ARDominos
             // Add dominos that fall off the edge of the ground to the fallen domino list
             foreach (GeometryNode dominoNode in dominos)
                 if (!fallenDominos.Contains(dominoNode) &&
-                    (dominoNode.Physics.PhysicsWorldTransform.Translation.Z < -90 ||
-                     dominoNode.Physics.PhysicsWorldTransform.Translation.X < - 100 ||
-                     dominoNode.Physics.PhysicsWorldTransform.Translation.X > 240 ||
-                     dominoNode.Physics.PhysicsWorldTransform.Translation.Y < -200 ||
-                     dominoNode.Physics.PhysicsWorldTransform.Translation.Y > 240))
+                    (dominoNode.Physics.PhysicsWorldTransform.Translation.Z < -100 ||
+                     dominoNode.Physics.PhysicsWorldTransform.Translation.Z > 240 ||
+                     dominoNode.Physics.PhysicsWorldTransform.Translation.X < -180 ||
+                     dominoNode.Physics.PhysicsWorldTransform.Translation.X > 180 ||
+                     dominoNode.Physics.PhysicsWorldTransform.Translation.Y < -180 ||
+                     dominoNode.Physics.PhysicsWorldTransform.Translation.Y > 180))
                 {
                     dominoNode.Material.Diffuse -= Vector4.UnitW;
                     fallenDominos.Add(dominoNode);
@@ -673,7 +685,7 @@ namespace ARDominos
 
                             TransformNode dominoTransNode = new TransformNode();
                             dominoTransNode.Translation = pointList[i].Position + 
-                                (Vector3.UnitZ * dominoSize.Y / 2 + offset);
+                                (Vector3.UnitZ * dominoSize.Y / 2);
 
                             int start = 0, end = 0;
                             // Get the point that is 2 points behind the current point (if any)
@@ -854,7 +866,6 @@ namespace ARDominos
                                     Vector3 intersectPoint = nearPoint * (1 - pickedObjects[i].IntersectParam) +
                                         pickedObjects[i].IntersectParam * farPoint;
 
-                                    intersectPoint += offset;
                                     ((TransformNode)dominos[dominos.Count - 1].Parent).Translation =
                                         intersectPoint + Vector3.UnitZ * dominoSize.Y / 2;
                                     break;
@@ -906,7 +917,6 @@ namespace ARDominos
                                     Vector3 intersectPoint = nearPoint * (1 - pickedObjects[i].IntersectParam) +
                                         pickedObjects[i].IntersectParam * farPoint;
 
-                                    intersectPoint += offset;
                                     ((TransformNode)domino.Parent).Translation
                                         = intersectPoint + Vector3.UnitZ * dominoSize.Y / 2;
                                 }
@@ -996,7 +1006,6 @@ namespace ARDominos
                                 Vector3 intersectPoint = nearPoint * (1 - pickedObjects[i].IntersectParam) +
                                     pickedObjects[i].IntersectParam * farPoint;
 
-                                intersectPoint += offset;
                                 dominoTransNode.Translation = intersectPoint + Vector3.UnitZ * dominoSize.Y / 2;
                                 break;
                             }
@@ -1080,7 +1089,6 @@ namespace ARDominos
                                     Vector3 intersectPoint = nearPoint * (1 - obj.IntersectParam) +
                                         obj.IntersectParam * farPoint;
 
-                                    intersectPoint += offset;
                                     break;
                                 }
                             }
@@ -1245,9 +1253,16 @@ namespace ARDominos
             lightSource.Diffuse = Color.White.ToVector4();
             lightSource.Specular = new Vector4(0.6f, 0.6f, 0.6f, 1);
 
+            LightSource lightSource2 = new LightSource();
+            lightSource2.Direction = new Vector3(1, -1, -1);
+            lightSource2.Diffuse = Color.White.ToVector4();
+            lightSource2.Specular = new Vector4(0.6f, 0.6f, 0.6f, 1);
+
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
+            lightNode.AmbientLightColor = new Vector4(0.3f, 0.3f, 0.3f, 1);
             lightNode.LightSources.Add(lightSource);
+            lightNode.LightSources.Add(lightSource2);
 
             // Add this light node to the root node
             scene.RootNode.AddChild(lightNode);
@@ -1256,13 +1271,24 @@ namespace ARDominos
         private void SetupMarkerTracking()
         {
             DirectShowCapture captureDevice = new DirectShowCapture();
-            captureDevice.InitVideoCapture(0, 0, FrameRate._30Hz, Resolution._640x480, false);
+            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                ImageFormat.R8G8B8_24, false);
 
             scene.AddVideoCaptureDevice(captureDevice);
 
-            ARTagTracker tracker = new ARTagTracker();
-            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, captureDevice.Height,
-                false, "ARRacing.cf");
+            IMarkerTracker tracker = null;
+            if (markerLibrary == MarkerLibrary.ARTag)
+            {
+                tracker = new ARTagTracker();
+                tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, captureDevice.Height,
+                    false, "ARDominoARTag.cf");
+            }
+            else
+            {
+                tracker = new ALVARMarkerTracker();
+                ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+                tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+            }
 
             scene.MarkerTracker = tracker;
 
@@ -1271,14 +1297,20 @@ namespace ARDominos
             scene.PhysicsEngine.GravityDirection = -Vector3.UnitZ;
 
             // Create a marker node to track the ground plane
-            markerNode = new MarkerNode(scene.MarkerTracker, "ground");
-            markerNode.Name = "GroundMarker";
+            if (markerLibrary == MarkerLibrary.ARTag)
+            {
+                markerNode = new MarkerNode(scene.MarkerTracker, "ground");
+            }
+            else
+            {
+                int[] ids = new int[54];
+                for (int i = 0; i < ids.Length; i++)
+                    ids[i] = i;
 
-            TransformNode transNode =  new TransformNode();
-            transNode.Translation = -offset;
+                markerNode = new MarkerNode(scene.MarkerTracker, "ARDominoALVAR.txt", ids);
+            }
 
-            scene.RootNode.AddChild(transNode);
-            transNode.AddChild(markerNode);
+            scene.RootNode.AddChild(markerNode);
         }
 
         private void CreateObject()
@@ -1295,7 +1327,11 @@ namespace ARDominos
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            groundNode.Model = new Box(85, 66, 0.2f);
+            if(markerLibrary == MarkerLibrary.ARTag)
+                groundNode.Model = new Box(130, 89, 0.2f);
+            else
+                groundNode.Model = new Box(126, 86, 0.2f);
+
             groundNode.Physics.Collidable = true;
             groundNode.Physics.Shape = ShapeType.Box;
             groundNode.Physics.MaterialName = "Ground";
@@ -1541,205 +1577,203 @@ namespace ARDominos
         #endregion
 
         #region Action Listeners
-        private class ExtraModeActionListener : ActionListener
+        /// <summary>
+        /// An action event handler for extra mode switch
+        /// </summary>
+        /// <param name="source"></param>
+        private void ExtraModeSwitched(object source)
         {
-            public void ActionPerformed(ActionEvent evt)
+            if (gameState.CurrentGameMode == GameState.GameMode.Add)
             {
-                if (gameState.CurrentGameMode == GameState.GameMode.Add)
-                {
-                    if (((G2DRadioButton)evt.Source).Text.Equals("Single"))
-                        gameState.CurrentAdditionMode = GameState.AdditionMode.Single;
-                    else
-                        gameState.CurrentAdditionMode = GameState.AdditionMode.LineDrawing;
-                }
-                else if (gameState.CurrentGameMode == GameState.GameMode.Edit)
-                {
-                    if (((G2DRadioButton)evt.Source).Text.Equals("Single"))
-                        gameState.CurrentEditMode = GameState.EditMode.Single;
-                    else
-                        gameState.CurrentEditMode = GameState.EditMode.Multiple;
-                }
+                if (((G2DRadioButton)source).Text.Equals("Single"))
+                    gameState.CurrentAdditionMode = GameState.AdditionMode.Single;
+                else
+                    gameState.CurrentAdditionMode = GameState.AdditionMode.LineDrawing;
+            }
+            else if (gameState.CurrentGameMode == GameState.GameMode.Edit)
+            {
+                if (((G2DRadioButton)source).Text.Equals("Single"))
+                    gameState.CurrentEditMode = GameState.EditMode.Single;
+                else
+                    gameState.CurrentEditMode = GameState.EditMode.Multiple;
             }
         }
 
         /// <summary>
-        /// An action listener that handles game mode switch
+        /// An action event handler for game mode switch
         /// </summary>
-        private class GameModeActionListener : ActionListener
+        private void GameModeSwitched(object source)
         {
-            public void ActionPerformed(ActionEvent evt)
+            // Make all of the selected dominos that were transparent to opaque
+            foreach (GeometryNode domino in selectedDominos)
             {
-                // Make all of the selected dominos that were transparent to opaque
-                foreach (GeometryNode domino in selectedDominos)
+                Vector4 orig = domino.Material.Diffuse;
+                domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
+            }
+
+            selectedDominos.Clear();
+
+            if (((G2DRadioButton)source).Text.Equals("Add"))
+            {
+                // Reset the game status to the initial state with the modified game board
+                fallenDominos.Clear();
+
+                // If the previuos mode was the Play mode
+                if (gameState.CurrentGameMode == GameState.GameMode.Play)
                 {
-                    Vector4 orig = domino.Material.Diffuse;
-                    domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
-                }
+                    ballCount = 0;
+                    uiManager.BallCount = 0;
 
-                selectedDominos.Clear();
+                    // Enable certain radio buttons that were disabled during the play mode
+                    uiManager.ModeChoiceEnabled = true;
 
-                if (((G2DRadioButton)evt.Source).Text.Equals("Add"))
-                {
-                    // Reset the game status to the initial state with the modified game board
-                    fallenDominos.Clear();
-
-                    // If the previuos mode was the Play mode
-                    if (gameState.CurrentGameMode == GameState.GameMode.Play)
+                    // Make all of the dominos on the game board non-collidable and non-interactable
+                    // as well as opaque
+                    foreach (GeometryNode domino in dominos)
                     {
-                        ballCount = 0;
-                        uiManager.BallCount = 0;
+                        domino.Physics.Collidable = false;
+                        domino.Physics.Interactable = false;
 
-                        // Enable certain radio buttons that were disabled during the play mode
-                        uiManager.ModeChoiceEnabled = true;
-
-                        // Make all of the dominos on the game board non-collidable and non-interactable
-                        // as well as opaque
-                        foreach (GeometryNode domino in dominos)
-                        {
-                            domino.Physics.Collidable = false;
-                            domino.Physics.Interactable = false;
-
-                            Vector4 orig = domino.Material.Diffuse;
-                            domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
-                        }
-
-                        // Restart the physical simulation
-                        scene.PhysicsEngine.RestartsSimulation();
-                        // Force garbage collection for unused references
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-
-                        // Move the normal balls out of the sight from the player, and make them
-                        // not to cast or receive shadows
-                        foreach (GeometryNode ball in balls)
-                        {
-                            ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
-                                Matrix.CreateTranslation(Vector3.One * 1000));
-                            ball.Model.CastShadows = false;
-                            ball.Model.ReceiveShadows = false;
-                        }
-                        // Move the heavy balls out of the sight from the player, and make them
-                        // not to cast or receive shadows
-                        foreach (GeometryNode ball in heavyBalls)
-                        {
-                            ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
-                                Matrix.CreateTranslation(Vector3.One * 1000));
-                            ball.Model.CastShadows = false;
-                            ball.Model.ReceiveShadows = false;
-                        }
+                        Vector4 orig = domino.Material.Diffuse;
+                        domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
                     }
-                    gameState.CurrentGameMode = GameState.GameMode.Add;
 
-                    uiManager.SwitchMode();
-                }
-                else if (((G2DRadioButton)evt.Source).Text.Equals("Edit"))
-                {
-                    // Reset the game status to the initial state with the modified game board
-                    fallenDominos.Clear();
+                    // Restart the physical simulation
+                    scene.PhysicsEngine.RestartsSimulation();
+                    // Force garbage collection for unused references
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
 
-                    // If the previous mode was the Play mode
-                    if (gameState.CurrentGameMode == GameState.GameMode.Play)
+                    // Move the normal balls out of the sight from the player, and make them
+                    // not to cast or receive shadows
+                    foreach (GeometryNode ball in balls)
                     {
-                        ballCount = 0;
-                        uiManager.BallCount = 0;
-
-                        // Enable certain radio buttons that were disabled during the play mode
-                        uiManager.ModeChoiceEnabled = true;
-
-                        // Make all of the dominos on the game board non-collidable and non-interactable
-                        // as well as opaque
-                        foreach (GeometryNode domino in dominos)
-                        {
-                            domino.Physics.Collidable = false;
-                            domino.Physics.Interactable = false;
-
-                            Vector4 orig = domino.Material.Diffuse;
-                            domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
-                        }
-
-                        // Restart the physical simulation
-                        scene.PhysicsEngine.RestartsSimulation();
-                        // Force garbage collection for unused references
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-
-                        // Move the normal balls out of the sight from the player, and make them
-                        // not to cast or receive shadows
-                        foreach (GeometryNode ball in balls)
-                        {
-                            ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
-                                Matrix.CreateTranslation(Vector3.One * 1000));
-                            ball.Model.CastShadows = false;
-                            ball.Model.ReceiveShadows = false;
-                        }
-                        // Move the heavy balls out of the sight from the player, and make them
-                        // not to cast or receive shadows
-                        foreach (GeometryNode ball in heavyBalls)
-                        {
-                            ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
-                                Matrix.CreateTranslation(Vector3.One * 1000));
-                            ball.Model.CastShadows = false;
-                            ball.Model.ReceiveShadows = false;
-                        }
+                        ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
+                            Matrix.CreateTranslation(Vector3.One * 1000));
+                        ball.Model.CastShadows = false;
+                        ball.Model.ReceiveShadows = false;
                     }
-                    gameState.CurrentGameMode = GameState.GameMode.Edit;
-
-                    uiManager.SwitchMode();
+                    // Move the heavy balls out of the sight from the player, and make them
+                    // not to cast or receive shadows
+                    foreach (GeometryNode ball in heavyBalls)
+                    {
+                        ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
+                            Matrix.CreateTranslation(Vector3.One * 1000));
+                        ball.Model.CastShadows = false;
+                        ball.Model.ReceiveShadows = false;
+                    }
                 }
+                gameState.CurrentGameMode = GameState.GameMode.Add;
+
+                uiManager.SwitchMode();
+            }
+            else if (((G2DRadioButton)source).Text.Equals("Edit"))
+            {
+                // Reset the game status to the initial state with the modified game board
+                fallenDominos.Clear();
+
+                // If the previous mode was the Play mode
+                if (gameState.CurrentGameMode == GameState.GameMode.Play)
+                {
+                    ballCount = 0;
+                    uiManager.BallCount = 0;
+
+                    // Enable certain radio buttons that were disabled during the play mode
+                    uiManager.ModeChoiceEnabled = true;
+
+                    // Make all of the dominos on the game board non-collidable and non-interactable
+                    // as well as opaque
+                    foreach (GeometryNode domino in dominos)
+                    {
+                        domino.Physics.Collidable = false;
+                        domino.Physics.Interactable = false;
+
+                        Vector4 orig = domino.Material.Diffuse;
+                        domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
+                    }
+
+                    // Restart the physical simulation
+                    scene.PhysicsEngine.RestartsSimulation();
+                    // Force garbage collection for unused references
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+
+                    // Move the normal balls out of the sight from the player, and make them
+                    // not to cast or receive shadows
+                    foreach (GeometryNode ball in balls)
+                    {
+                        ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
+                            Matrix.CreateTranslation(Vector3.One * 1000));
+                        ball.Model.CastShadows = false;
+                        ball.Model.ReceiveShadows = false;
+                    }
+                    // Move the heavy balls out of the sight from the player, and make them
+                    // not to cast or receive shadows
+                    foreach (GeometryNode ball in heavyBalls)
+                    {
+                        ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
+                            Matrix.CreateTranslation(Vector3.One * 1000));
+                        ball.Model.CastShadows = false;
+                        ball.Model.ReceiveShadows = false;
+                    }
+                }
+                gameState.CurrentGameMode = GameState.GameMode.Edit;
+
+                uiManager.SwitchMode();
+            }
+            else
+            { // Play mode
+                victorySoundPlayed = false;
+
+                // If previous mode was not Play mode
+                if (gameState.CurrentGameMode != GameState.GameMode.Play)
+                {
+                    // Make all of the dominos collidable and interactable
+                    foreach (GeometryNode domino in dominos)
+                    {
+                        domino.Physics.Collidable = true;
+                        domino.Physics.Interactable = true;
+                    }
+                }
+                // Restart the game
                 else
-                { // Play mode
-                    victorySoundPlayed = false;
+                {
+                    gameState.ResetState();
+                    ballCount = 0;
+                    uiManager.BallCount = 0;
 
-                    // If previous mode was not Play mode
-                    if (gameState.CurrentGameMode != GameState.GameMode.Play)
+                    fallenDominos.Clear();
+
+                    // Make all of the dominos opaque in case they were totally transparent after
+                    // they fall off the edge of the ground in the Play mode
+                    foreach (GeometryNode domino in dominos)
                     {
-                        // Make all of the dominos collidable and interactable
-                        foreach (GeometryNode domino in dominos)
-                        {
-                            domino.Physics.Collidable = true;
-                            domino.Physics.Interactable = true;
-                        }
+                        Vector4 orig = domino.Material.Diffuse;
+                        domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
                     }
-                    // Restart the game
-                    else
+
+                    // Restart the physical simulation
+                    scene.PhysicsEngine.RestartsSimulation();
+                    // Force garbage collection for unused references
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+
+                    // Move the normal balls out of the sight from the player
+                    foreach (GeometryNode ball in balls)
                     {
-                        gameState.ResetState();
-                        ballCount = 0;
-                        uiManager.BallCount = 0;
-
-                        fallenDominos.Clear();
-
-                        // Make all of the dominos opaque in case they were totally transparent after
-                        // they fall off the edge of the ground in the Play mode
-                        foreach (GeometryNode domino in dominos)
-                        {
-                            Vector4 orig = domino.Material.Diffuse;
-                            domino.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1.0f);
-                        }
-
-                        // Restart the physical simulation
-                        scene.PhysicsEngine.RestartsSimulation();
-                        // Force garbage collection for unused references
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-
-                        // Move the normal balls out of the sight from the player
-                        foreach (GeometryNode ball in balls)
-                        {
-                            ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
-                                Matrix.CreateTranslation(Vector3.One * 1000));
-                        }
-                        // Move the heavy balls out of the sight from the player
-                        foreach (GeometryNode ball in heavyBalls)
-                        {
-                            ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
-                                Matrix.CreateTranslation(Vector3.One * 1000));
-                        }
+                        ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
+                            Matrix.CreateTranslation(Vector3.One * 1000));
                     }
-                    gameState.CurrentGameMode = GameState.GameMode.Play;
-
-                    uiManager.SwitchMode();
+                    // Move the heavy balls out of the sight from the player
+                    foreach (GeometryNode ball in heavyBalls)
+                    {
+                        ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
+                            Matrix.CreateTranslation(Vector3.One * 1000));
+                    }
                 }
+                gameState.CurrentGameMode = GameState.GameMode.Play;
+
+                uiManager.SwitchMode();
             }
         }
         #endregion

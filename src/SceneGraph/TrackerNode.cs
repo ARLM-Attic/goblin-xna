@@ -141,7 +141,7 @@ namespace GoblinXNA.SceneGraph
         {
             get 
             {
-                Vector3 p = Vector3.Zero;
+                Vector3 p = new Vector3();
                 Quaternion q = Quaternion.Identity;
 
                 if (smooth || predict)
@@ -151,12 +151,12 @@ namespace GoblinXNA.SceneGraph
                 }
 
                 if (smooth)
-                    worldTransform = smoother.FilterMatrix(p, q);
+                    smoother.FilterMatrix(ref p, ref q, out worldTransform);
                 else
                     worldTransform = InputMapper.Instance.GetWorldTransformation(deviceIdentifier);
 
                 if (predict)
-                    predictor.UpdatePredictor(p, q);
+                    predictor.UpdatePredictor(ref p, ref q);
 
                 return worldTransform;
             }

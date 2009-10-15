@@ -68,13 +68,14 @@
     <Reference Include="Lidgren.Network, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="Microsoft.Xna.Framework, Version=3.0.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
-    <Reference Include="Microsoft.Xna.Framework.Content.Pipeline, Version=3.0.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
-    <Reference Include="Microsoft.Xna.Framework.Game, Version=3.0.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Xna.Framework, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
+    <Reference Include="Microsoft.Xna.Framework.Content.Pipeline, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
+    <Reference Include="Microsoft.Xna.Framework.Game, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="NewtonWrapper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\bin\NewtonWrapper.dll</HintPath>
     </Reference>
+    <Reference Include="Nuclex.Fonts, Version=2.0.3554.30001, Culture=neutral, processorArchitecture=x86" />
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -117,6 +118,8 @@
     <Compile Include="Device\Util\DESPredictor.cs" />
     <Compile Include="Device\Util\IPredictor.cs" />
     <Compile Include="Device\Util\ISmoother.cs" />
+    <Compile Include="Device\Vision\ALVARDllBridge.cs" />
+    <Compile Include="Device\Vision\Marker\ALVARMarkerTracker.cs" />
     <Compile Include="Device\Vision\Marker\ARTagDllBridge.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -145,6 +148,7 @@
     <Compile Include="Graphics\Geometry\Torus.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Helpers\DefaultTransparencyComparer.cs" />
     <Compile Include="Helpers\Interpolator.cs" />
     <Compile Include="Helpers\LatLonMapper.cs" />
     <Compile Include="Helpers\StringHelper.cs">
@@ -193,35 +197,37 @@
     <Compile Include="Shaders\ShadowMapBlur.cs" />
     <Compile Include="Shaders\ShadowMapShader.cs" />
     <Compile Include="Shaders\VBScreenHelper.cs" />
-    <Compile Include="UI\Events\KeyListener.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="UI\Events\MouseListener.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="UI\Events\MouseMotionListener.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="UI\Events\MouseWheelListener.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="UI\GUI2D\AbstractButton.cs" />
-    <Compile Include="UI\GUI2D\ButtonGroup.cs" />
-    <Compile Include="UI\GUI2D\DefaultListCellRenderer.cs" />
-    <Compile Include="UI\GUI2D\G2DButton.cs" />
-    <Compile Include="UI\GUI2D\G2DCheckBox.cs" />
-    <Compile Include="UI\GUI2D\G2DComboBox.cs" />
-    <Compile Include="UI\GUI2D\G2DLabel.cs" />
-    <Compile Include="UI\GUI2D\G2DProgressBar.cs" />
-    <Compile Include="UI\GUI2D\G2DRadioButton.cs" />
-    <Compile Include="UI\GUI2D\G2DSeparator.cs" />
-    <Compile Include="UI\GUI2D\G2DSlider.cs" />
-    <Compile Include="UI\GUI2D\G2DSpinner.cs" />
-    <Compile Include="UI\GUI2D\G2DTextArea.cs" />
-    <Compile Include="UI\GUI2D\G2DTextField.cs" />
-    <Compile Include="UI\GUI2D\ListCellRenderer.cs" />
-    <Compile Include="UI\GUI2D\TextComponent.cs" />
-    <Compile Include="UI\GUI2D\ToggleButton.cs" />
+    <Compile Include="UI\UI2D\AbstractButton.cs" />
+    <Compile Include="UI\UI2D\ButtonGroup.cs" />
+    <Compile Include="UI\UI2D\DefaultListCellRenderer.cs" />
+    <Compile Include="UI\UI2D\DefaultListModel.cs" />
+    <Compile Include="UI\UI2D\DefaultListSelectionModel.cs" />
+    <Compile Include="UI\UI2D\Fancy\G2DKeyboard.cs" />
+    <Compile Include="UI\UI2D\Fancy\G2DMediaControl.cs" />
+    <Compile Include="UI\UI2D\Fancy\G2DSuggestField.cs" />
+    <Compile Include="UI\UI2D\Fancy\G2DWaitBar.cs" />
+    <Compile Include="UI\UI2D\G2DButton.cs" />
+    <Compile Include="UI\UI2D\G2DCheckBox.cs" />
+    <Compile Include="UI\UI2D\G2DComboBox.cs" />
+    <Compile Include="UI\UI2D\G2DLabel.cs" />
+    <Compile Include="UI\UI2D\G2DList.cs" />
+    <Compile Include="UI\UI2D\G2DProgressBar.cs" />
+    <Compile Include="UI\UI2D\G2DRadioButton.cs" />
+    <Compile Include="UI\UI2D\G2DScrollBar.cs" />
+    <Compile Include="UI\UI2D\G2DScrollPane.cs" />
+    <Compile Include="UI\UI2D\G2DSeparator.cs" />
+    <Compile Include="UI\UI2D\G2DSlider.cs" />
+    <Compile Include="UI\UI2D\G2DSpinner.cs" />
+    <Compile Include="UI\UI2D\G2DTextArea.cs" />
+    <Compile Include="UI\UI2D\G2DTextField.cs" />
+    <Compile Include="UI\UI2D\ListCellRenderer.cs" />
+    <Compile Include="UI\UI2D\ListModel.cs" />
+    <Compile Include="UI\UI2D\ListSelectionModel.cs" />
+    <Compile Include="UI\UI2D\Scrollable.cs" />
+    <Compile Include="UI\UI2D\SpinnerModel.cs" />
+    <Compile Include="UI\UI2D\SpinnerIntegerModel.cs" />
+    <Compile Include="UI\UI2D\TextComponent.cs" />
+    <Compile Include="UI\UI2D\ToggleButton.cs" />
     <Compile Include="UI\IGUIMapper.cs" />
     <Compile Include="UI\Notifier.cs" />
     <Compile Include="Helpers\RandomHelper.cs" />
@@ -255,29 +261,16 @@
     <Compile Include="Shaders\Shader.cs" />
     <Compile Include="Shaders\SimpleEffectShader.cs" />
     <Compile Include="UI\Component.cs" />
-    <Compile Include="UI\Events\ActionEvent.cs" />
-    <Compile Include="UI\Events\ActionListener.cs" />
-    <Compile Include="UI\Events\CaretEvent.cs" />
-    <Compile Include="UI\Events\CaretListener.cs" />
-    <Compile Include="UI\Events\ChangeEvent.cs" />
-    <Compile Include="UI\Events\ChangeListener.cs" />
-    <Compile Include="UI\Events\ContainerEvent.cs" />
-    <Compile Include="UI\Events\ContainerListener.cs" />
-    <Compile Include="UI\Events\Event.cs" />
-    <Compile Include="UI\Events\FocusEvent.cs" />
-    <Compile Include="UI\Events\FocusListener.cs" />
-    <Compile Include="UI\Events\ItemEvent.cs" />
-    <Compile Include="UI\Events\ItemListener.cs" />
-    <Compile Include="UI\GUI2DTo3D\GUI2Dto3DHelper.cs" />
-    <Compile Include="UI\GUI2DTo3D\GUI2Dto3DMapper.cs" />
-    <Compile Include="UI\GUI2D\G2DComponent.cs" />
-    <Compile Include="UI\GUI2D\G2DPanel.cs" />
-    <Compile Include="UI\GUI2D\UI2DHelper.cs" />
-    <Compile Include="UI\GUI2D\UI2DRenderer.cs" />
-    <Compile Include="UI\GUI3D\G3DComponent.cs" />
-    <Compile Include="UI\GUI3D\G3DPanel.cs" />
-    <Compile Include="UI\GUI3D\UI3DHelper.cs" />
-    <Compile Include="UI\GUI3D\UI3DRenderer.cs" />
+    <Compile Include="UI\UI2DTo3D\GUI2Dto3DHelper.cs" />
+    <Compile Include="UI\UI2DTo3D\GUI2Dto3DMapper.cs" />
+    <Compile Include="UI\UI2D\G2DComponent.cs" />
+    <Compile Include="UI\UI2D\G2DPanel.cs" />
+    <Compile Include="UI\UI2D\UI2DHelper.cs" />
+    <Compile Include="UI\UI2D\UI2DRenderer.cs" />
+    <Compile Include="UI\UI3D\G3DComponent.cs" />
+    <Compile Include="UI\UI3D\G3DPanel.cs" />
+    <Compile Include="UI\UI3D\UI3DHelper.cs" />
+    <Compile Include="UI\UI3D\UI3DRenderer.cs" />
     <Compile Include="UI\UIRenderer.cs" />
   </ItemGroup>
   <ItemGroup>

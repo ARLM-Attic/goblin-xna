@@ -493,7 +493,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             maxHorizontalVelocity = 0;
             minVerticalVelocity = 0;
             maxVerticalVelocity = 0;
-            gravity = Vector3.Zero;
+            gravity = new Vector3();
             endVelocity = 1;
             minColor = Color.Black;
             maxColor = Color.White;

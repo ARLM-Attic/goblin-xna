@@ -49,23 +49,6 @@ namespace GoblinXNA.Device
     /// </remarks>
     public class InputMapper : IDisposable
     {
-        /// <summary>
-        /// An identifier string for the mouse device.
-        /// </summary>
-        /// <see cref=""/>
-        public static String Mouse = DeviceEnumerator.Mouse;
-
-        /// <summary>
-        /// An identifier string for the keyboard device.
-        /// </summary>
-        public static String Keyboard = DeviceEnumerator.Keyboard;
-
-        /// <summary>
-        /// An identifier string for the generic input device which combines both mouse
-        /// and keyboard input device to provide pseudo-6DOF input.
-        /// </summary>
-        public static String MouseAndKeyboard = DeviceEnumerator.MouseAndKeyboard;
-
         private DeviceEnumerator enumerator;
 
         private static InputMapper mapper;
@@ -198,6 +181,8 @@ namespace GoblinXNA.Device
 
             foreach (InputDevice_6DOF device in enumerator.Available6DOFDevices.Values)
                 device.Dispose();
+
+            enumerator.Dispose();
         }
     }
 }

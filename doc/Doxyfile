@@ -4,8 +4,8 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "GoblinXNA v3.2"
-PROJECT_NUMBER         = 3.2
+PROJECT_NAME           = "Goblin XNA"
+PROJECT_NUMBER         = 3.3
 OUTPUT_DIRECTORY       = ../doc
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
@@ -107,15 +107,12 @@ EXCLUDE_SYMBOLS        = PerformanceChecker \
                          RenderToTexture \
                          DefaultListCellRenderer \
                          G2DComboBox \
-                         G2DSpinner \
                          G2DTextArea \
-                         ListCellRenderer \
                          GUI2Dto3DHelper \
                          GUI2Dto3DMapper \
                          G3DComponent \
                          G3DPanel \
                          UI3DHelper \
-                         UI3DRenderer \
                          ShadowMapBlur \
                          ShadowMapShader \
                          ColorHelper \
@@ -130,23 +127,25 @@ EXCLUDE_SYMBOLS        = PerformanceChecker \
                          DepthCamera \
                          DCam \
                          DMachineDllBridge \
-                         GamePadInput \
                          UI2DTo3D \
-                         UI3D \
                          IGUIMapper \
                          GroupManager \
                          HandTracker \
                          DeepMediaDllBridge \
+                         StereoCamera \
                          AnimatedModel \
                          AnimatedModelLoader \
                          AnimatedModelShader \
                          DepthCameraCapture \
                          ARToolkitDllBridge \
                          ARToolkitTracker \
-                         Feature \
+                         Scrollable \
+                         G2DScrollBar \
+                         G2DScrollPane \
+                         G2DKeyboard \
                          WiiRemote \
-                         NyARToolkitTracker \
-                         Newton2.0
+                         Feature \
+                         NyARToolkitTracker
 EXAMPLE_PATH           = 
 EXAMPLE_PATTERNS       = *
 EXAMPLE_RECURSIVE      = NO

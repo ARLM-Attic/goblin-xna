@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,12 @@
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
  *************************************************************************************/ 
+
+Print out the first slide of DominoGround.ppt if you are using ARTag; otherwise, print
+out the second slide if you are using ALVAR. NOTE: The size of the ppt slide is set to 
+25.6 x 17.52 inches, so if you want the entire marker array to fit in A4 size paper,
+then you should choose "Scale to fit" option when you print. 
+
 
 Game Play Manual:
 

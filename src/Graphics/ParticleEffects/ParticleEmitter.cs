@@ -11,6 +11,7 @@
 #region Using Statements
 using System;
 using Microsoft.Xna.Framework;
+using GoblinXNA.Helpers;
 #endregion
 
 namespace GoblinXNA.Graphics.ParticleEffects
@@ -77,7 +78,8 @@ namespace GoblinXNA.Graphics.ParticleEffects
             if (elapsedTime > 0)
             {
                 // Work out how fast we are moving.
-                Vector3 velocity = (newPosition - previousPosition) / elapsedTime;
+                Vector3 tmp = Vector3.Subtract(newPosition, previousPosition);
+                Vector3 velocity = Vector3Helper.Divide(ref tmp, (float)elapsedTime);
 
                 // If we had any time left over that we didn't use during the
                 // previous update, add that to the current elapsed time.

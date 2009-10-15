@@ -225,6 +225,7 @@ namespace GoblinXNA.Device.Capture.PointGrey
             FLYCAPTURE_BUMBLEBEE2,
             FLYCAPTURE_BUMBLEBEEXB3,
             FLYCAPTURE_GRASSHOPPER,
+            //FLYCAPTURE_CHAMELEON,
             FLYCAPTURE_UNKNOWN = -1,
         }
 

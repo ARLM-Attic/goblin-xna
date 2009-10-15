@@ -90,12 +90,12 @@ namespace GoblinXNA.Physics
             brake = 0;
 
             tireRefHeight = 0;
-            pin = Vector3.Zero;
+            pin = new Vector3();
             suspShock = 0;
             suspSpring = 0;
             suspLength = 0;
 
-            brakeRefPosition = Vector3.Zero;
+            brakeRefPosition = new Vector3();
             tireOffsetMatrix = Matrix.Identity;
 
             tireMatrix = Matrix.Identity;

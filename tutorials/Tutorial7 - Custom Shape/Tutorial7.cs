@@ -124,17 +124,27 @@ namespace Tutorial7___Custom_Shape
         {
             // Set up the camera of the scene graph
             Camera camera = new Camera();
-            // Put the camera at (0, 0, 0)
-            camera.Translation = new Vector3(0, 5, 10);
-            // Rotate the camera -45 degrees along the X axis
+            // Put the camera at (0, 3, 7)
+            camera.Translation = new Vector3(0, 3, 7);
+            // Rotate the camera -15 degrees along the X axis
             camera.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX,
-                MathHelper.ToRadians(-30));
+                MathHelper.ToRadians(-15));
             // Set the vertical field of view to be 45 degrees
             camera.FieldOfViewY = MathHelper.ToRadians(45); 
             // Set the near clipping plane to be 0.1f unit away from the camera
             camera.ZNearPlane = 0.1f;
             // Set the far clipping plane to be 1000 units away from the camera
             camera.ZFarPlane = 1000;
+
+            // Set the initial translation and rotation of the generic input which controls 
+            // the camera transform in this application
+            GenericInput.Instance.InitialTranslation = camera.Translation;
+            GenericInput.Instance.InitialRotation = camera.Rotation;
+
+            // Adjust the speed of the camera control
+            GenericInput.Instance.PanSpeed = 0.05f;
+            GenericInput.Instance.ZoomSpeed = 0.5f;
+            GenericInput.Instance.RotateSpeed = 0.02f;
 
             // Now assign this camera to a camera node
             CameraNode cameraNode = new CameraNode(camera);
@@ -325,11 +335,14 @@ namespace Tutorial7___Custom_Shape
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            // Update the generic input's base transform to use for panning
+            GenericInput.Instance.BaseTransformation = scene.CameraNode.WorldTransformation;
+
             // Move the camera based on the generic input's rotation information
             // You can uncomment the translation update so that you can move the
             // camera as well using key presses. I commented it out here because
             // the light direction manipulation uses key press as well
-            //genericInputNode.Translation = GenericInput.Translation;
+            genericInputNode.Translation = GenericInput.Instance.Translation;
             genericInputNode.Rotation = GenericInput.Instance.Rotation;
 
             base.Update(gameTime);

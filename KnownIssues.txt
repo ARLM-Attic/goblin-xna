@@ -1,0 +1,29 @@
+Augmented reality related:
+
+1. Video image flickers occasionally for some reason. 
+
+2. Stereo video image mode freezes some time.
+
+3. DESSmoother has problem smoothing out rotation, so you may want to use it only for smoothing out 
+   translation until it is fixed. 
+
+
+Physics engine related:
+
+1. When shape type is Cylinder type (or any similar types), if they are not interactable (static)
+   then their collision model is, for some reason, not rotated even if the actual model has rotation.
+
+2. If a physics object is set to be ShapeType.TriangleMesh, it can be penetrated from time to time even
+   if the object is 'thick' enough. This is probably due to Newton 1.5.3 bug, and maybe fixed in their 
+   2.0 releases. 
+
+
+Miscellaneous:
+
+1. KeyboardInput's type event needs to be fixed for key type repetition capability.
+
+2. The focus event handling in the 2D UI is not complete, so it won't work automatically. You will need to set
+   the focus properties manually. This property doesn't matter for most UIs except UIs that use editable 
+   G2DTextField (e.g., G2DSuggestField). 
+
+3. Shadow mapping may not work properly (has artifacts) with Intel graphics cards. 

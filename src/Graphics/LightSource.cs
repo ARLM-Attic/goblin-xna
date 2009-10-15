@@ -89,7 +89,7 @@ namespace GoblinXNA.Graphics
         /// </summary>
         public LightSource()
         {
-            position = Vector3.Zero;
+            position = new Vector3();
             direction = new Vector3(-1, -1, -1);
             lightType = LightType.Directional;
             enabled = true;
@@ -166,7 +166,7 @@ namespace GoblinXNA.Graphics
 
         /// <summary>
         /// Gets or sets the position of this light source. This property is used only for Point
-        /// and SpotLight types. The default value is Vector3.Zero.
+        /// and SpotLight types. The default value is new Vector3().
         /// </summary>
         public Vector3 Position
         {

@@ -111,8 +111,7 @@ namespace GoblinXNA.Device.Generic
     /// <example>
     /// An example of adding a keyboard type event handler:
     /// 
-    /// KeyboardInput keyInput = KeyboardInput.Instance;
-    /// keyInput.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
+    /// KeyboardInput.Instance.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
     ///
     /// private void KeyTypeHandler(Microsoft.Xna.Framework.Input.Keys key, KeyModifier modifier)
     /// {
@@ -185,6 +184,8 @@ namespace GoblinXNA.Device.Generic
             currentPressedKeys = new List<KeyJustPressed>();
             releasedKeys = new List<KeyJustPressed>();
             releasedKeyList = new List<Keys>();
+            keysBeingPressed = new List<Keys>();
+            keysPressedLastFrame = new List<Keys>();
 
             onlyTrackWhenFocused = true;
 
@@ -303,7 +304,11 @@ namespace GoblinXNA.Device.Generic
                 (key == Keys.LeftControl) || (key == Keys.RightControl);
         }
 
-        private KeyModifier GetKeyModifier(List<Keys> keys)
+        #endregion
+
+        #region Public Helpers
+
+        public static KeyModifier GetKeyModifier(List<Keys> keys)
         {
             KeyModifier modifier = new KeyModifier();
 
@@ -317,10 +322,6 @@ namespace GoblinXNA.Device.Generic
             return modifier;
         }
 
-        #endregion
-
-        #region Public Helpers
-
         /// <summary>
         /// Convers a 'key' to a char.
         /// </summary>
@@ -332,7 +333,7 @@ namespace GoblinXNA.Device.Generic
         /// <param name="key"></param>
         /// <param name="shiftPressed"></param>
         /// <returns></returns>
-        public char KeyToChar(Keys key, bool shiftPressed)
+        public static char KeyToChar(Keys key, bool shiftPressed)
         {
             // If key will not be found, just return space
             char ret = ' ';
@@ -405,7 +406,8 @@ namespace GoblinXNA.Device.Generic
 
             // Update the current keyboard state
             keyboardState = Keyboard.GetState();
-            keysBeingPressed = new List<Keys>(keyboardState.GetPressedKeys());
+            keysBeingPressed.Clear();
+            keysBeingPressed.AddRange(keyboardState.GetPressedKeys());
             // First remove weird keys being pressed without doing anything
             keysBeingPressed.Remove(Keys.Attn);
             keysBeingPressed.Remove(Keys.Zoom);
@@ -416,8 +418,7 @@ namespace GoblinXNA.Device.Generic
             {
                 KeyJustPressed keyPressed = currentPressedKeys[currentPressedKeys.Count - 1];
 
-                if (keysPressedLastFrame.Contains(keyPressed.Key) &&
-                    !IsSpecialKey(keyPressed.Key))
+                if (keysPressedLastFrame.Contains(keyPressed.Key))
                 {
                     repetitionTime += (int)gameTime.ElapsedGameTime.TotalMilliseconds;
                     bool processTypeEvent = false;
@@ -481,7 +482,8 @@ namespace GoblinXNA.Device.Generic
 
             releasedKeyList.Clear();
 
-            keysPressedLastFrame = new List<Keys>(keysBeingPressed);
+            keysPressedLastFrame.Clear();
+            keysPressedLastFrame.AddRange(keysBeingPressed);
         }
 
         #endregion

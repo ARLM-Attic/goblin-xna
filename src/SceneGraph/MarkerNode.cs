@@ -219,7 +219,7 @@ namespace GoblinXNA.SceneGraph
         {
             if (tracker.FindMarker(markerID))
             {
-                Vector3 p = Vector3.Zero;
+                Vector3 p = new Vector3();
                 Quaternion q = Quaternion.Identity;
                 Matrix rawMat = tracker.GetMarkerTransform();
 
@@ -232,14 +232,14 @@ namespace GoblinXNA.SceneGraph
                 }
 
                 if (smooth)
-                    worldTransformation = smoother.FilterMatrix(p, q);
+                    smoother.FilterMatrix(ref p, ref q, out worldTransformation);
                 else
                     worldTransformation = rawMat;
 
                 if (predict)
                 {
                     predictionTime = 0;
-                    predictor.UpdatePredictor(p, q);
+                    predictor.UpdatePredictor(ref p, ref q);
                 }
 
                 prevMatrix = worldTransformation;
@@ -261,7 +261,7 @@ namespace GoblinXNA.SceneGraph
                         if (predict)
                         {
                             predictionTime += elapsedTime;
-                            worldTransformation = predictor.GetPrediction(predictionTime);
+                            predictor.GetPrediction(predictionTime, out worldTransformation);
                         }
                         else
                             worldTransformation = prevMatrix;

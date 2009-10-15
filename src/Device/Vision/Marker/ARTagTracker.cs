@@ -173,7 +173,7 @@ namespace GoblinXNA.Device.Vision.Marker
 
                     // make sure we are initialized
                     if (!initialized)
-                        throw new MarkerException("MarkerTracker is not initialized. Call InitTracker(...)");
+                        throw new MarkerException("ARTagTracker is not initialized. Call InitTracker(...)");
 
                     String fileType = Path.GetExtension(imageFilename);
 

@@ -599,7 +599,7 @@ namespace GoblinXNA.Device.Generic
 
             // HANDLE MOUSE WHEEL MOVE
             mouseWheelDelta = mouseState.ScrollWheelValue - mouseWheelValue;
-            if (mouseWheelDelta > 0)
+            if (mouseWheelDelta != 0)
             {
                 mouseWheelValue = mouseState.ScrollWheelValue;
                 if(MouseWheelMoveEvent != null)

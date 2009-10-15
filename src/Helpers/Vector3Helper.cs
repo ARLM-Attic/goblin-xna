@@ -55,7 +55,7 @@ namespace GoblinXNA.Helpers
         public static Vector3 GetDimensions(BoundingBox box)
         {
             if (box.Equals(new BoundingBox()))
-                return Vector3.Zero;
+                return new Vector3();
 
             Vector3[] corners = box.GetCorners();
 
@@ -72,7 +72,7 @@ namespace GoblinXNA.Helpers
                     y = Math.Abs(origin.Y - corners[i].Y);
             }
 
-            return new Vector3(x, y, z);
+            return Vector3Helper.Get(x, y, z);
         }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace GoblinXNA.Helpers
                         float z = BitConverter.ToSingle(data, ndx + 8);
                         if (needTransform)
                         {
-                            Vector3 point = Matrix.Multiply(Matrix.CreateTranslation(new Vector3(x, y, z)),
+                            Vector3 point = Matrix.Multiply(Matrix.CreateTranslation(Vector3Helper.Get(x, y, z)),
                                 transforms[mesh.ParentBone.Index] * Matrix.CreateScale(scale)).Translation;
 
                             x = point.X;
@@ -124,7 +124,7 @@ namespace GoblinXNA.Helpers
                             z = point.Z;
                         }
 
-                        points.Add(new Vector3(x + offsetTrans.X, y + offsetTrans.Y, z + offsetTrans.Z));
+                        points.Add(Vector3Helper.Get(x + offsetTrans.X, y + offsetTrans.Y, z + offsetTrans.Z));
                     }
                 }
             }
@@ -156,7 +156,7 @@ namespace GoblinXNA.Helpers
                 float z = BitConverter.ToSingle(data, ndx + 8);
                 if (needTransform)
                 {
-                    Vector3 point = Matrix.Multiply(Matrix.CreateTranslation(new Vector3(x, y, z)),
+                    Vector3 point = Matrix.Multiply(Matrix.CreateTranslation(Vector3Helper.Get(x, y, z)),
                         Matrix.CreateScale(scale)).Translation;
 
                     x = point.X;
@@ -164,7 +164,7 @@ namespace GoblinXNA.Helpers
                     z = point.Z;
                 }
 
-                points.Add(new Vector3(x, y, z));
+                points.Add(Vector3Helper.Get(x, y, z));
             }
 
             return points;
@@ -177,7 +177,80 @@ namespace GoblinXNA.Helpers
         /// <returns>A Vector3 object without the w component</returns>
         public static Vector3 GetVector3(Vector4 v4)
         {
-            return new Vector3(v4.X, v4.Y, v4.Z);
+            Vector3 vector3 = new Vector3();
+            vector3.X = v4.X;
+            vector3.Y = v4.Y;
+            vector3.Z = v4.Z;
+            return vector3;
+        }
+
+        /// <summary>
+        /// Calculate the normal perpendicular to two vectors v0->v1 and v0->v2 using right hand rule.
+        /// </summary>
+        /// <param name="v0"></param>
+        /// <param name="v1"></param>
+        /// <param name="v2"></param>
+        /// <returns></returns>
+        public static Vector3 GetNormal(Vector3 v0, Vector3 v1, Vector3 v2)
+        {
+            Vector3 v0_1 = v1 - v0;
+            Vector3 v0_2 = v2 - v0;
+
+            Vector3 normal = Vector3.Cross(v0_2, v0_1);
+            normal.Normalize();
+
+            return normal;
+        }
+
+        /// <summary>
+        /// Adds two Vector3 object.
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public static Vector3 Add(ref Vector3 a, ref Vector3 b)
+        {
+            Vector3 result = new Vector3();
+            result.X = a.X + b.X;
+            result.Y = a.Y + b.Y;
+            result.Z = a.Z + b.Z;
+            return result;
+        }
+
+        public static Vector3 Multiply(ref Vector3 a, ref Vector3 b)
+        {
+            Vector3 result = new Vector3();
+            result.X = a.X * b.X;
+            result.Y = a.Y * b.Y;
+            result.Z = a.Z * b.Z;
+            return result;
+        }
+
+        public static Vector3 Multiply(ref Vector3 a, float scale)
+        {
+            Vector3 result = new Vector3();
+            result.X = a.X * scale;
+            result.Y = a.Y * scale;
+            result.Z = a.Z * scale;
+            return result;
+        }
+
+        public static Vector3 Divide(ref Vector3 a, float scale)
+        {
+            Vector3 result = new Vector3();
+            result.X = a.X / scale;
+            result.Y = a.Y / scale;
+            result.Z = a.Z / scale;
+            return result;
+        }
+
+        public static Vector3 Get(float x, float y, float z)
+        {
+            Vector3 result = new Vector3();
+            result.X = x;
+            result.Y = y;
+            result.Z = z;
+            return result;
         }
 
         /// <summary>

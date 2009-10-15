@@ -10,8 +10,8 @@ using Microsoft.Xna.Framework.Net;
 using Microsoft.Xna.Framework.Storage;
 
 using GoblinXNA;
+using GoblinXNA.UI;
 using GoblinXNA.UI.UI2D;
-using GoblinXNA.UI.Events;
 using GoblinXNA.SceneGraph;
 using GoblinXNA.Graphics;
 using GoblinXNA.Graphics.Geometry;
@@ -149,8 +149,6 @@ namespace Tutorial3___Simple_2D_GUI
             frame.Border = GoblinEnums.BorderFactory.LineBorder;
             frame.Transparency = 0.7f;  // Ranges from 0 (fully transparent) to 1 (fully opaque)
 
-            // Create an action listener
-            TestActionListener listener = new TestActionListener();
             label = "User Interfaces";
 
             // Loads the fonts used for rendering UI labels and slider labels
@@ -162,22 +160,22 @@ namespace Tutorial3___Simple_2D_GUI
             radio1.TextFont = uiFont;
             radio1.Bounds = new Rectangle(10, 5, 80, 20);
             radio1.DoClick(); // make this radio button selected initially
-            radio1.AddActionListener(listener);
+            radio1.ActionPerformedEvent += new ActionPerformed(HandleActionPerformed);
 
             G2DRadioButton radio2 = new G2DRadioButton("Computer Graphics");
             radio2.TextFont = uiFont;
             radio2.Bounds = new Rectangle(10, 25, 80, 20);
-            radio2.AddActionListener(listener);
+            radio2.ActionPerformedEvent += new ActionPerformed(HandleActionPerformed);
 
             G2DRadioButton radio3 = new G2DRadioButton("Augmented Reality");
             radio3.TextFont = uiFont;
             radio3.Bounds = new Rectangle(10, 45, 80, 20);
-            radio3.AddActionListener(listener);
+            radio3.ActionPerformedEvent += new ActionPerformed(HandleActionPerformed);
 
             sliderRadio = new G2DRadioButton("Slider Control");
             sliderRadio.TextFont = uiFont;
             sliderRadio.Bounds = new Rectangle(10, 65, 80, 20);
-            sliderRadio.AddActionListener(listener);
+            sliderRadio.ActionPerformedEvent += new ActionPerformed(HandleActionPerformed);
 
             // Create a slider
             G2DSlider slider = new G2DSlider();
@@ -188,7 +186,7 @@ namespace Tutorial3___Simple_2D_GUI
             slider.MinorTickSpacing = 5;
             slider.PaintTicks = true;
             slider.PaintLabels = true;
-            slider.AddChangeListener(new TestChangeListener());
+            slider.StateChangedEvent += new StateChanged(HandleStateChanged);
 
             // Create a ButtonGroup object which controls the radio 
             // button selections
@@ -202,7 +200,7 @@ namespace Tutorial3___Simple_2D_GUI
             G2DButton button = new G2DButton("I Love");
             button.TextFont = uiFont;
             button.Bounds = new Rectangle(50, 145, 50, 20);
-            button.AddActionListener(listener);
+            button.ActionPerformedEvent += new ActionPerformed(HandleActionPerformed);
 
             // Add all of the components to the main panel
             frame.AddChild(radio1);
@@ -262,41 +260,30 @@ namespace Tutorial3___Simple_2D_GUI
         }
 
         /// <summary>
-        /// Create a custom ActionListener class
+        /// Handles action performed events.
         /// </summary>
-        private class TestActionListener : ActionListener
+        /// <param name="source"></param>
+        private void HandleActionPerformed(object source)
         {
-            public TestActionListener()
-            {
-            }
-
-            public void ActionPerformed(ActionEvent evt)
-            {
-                G2DComponent comp = (G2DComponent)evt.Source;
-                if (comp is G2DButton)
-                    label = comp.Text + " Goblin XNA!!";
-                else if (comp is G2DRadioButton)
-                    label = comp.Text;
-            }
-
+            G2DComponent comp = (G2DComponent)source;
+            if (comp is G2DButton)
+                label = comp.Text + " Goblin XNA!!";
+            else if (comp is G2DRadioButton)
+                label = comp.Text;
         }
 
         /// <summary>
-        /// Create a custom ChangeListener class
+        /// Handles state changed events.
         /// </summary>
-        private class TestChangeListener : ChangeListener
+        /// <param name="source"></param>
+        private void HandleStateChanged(object source)
         {
-            public TestChangeListener() { }
-
-            public void StateChanged(ChangeEvent evt)
+            G2DComponent comp = (G2DComponent)source;
+            if (comp is G2DSlider)
             {
-                G2DComponent comp = (G2DComponent)evt.Source;
-                if (comp is G2DSlider)
-                {
-                    sliderRadio.DoClick();
-                    label = "Slider value is " + ((G2DSlider)comp).Value;
-                    rotationRate = ((G2DSlider)comp).Value * 0.2f;
-                }
+                sliderRadio.DoClick();
+                label = "Slider value is " + ((G2DSlider)comp).Value;
+                rotationRate = ((G2DSlider)comp).Value * 0.2f;
             }
         }
     }

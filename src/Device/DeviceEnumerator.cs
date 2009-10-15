@@ -51,26 +51,6 @@ namespace GoblinXNA.Device
     /// </remarks>
     internal class DeviceEnumerator : IDisposable
     {
-        /// <summary>
-        /// A string constant for the mouse device
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.Generic.MouseInput"/>
-        public static String Mouse              = "Mouse";
-
-        /// <summary>
-        /// A string constant for the keyboard device
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.Generic.KeyboardInput"/>
-        public static String Keyboard           = "Keyboard";
-
-        /// <summary>
-        /// A string constant for the emulation of a 6DOF device combining the
-        /// mouse and keyboard devices. For the actual mapping, please see
-        /// the GoblinXNA.Device.Generic.GenericInput class.
-        /// </summary>
-        /// <see cref="GoblinXNA.Device.Generic.GenericInput"/>
-        public static String MouseAndKeyboard   = "GenericInput";
-
         protected Dictionary<String, InputDevice> availableDevices;
         protected Dictionary<String, InputDevice_6DOF> available6DOFDevices;
 
@@ -135,15 +115,15 @@ namespace GoblinXNA.Device
             // Add all of the non-6DOF input devices if available
             MouseInput mouseInput = MouseInput.Instance;
             if (mouseInput.IsAvailable)
-                availableDevices.Add(Mouse, mouseInput);
+                availableDevices.Add(mouseInput.Identifier, mouseInput);
 
             KeyboardInput keyboardInput = KeyboardInput.Instance;
             if (keyboardInput.IsAvailable)
-                availableDevices.Add(Keyboard, keyboardInput);
+                availableDevices.Add(keyboardInput.Identifier, keyboardInput);
 
             GenericInput genericInput = GenericInput.Instance;
             if(genericInput.IsAvailable)
-                available6DOFDevices.Add(MouseAndKeyboard, genericInput);
+                available6DOFDevices.Add(genericInput.Identifier, genericInput);
 
             foreach (InputDevice device in additionalDevices.Values)
                 if (device.IsAvailable)

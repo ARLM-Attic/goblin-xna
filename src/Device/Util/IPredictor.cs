@@ -47,13 +47,13 @@ namespace GoblinXNA.Device.Util
         /// </summary>
         /// <param name="p">The position to use for updating the prediction</param>
         /// <param name="q">The orientation to use for updating the prediction</param>
-        void UpdatePredictor(Vector3 p, Quaternion q);
+        void UpdatePredictor(ref Vector3 p, ref Quaternion q);
 
         /// <summary>
         /// Gets the predicted transformation into the future time 't' from the history.
         /// </summary>
         /// <param name="t">The amount of time from now into the future in milliseconds</param>
-        /// <returns>The predicted transformation</returns>
-        Matrix GetPrediction(float t);
+        /// <param name="result">The predicted transformation</param>
+        void GetPrediction(float t, out Matrix result);
     }
 }

@@ -37,6 +37,8 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -94,12 +96,12 @@ namespace GoblinXNA.Graphics.Geometry
             Vector3 tubeCenter;
             for (countA = 0, theta = 0; countA < slices; theta += thetaIncr, countA++)
             {
-                tubeCenter = new Vector3((float)(c * Math.Cos(theta)), 0, (float)(c * Math.Sin(theta)));
+                tubeCenter = Vector3Helper.Get((float)(c * Math.Cos(theta)), 0, (float)(c * Math.Sin(theta)));
                 for (countB = 0, thai = 0; countB < stacks; thai += thaiIncr, countB++)
                 {
                     VertexPositionNormal vert = new VertexPositionNormal();
                     common = (c + a * Math.Cos(thai));
-                    vert.Position = new Vector3((float)(common * Math.Cos(theta)),
+                    vert.Position = Vector3Helper.Get((float)(common * Math.Cos(theta)),
                         (float)(a * Math.Sin(thai)), (float)(common * Math.Sin(theta)));
                     vert.Normal = Vector3.Normalize(vert.Position - tubeCenter);
                     vertices.Add(vert);

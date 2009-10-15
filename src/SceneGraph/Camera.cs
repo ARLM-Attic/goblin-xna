@@ -35,6 +35,8 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Xna.Framework;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.SceneGraph
 {
     /// <summary>
@@ -43,7 +45,7 @@ namespace GoblinXNA.SceneGraph
     /// </summary>
     public class Camera
     {
-        #region Fields
+        #region Member Fields
 
         protected Vector3 translation;
         protected Quaternion rotation;
@@ -57,6 +59,14 @@ namespace GoblinXNA.SceneGraph
 
         protected bool modifyView;
         protected bool modifyProjection;
+
+        #region Temporary Variables
+
+        protected Matrix tmpMat1;
+        protected Matrix tmpMat2;
+
+        #endregion
+
         #endregion
 
         #region Constructors
@@ -66,7 +76,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         public Camera()
         {
-            translation = new Vector3(0, 0, 0);
+            translation = new Vector3();
             rotation = Quaternion.Identity;
             view = Matrix.Identity;
             projection = Matrix.Identity;
@@ -111,8 +121,10 @@ namespace GoblinXNA.SceneGraph
             { 
                 translation = value;
                 modifyView = true;
-                cameraTransformation = Matrix.CreateFromQuaternion(rotation) *
-                    Matrix.CreateTranslation(translation);
+
+                Matrix.CreateFromQuaternion(ref rotation, out tmpMat1);
+                Matrix.CreateTranslation(ref translation, out tmpMat2);
+                Matrix.Multiply(ref tmpMat1, ref tmpMat2, out cameraTransformation);
             }
         }
         /// <summary>
@@ -126,8 +138,10 @@ namespace GoblinXNA.SceneGraph
             { 
                 rotation = value;
                 modifyView = true;
-                cameraTransformation = Matrix.CreateFromQuaternion(rotation) *
-                    Matrix.CreateTranslation(translation);
+
+                Matrix.CreateFromQuaternion(ref rotation, out tmpMat1);
+                Matrix.CreateTranslation(ref translation, out tmpMat2);
+                Matrix.Multiply(ref tmpMat1, ref tmpMat2, out cameraTransformation);
             }
         }
 
@@ -141,12 +155,12 @@ namespace GoblinXNA.SceneGraph
                 if (modifyView)
                 {
                     Vector3 location = translation;
-                    Vector3 target = new Vector3(0.0f, 0.0f, -1.0f);
-                    target = Vector3.Transform(target, cameraTransformation);
-                    Vector3 up = new Vector3(0.0f, 1.0f, 0.0f);
-                    up = Vector3.Transform(up, cameraTransformation);
-                    up = Vector3.Subtract(up, location);
-                    view = Matrix.CreateLookAt(location, target, up);
+                    Vector3 target = -Vector3.UnitZ;
+                    Vector3.Transform(ref target, ref cameraTransformation, out target);
+                    Vector3 up = Vector3.UnitY;
+                    Vector3.Transform(ref up, ref cameraTransformation, out up);
+                    Vector3.Subtract(ref up, ref location, out up);
+                    Matrix.CreateLookAt(ref location, ref target, ref up, out view);
 
                     modifyView = false;
                 }
@@ -183,8 +197,7 @@ namespace GoblinXNA.SceneGraph
             {
                 if (modifyProjection)
                 {
-                    projection = Matrix.CreatePerspectiveFieldOfView(fieldOfView,
-                        aspectRatio, zNearPlane, zFarPlane);
+                    Matrix.CreatePerspectiveFieldOfView(fieldOfView, aspectRatio, zNearPlane, zFarPlane, out projection);
 
                     modifyProjection = false;
                 }

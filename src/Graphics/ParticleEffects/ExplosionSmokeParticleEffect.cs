@@ -12,6 +12,8 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.ParticleEffects
 {
     /// <summary>
@@ -44,7 +46,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             minVerticalVelocity = -10;
             maxVerticalVelocity = 50;
 
-            gravity = new Vector3(0, -20, 0);
+            gravity = Vector3Helper.Get(0, -20, 0);
 
             endVelocity = 0;
 

@@ -12,6 +12,8 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.ParticleEffects
 {
     /// <summary>
@@ -49,7 +51,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             maxVerticalVelocity = 10;
 
             // Set gravity upside down, so the flames will 'fall' upward.
-            gravity = new Vector3(0, 15, 0);
+            gravity = Vector3Helper.Get(0, 15, 0);
 
             minColor = new Color(0, 0, 0, 10);
             maxColor = new Color(255, 255, 255, 40);

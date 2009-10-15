@@ -74,6 +74,14 @@ namespace GoblinXNA.Helpers
                 mat[12], mat[13], mat[14], mat[15]);
         }
 
+        public static void FloatsToMatrix(float[] mat, out Matrix m)
+        {
+            m.M11 = mat[0]; m.M12 = mat[1]; m.M13 = mat[2]; m.M14 = mat[3];
+            m.M21 = mat[4]; m.M22 = mat[5]; m.M23 = mat[6]; m.M24 = mat[7];
+            m.M31 = mat[8]; m.M32 = mat[9]; m.M33 = mat[10]; m.M34 = mat[11];
+            m.M41 = mat[12]; m.M42 = mat[13]; m.M43 = mat[14]; m.M44 = mat[15];
+        }
+
         /// <summary>
         /// Copies only the rotation part of the matrix (the upper-left 3x3 matrix, so it
         /// may actually contain the scaling factor as well).
@@ -85,6 +93,14 @@ namespace GoblinXNA.Helpers
             Matrix rotMat = CopyMatrix(src);
             rotMat.M41 = rotMat.M42 = rotMat.M43 = 0;
             return rotMat;
+        }
+
+        public static void GetRotationMatrix(ref Matrix src, out Matrix dest)
+        {
+            dest.M11 = src.M11; dest.M12 = src.M12; dest.M13 = src.M13; dest.M14 = src.M14;
+            dest.M21 = src.M21; dest.M22 = src.M22; dest.M23 = src.M23; dest.M24 = src.M24;
+            dest.M31 = src.M31; dest.M32 = src.M32; dest.M33 = src.M33; dest.M34 = src.M34;
+            dest.M41 = 0; dest.M42 = 0; dest.M43 = 0; dest.M44 = 1;
         }
 
         /// <summary>
@@ -109,9 +125,9 @@ namespace GoblinXNA.Helpers
         {
             Matrix m = mat;
 
-            Vector3 axisX = new Vector3(m.M11, m.M12, m.M13);
-            Vector3 axisY = new Vector3(m.M21, m.M22, m.M23);
-            Vector3 axisZ = new Vector3(m.M31, m.M32, m.M33);
+            Vector3 axisX = Vector3Helper.Get(m.M11, m.M12, m.M13);
+            Vector3 axisY = Vector3Helper.Get(m.M21, m.M22, m.M23);
+            Vector3 axisZ = Vector3Helper.Get(m.M31, m.M32, m.M33);
 
             axisX.Normalize();
             axisY.Normalize();
@@ -275,6 +291,14 @@ namespace GoblinXNA.Helpers
                 mat.M31, mat.M32, mat.M33, mat.M34, mat.M41, mat.M42, mat.M43, mat.M44};
 
             return floats;
+        }
+
+        public static void ToFloats(ref Matrix mat, float[] floats)
+        {
+            floats[0] = mat.M11; floats[1] = mat.M12; floats[2] = mat.M13; floats[3] = mat.M14;
+            floats[4] = mat.M21; floats[5] = mat.M22; floats[6] = mat.M23; floats[7] = mat.M24;
+            floats[8] = mat.M31; floats[9] = mat.M32; floats[10] = mat.M33; floats[11] = mat.M34;
+            floats[12] = mat.M41; floats[13] = mat.M42; floats[14] = mat.M43; floats[15] = mat.M44;
         }
 
         /// <summary>

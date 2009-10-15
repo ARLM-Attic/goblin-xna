@@ -72,6 +72,13 @@ namespace GoblinXNA.Device.Util
         protected bool initialized;
         protected int restartCount;
 
+        #region Temporary Variables
+
+        protected Matrix tmpMat1;
+        protected Matrix tmpMat2;
+
+        #endregion
+
         #endregion
 
         #region Constructors
@@ -136,11 +143,11 @@ namespace GoblinXNA.Device.Util
             this.transThreshold = transThreshold;
             this.rotThreshold = rotThreshold;
 
-            transSt = Vector3.Zero;
-            transPrevSt = Vector3.Zero;
-            transBt = Vector3.Zero;
-            transPrevBt = Vector3.Zero;
-            tmpTrans = Vector3.Zero;
+            transSt = new Vector3();
+            transPrevSt = new Vector3();
+            transBt = new Vector3();
+            transPrevBt = new Vector3();
+            tmpTrans = new Vector3();
 
             rotSt = Quaternion.Identity;
             rotPrevSt = Quaternion.Identity;
@@ -148,7 +155,7 @@ namespace GoblinXNA.Device.Util
             rotPrevBt = Quaternion.Identity;
             tmpRot = Quaternion.Identity;
 
-            prevRawP = Vector3.Zero;
+            prevRawP = new Vector3();
             prevRawQ = Quaternion.Identity;
 
             prevComputedMat = Matrix.Identity;
@@ -166,8 +173,8 @@ namespace GoblinXNA.Device.Util
         /// </summary>
         /// <param name="p">The original position</param>
         /// <param name="q">The original rotation</param>
-        /// <returns>A smoothed matrix</returns>
-        public Matrix FilterMatrix(Vector3 p, Quaternion q)
+        /// <param name="result">A smoothed matrix</param>
+        public void FilterMatrix(ref Vector3 p, ref Quaternion q, out Matrix result)
         {
             if (initialized)
             {
@@ -179,7 +186,8 @@ namespace GoblinXNA.Device.Util
                 // transformation, and return the previously smoothed transformation.
                 if (transThreshold > 0)
                 {
-                    float dist = Vector3.Distance(p, prevRawP);
+                    float dist = 0;
+                    Vector3.Distance(ref p, ref prevRawP, out dist);
                     if (dist > transThreshold)
                         compute = false;
                 }
@@ -192,7 +200,8 @@ namespace GoblinXNA.Device.Util
                 {
                     q.Normalize();
                     prevRawQ.Normalize();
-                    float dotProduct = Quaternion.Dot(q, prevRawQ);
+                    float dotProduct = 0;
+                    Quaternion.Dot(ref q, ref prevRawQ, out dotProduct);
                     if (dotProduct > 1)
                         dotProduct = 1;
                     else if (dotProduct < -1)
@@ -204,7 +213,7 @@ namespace GoblinXNA.Device.Util
 
                 if (compute)
                 {
-                    prevComputedMat = ComputeDESMatrix(p, q);
+                    ComputeDESMatrix(ref p, ref q, out prevComputedMat);
 
                     prevRawP = p;
                     prevRawQ = q;
@@ -223,7 +232,7 @@ namespace GoblinXNA.Device.Util
                     }
                 }
 
-                return prevComputedMat;
+                result = prevComputedMat;
             }
             else
             {
@@ -246,8 +255,11 @@ namespace GoblinXNA.Device.Util
                     initialized = true;
                 }
 
+                Matrix.CreateFromQuaternion(ref q, out tmpMat1);
+                Matrix.CreateTranslation(ref p, out tmpMat2);
+
                 // return unfiltered matrix since can not smooth yet
-                return Matrix.CreateFromQuaternion(q) * Matrix.CreateTranslation(p);
+                Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
             }
         }
 
@@ -258,11 +270,8 @@ namespace GoblinXNA.Device.Util
         /// <summary>
         /// Performs the DES algorithm.
         /// </summary>
-        /// <returns></returns>
-        private Matrix ComputeDESMatrix(Vector3 p, Quaternion q)
+        private void ComputeDESMatrix(ref Vector3 p, ref Quaternion q, out Matrix result)
         {
-            Matrix desResult = Matrix.Identity;
-
             // If translational alpha is 1, then no need to perform smoothing
             if (transAlpha == 1)
                 transSt = p;
@@ -295,9 +304,9 @@ namespace GoblinXNA.Device.Util
                 rotPrevBt = rotBt;
             }
 
-            desResult = Matrix.CreateFromQuaternion(rotSt) * Matrix.CreateTranslation(transSt);
-
-            return desResult;
+            Matrix.CreateFromQuaternion(ref rotSt, out tmpMat1);
+            Matrix.CreateTranslation(ref transSt, out tmpMat2);
+            Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
         }
 
         #endregion

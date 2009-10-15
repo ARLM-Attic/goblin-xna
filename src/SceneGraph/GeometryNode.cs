@@ -47,7 +47,7 @@ namespace GoblinXNA.SceneGraph
     /// <summary>
     /// A scene graph node that holds the model geometry, physical properties, etc.
     /// </summary>
-    public class GeometryNode : BranchNode, IComparable<GeometryNode>
+    public class GeometryNode : BranchNode
     {
         #region Field Members
 
@@ -68,6 +68,8 @@ namespace GoblinXNA.SceneGraph
 
         protected bool addToPhysicsEngine;
         protected bool isOccluder;
+
+        protected bool physicsStateChanged;
 
         #endregion
 
@@ -97,6 +99,7 @@ namespace GoblinXNA.SceneGraph
             showBoundingVolume = false;
 
             shouldRender = false;
+            physicsStateChanged = false;
         }
 
         /// <summary>
@@ -155,7 +158,23 @@ namespace GoblinXNA.SceneGraph
         public virtual bool AddToPhysicsEngine
         {
             get { return addToPhysicsEngine; }
-            set { addToPhysicsEngine = value; }
+            set 
+            {
+                if (addToPhysicsEngine != value)
+                {
+                    addToPhysicsEngine = value;
+                    physicsStateChanged = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets whether AddToPhysicsEngine property has been changed.
+        /// </summary>
+        internal bool PhysicsStateChanged
+        {
+            get { return physicsStateChanged; }
+            set { physicsStateChanged = value; }
         }
 
         /// <summary>
@@ -258,29 +277,6 @@ namespace GoblinXNA.SceneGraph
             get { return showBoundingVolume; }
             set { showBoundingVolume = value; }
         }
-        #endregion
-
-        #region IComparable<GeometryNode> Members
-        /// <summary>
-        /// Compares which GeometryNode's center is closer to the viewer location.
-        /// </summary>
-        /// <param name="other">The other GeometryNode objec to compare to</param>
-        /// <returns></returns>
-        public int CompareTo(GeometryNode other)
-        {
-            double thisDist = Vector3.Distance(boundingVolume.Center,
-                State.CameraTransform.Translation);
-            double otherDist = Vector3.Distance(other.BoundingVolume.Center,
-                State.CameraTransform.Translation);
-
-            if (thisDist > otherDist)
-                return 1;
-            else if (thisDist == otherDist)
-                return 0;
-            else
-                return -1;
-        }
-
         #endregion
 
         #region Override Methods

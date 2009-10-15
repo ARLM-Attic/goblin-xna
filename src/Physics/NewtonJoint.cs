@@ -135,7 +135,7 @@ namespace GoblinXNA.Physics
             : base()
         {
             pivotPoint = pivot;
-            pin = Vector3.Zero;
+            pin = new Vector3();
             maxConeAngle = 0;
             maxTwistAngle = 0;
         }
@@ -149,7 +149,7 @@ namespace GoblinXNA.Physics
 
         /// <summary>
         /// Sets a pointer to a unit vector defining the cone axis in global space. If this value
-        /// is set to other than Vector3.Zero, the cone and twist limits of this ball and socket
+        /// is set to other than new Vector3(), the cone and twist limits of this ball and socket
         /// joint will be set. In that case, you need to set MaxConeAngle and MaxTwistAngle as 
         /// well.
         /// </summary>

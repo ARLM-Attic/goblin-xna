@@ -31,7 +31,24 @@ using GoblinXNA.UI.UI2D;
 namespace Tutorial13___iWear_VR920
 {
     /// <summary>
+    /// An enum that indicates which marker tracking library to use.
+    /// </summary>
+    enum MarkerLibrary
+    {
+        /// <summary>
+        /// ARTag library developed by Mark Fiala
+        /// </summary>
+        ARTag,
+        /// <summary>
+        /// ALVAR library developed by VTT
+        /// </summary>
+        ALVAR
+    }
+
+    /// <summary>
     /// This tutorial demonstrates the stereoscropic rendering using Vuzix's iWear VR920.
+    /// NOTE: Some resources included in this project are shared between Tutorial 8, so 
+    /// please make sure that Tutorial 8 runs before running this tutorial.
     /// </summary>
     public class Tutorial13 : Microsoft.Xna.Framework.Game
     {
@@ -44,6 +61,8 @@ namespace Tutorial13___iWear_VR920
         bool stereoMode = true;
 
         iWearTracker iTracker;
+
+        MarkerLibrary markerLibrary = MarkerLibrary.ALVAR;
 
         public Tutorial13()
         {
@@ -159,18 +178,51 @@ namespace Tutorial13___iWear_VR920
             // the marker tracker
             scene.AddVideoCaptureDevice(captureDevice);
 
-            // Create a optical marker tracker that uses ARTag library
-            ARTagTracker tracker = new ARTagTracker();
-            // Set the configuration file to look for the marker specifications
-            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
-                captureDevice.Height, false, "NewARTag.cf");
+            IMarkerTracker tracker = null;
+            if (markerLibrary == MarkerLibrary.ALVAR)
+            {
+                // Create an optical marker tracker that uses ALVAR library
+                tracker = new ALVARMarkerTracker();
+                ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+                tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+            }
+            else
+            {
+                // Create an optical marker tracker that uses ARTag library
+                tracker = new ARTagTracker();
+                // Set the configuration file to look for the marker specifications
+                tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
+                    captureDevice.Height, false, "ARTag.cf");
+            }
 
             scene.MarkerTracker = tracker;
 
             // Create a marker node to track a ground marker array. 
-            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
+            if (markerLibrary == MarkerLibrary.ALVAR)
+            {
+                // Create an array to hold a list of marker IDs that are used in the marker
+                // array configuration (even though these are already specified in the configuration
+                // file, ALVAR still requires this array)
+                int[] ids = new int[28];
+                for (int i = 0; i < ids.Length; i++)
+                    ids[i] = i;
 
-            scene.RootNode.AddChild(groundMarkerNode);
+                groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.txt", ids);
+
+                // Add a transform node to tranlate the objects to be centered around the
+                // marker board.
+                TransformNode transNode = new TransformNode();
+                transNode.Translation = new Vector3(-42, -33, 0);
+
+                scene.RootNode.AddChild(transNode);
+                transNode.AddChild(groundMarkerNode);
+            }
+            else
+            {
+                groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
+
+                scene.RootNode.AddChild(groundMarkerNode);
+            }
 
             scene.ShowCameraImage = true;
         }
@@ -194,7 +246,11 @@ namespace Tutorial13___iWear_VR920
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            groundNode.Model = new Box(85, 66, 0.1f);
+            if (markerLibrary == MarkerLibrary.ALVAR)
+                groundNode.Model = new Box(95, 59, 0.1f);
+            else
+                groundNode.Model = new Box(85, 66, 0.1f);
+
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 

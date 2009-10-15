@@ -140,12 +140,18 @@ namespace GoblinXNA.UI
         public void Add2DComponent(G2DComponent comp2d)
         {
             if (!comp2Ds.Contains(comp2d))
+            {
                 if (comp2d.HasParent)
                     throw new GoblinException("You should only add root components to this list. "
                         + "Any component with parents are automatically rendered by its parent " +
                         "component");
                 else
+                {
                     comp2Ds.Add(comp2d);
+                    comp2d.RegisterKeyInput();
+                    comp2d.RegisterMouseInput();
+                }
+            }
         }
 
         /// <summary>
@@ -155,6 +161,8 @@ namespace GoblinXNA.UI
         public void Remove2DComponent(G2DComponent comp2d)
         {
             comp2Ds.Remove(comp2d);
+            comp2d.RemoveKeyInput();
+            comp2d.RemoveMouseInput();
         }
 
         /// <summary>
@@ -205,7 +213,7 @@ namespace GoblinXNA.UI
                 }
                 else
                     counter++;
-                UI2DRenderer.WriteText(new Vector2(x, y), prevCounter + " FPS", Color.White, debugFont);
+                UI2DRenderer.WriteText(new Vector2(x, y), prevCounter + " FPS", State.DebugTextColor, debugFont);
                 y += 20;
             }
 
@@ -215,7 +223,7 @@ namespace GoblinXNA.UI
                     throw new GoblinException("You need to add 'DebugFont.spritefont' file to your " +
                         "content directory before you can display debug information");
 
-                UI2DRenderer.WriteText(new Vector2(x, y), triangleCount + " Triangles", Color.White, debugFont);
+                UI2DRenderer.WriteText(new Vector2(x, y), triangleCount + " Triangles", State.DebugTextColor, debugFont);
                 y += 20;
             }
 
@@ -371,7 +379,11 @@ namespace GoblinXNA.UI
             foreach (G2DComponent comp2d in comp2Ds)
                 comp2d.RenderWidget();
 
+            UI2DRenderer.Flush();
+
             State.DepthBufferEnabled = true;
+
+            UI3DRenderer.Flush();
         }
 
         protected override void Dispose(bool disposing)
@@ -379,6 +391,7 @@ namespace GoblinXNA.UI
             comp2Ds.Clear();
             comp3Ds.Clear();
             UI2DRenderer.Dispose();
+            UI3DRenderer.Dispose();
         }
         #endregion
     }

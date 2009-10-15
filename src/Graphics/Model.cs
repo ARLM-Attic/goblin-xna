@@ -79,6 +79,14 @@ namespace GoblinXNA.Graphics
 
         #endregion
 
+        #region Temporary Variables
+
+        protected Matrix tmpMat1;
+        protected Matrix tmpMat2;
+        protected Vector3 tmpVec1;
+
+        #endregion
+
         #endregion
 
         #region Constructors
@@ -362,11 +370,16 @@ namespace GoblinXNA.Graphics
                             float x = BitConverter.ToSingle(data, ndx);
                             float y = BitConverter.ToSingle(data, ndx + 4);
                             float z = BitConverter.ToSingle(data, ndx + 8);
+
+                            tmpVec1.X = x; tmpVec1.Y = y; tmpVec1.Z = z;
                             if (needTransform)
-                                vertices.Add(Matrix.Multiply(Matrix.CreateTranslation(new Vector3(x, y, z)),
-                                    transforms[modelMesh.ParentBone.Index]).Translation);
+                            {
+                                Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                                Matrix.Multiply(ref tmpMat1, ref transforms[modelMesh.ParentBone.Index], out tmpMat2);
+                                vertices.Add(tmpMat2.Translation);
+                            }
                             else
-                                vertices.Add(new Vector3(x, y, z));
+                                vertices.Add(tmpVec1);
                         }
 
                         triangleCount += part.PrimitiveCount;
@@ -384,10 +397,10 @@ namespace GoblinXNA.Graphics
 
                 for (int ndx = 0; ndx < data.Length; ndx += stride)
                 {
-                    float x = BitConverter.ToSingle(data, ndx);
-                    float y = BitConverter.ToSingle(data, ndx + 4);
-                    float z = BitConverter.ToSingle(data, ndx + 8);
-                    vertices.Add(new Vector3(x, y, z));
+                    tmpVec1.X = BitConverter.ToSingle(data, ndx);
+                    tmpVec1.Y = BitConverter.ToSingle(data, ndx + 4);
+                    tmpVec1.Z = BitConverter.ToSingle(data, ndx + 8);
+                    vertices.Add(tmpVec1);
                 }
 
                 triangleCount += primitiveMesh.NumberOfPrimitives;
@@ -403,7 +416,7 @@ namespace GoblinXNA.Graphics
                 boundingBox = BoundingBox.CreateFromPoints(vertices);
                 boundingSphere = BoundingSphere.CreateFromPoints(vertices);
                 if(offsetTransform.Equals(Matrix.Identity))
-                    offsetTransform.Translation = Vector3.Negate((boundingBox.Min + boundingBox.Max) / 2);
+                    offsetTransform.Translation = (boundingBox.Min + boundingBox.Max) / 2;
             }
         }
 
@@ -414,12 +427,12 @@ namespace GoblinXNA.Graphics
         /// <param name="max">The maximum point of the minimum bounding box</param>
         protected virtual void GenerateBoundingBox(Vector3 min, Vector3 max)
         {
-            Vector3 minMaxZ = new Vector3(min.X, min.Y, max.Z);
-            Vector3 minMaxX = new Vector3(max.X, min.Y, min.Z);
-            Vector3 minMaxY = new Vector3(min.X, max.Y, min.Z);
-            Vector3 maxMinX = new Vector3(min.X, max.Y, max.Z);
-            Vector3 maxMinY = new Vector3(max.X, min.Y, max.Z);
-            Vector3 maxMinZ = new Vector3(max.X, max.Y, min.Z);
+            Vector3 minMaxZ = Vector3Helper.Get(min.X, min.Y, max.Z);
+            Vector3 minMaxX = Vector3Helper.Get(max.X, min.Y, min.Z);
+            Vector3 minMaxY = Vector3Helper.Get(min.X, max.Y, min.Z);
+            Vector3 maxMinX = Vector3Helper.Get(min.X, max.Y, max.Z);
+            Vector3 maxMinY = Vector3Helper.Get(max.X, min.Y, max.Z);
+            Vector3 maxMinZ = Vector3Helper.Get(max.X, max.Y, min.Z);
 
             verts = new VertexPositionColor[8];
             verts[0] = new VertexPositionColor(min, ColorHelper.Empty);
@@ -513,15 +526,13 @@ namespace GoblinXNA.Graphics
             // Render the actual model
             if (mesh != null)
             {
-                Matrix worldMatrix;
-
                 foreach (ModelMesh modelMesh in this.mesh)
                 {
                     // Skip animated mesh
                     if (animatedMesh != null && animatedMesh.Contains(modelMesh))
                         continue;
 
-                    worldMatrix = transforms[modelMesh.ParentBone.Index] * renderMatrix;
+                    Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
 
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {
@@ -532,7 +543,7 @@ namespace GoblinXNA.Graphics
                         }
 
                         shader.Render(
-                            worldMatrix,
+                            tmpMat1,
                             technique,
                             delegate
                             {
@@ -637,8 +648,6 @@ namespace GoblinXNA.Graphics
             if (!receiveShadow)
                 return;
 
-            Matrix worldMatrix;
-
             if (mesh != null)
             {
                 foreach (ModelMesh modelMesh in this.mesh)
@@ -647,8 +656,9 @@ namespace GoblinXNA.Graphics
                     if (animatedMesh != null && animatedMesh.Contains(modelMesh))
                         continue;
 
-                    worldMatrix = transforms[modelMesh.ParentBone.Index] * renderMatrix;
-                    State.ShadowShader.UpdateCalcShadowWorldMatrix(worldMatrix);
+                    Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
+
+                    State.ShadowShader.UpdateCalcShadowWorldMatrix(tmpMat1);
 
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {
@@ -677,9 +687,10 @@ namespace GoblinXNA.Graphics
                 int counter = 0;
                 foreach (ModelMesh modelMesh in animatedMesh)
                 {
-                    worldMatrix = animationTransforms[counter++] * transforms[modelMesh.ParentBone.Index] *
-                            renderMatrix;
-                    State.ShadowShader.UpdateCalcShadowWorldMatrix(worldMatrix);
+                    Matrix.Multiply(ref animationTransforms[counter++], ref transforms[modelMesh.ParentBone.Index], out tmpMat1);
+                    Matrix.Multiply(ref tmpMat1, ref renderMatrix, out tmpMat2);
+
+                    State.ShadowShader.UpdateCalcShadowWorldMatrix(tmpMat2);
 
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {
@@ -708,8 +719,6 @@ namespace GoblinXNA.Graphics
             if (!castShadow)
                 return;
 
-            Matrix worldMatrix;
-
             if (mesh != null)
             {
                 foreach (ModelMesh modelMesh in this.mesh)
@@ -718,8 +727,8 @@ namespace GoblinXNA.Graphics
                     if (animatedMesh != null && animatedMesh.Contains(modelMesh))
                         continue;
 
-                    worldMatrix = transforms[modelMesh.ParentBone.Index] * renderMatrix;
-                    State.ShadowShader.UpdateGenerateShadowWorldMatrix(worldMatrix);
+                    Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
+                    State.ShadowShader.UpdateGenerateShadowWorldMatrix(tmpMat1);
 
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {
@@ -748,9 +757,10 @@ namespace GoblinXNA.Graphics
                 int counter = 0;
                 foreach (ModelMesh modelMesh in animatedMesh)
                 {
-                    worldMatrix = animationTransforms[counter++] * transforms[modelMesh.ParentBone.Index] *
-                            renderMatrix;
-                    State.ShadowShader.UpdateGenerateShadowWorldMatrix(worldMatrix);
+                    Matrix.Multiply(ref animationTransforms[counter++], ref transforms[modelMesh.ParentBone.Index], out tmpMat1);
+                    Matrix.Multiply(ref tmpMat1, ref renderMatrix, out tmpMat2);
+
+                    State.ShadowShader.UpdateGenerateShadowWorldMatrix(tmpMat2);
 
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {

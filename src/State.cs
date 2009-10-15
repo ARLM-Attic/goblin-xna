@@ -81,6 +81,7 @@ namespace GoblinXNA
         private static bool showFPS;
         private static bool showTriangleCount;
         private static bool showNotifications;
+        private static Color debugTextColor;
 
         private static bool isMultiCore;
 
@@ -326,8 +327,12 @@ namespace GoblinXNA
         }
 
         /// <summary>
-        /// Gets or sets whether to display the Frames-Per-Secound count on the screen
+        /// Gets or sets whether to display the Frames-Per-Secound count on the screen.
         /// </summary>
+        /// <remarks>
+        /// The color of the text can be changed by modifying DebutTextColor property. 
+        /// </remarks>
+        /// <see cref="DebugTextColor"/>
         public static bool ShowFPS
         {
             get { return showFPS; }
@@ -335,7 +340,7 @@ namespace GoblinXNA
         }
 
         /// <summary>
-        /// Gets or sets whether to display any notification messages on the screen
+        /// Gets or sets whether to display any notification messages on the screen.
         /// </summary>
         public static bool ShowNotifications
         {
@@ -345,12 +350,26 @@ namespace GoblinXNA
 
         /// <summary>
         /// Gets or sets whether to display the triangle count of all of the rendered 
-        /// models in the scene 
+        /// models in the scene.
         /// </summary>
+        /// <remarks>
+        /// The color of the text can be changed by modifying DebutTextColor property. 
+        /// </remarks>
+        /// <see cref="DebugTextColor"/>
         public static bool ShowTriangleCount
         {
             get { return showTriangleCount; }
             set { showTriangleCount = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the color of the FPS or triangle count text. The default color 
+        /// is Color.White.
+        /// </summary>
+        public static Color DebugTextColor
+        {
+            get { return debugTextColor; }
+            set { debugTextColor = value; }
         }
 
         #endregion
@@ -423,6 +442,7 @@ namespace GoblinXNA
             showFPS = false;
             showNotifications = false;
             showTriangleCount = false;
+            debugTextColor = Color.White;
 
             enableNetworking = false;
             isServer = false;

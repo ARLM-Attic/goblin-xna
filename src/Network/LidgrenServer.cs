@@ -231,10 +231,8 @@ namespace GoblinXNA.Network
             }
         }
 
-        public List<byte[]> ReceiveMessage()
+        public void ReceiveMessage(ref List<byte[]> messages)
         {
-            List<byte[]> messages = new List<byte[]>();
-
             NetMessageType type;
             NetConnection sender;
 
@@ -285,8 +283,6 @@ namespace GoblinXNA.Network
                         break;
                 }
             }
-
-            return messages;
         }
 
         public void Shutdown()

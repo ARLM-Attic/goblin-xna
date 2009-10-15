@@ -267,7 +267,7 @@ namespace GoblinXNA.Shaders
                 throw new GoblinException("renderDelegate is null");
 
             world.SetValue(worldMatrix);
-            cameraPosition.SetValue(Vector3.Transform(Vector3.Zero, Matrix.Invert(State.ViewMatrix)));
+            cameraPosition.SetValue(Vector3.Transform(new Vector3(), Matrix.Invert(State.ViewMatrix)));
             viewProj.SetValue(State.ViewMatrix * State.ProjectionMatrix);
             worldForNormal.SetValue(Matrix.Transpose(Matrix.Invert(worldMatrix)));
 

@@ -145,7 +145,12 @@ namespace GoblinXNA.Device.Capture.PointGrey
             int ret;
             ret = PGRFlyDllBridge.flycaptureGrabImage2(flycapContext, ref image);
             if (ret != 0)
-                ReportError(ret, "flycaptureGrabImage2");
+            {
+                //ReportError(ret, "flycaptureGrabImage2");
+                PGRFlyModule.FlyCaptureImage tmpImage = new PGRFlyModule.FlyCaptureImage();
+                tmpImage.pData = null;
+                return tmpImage;
+            }
 
             if (cameraModel == PGRFlyModule.FlyCaptureCameraModel.FLYCAPTURE_DRAGONFLY2)
                 return image;
@@ -164,7 +169,7 @@ namespace GoblinXNA.Device.Capture.PointGrey
 
 		private void ReportError( int ret, string fname )
 		{
-            throw new GoblinException(fname + " error: " + PGRFlyDllBridge.flycaptureErrorToString(ret));
+            //throw new GoblinException(fname + " error: " + PGRFlyDllBridge.flycaptureErrorToString(ret));
 		}
 
         #region IDisposable Members

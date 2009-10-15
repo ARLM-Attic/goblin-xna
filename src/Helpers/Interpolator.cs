@@ -49,6 +49,8 @@ namespace GoblinXNA.Helpers
         //InverseLogarithmic,
     }
 
+    public delegate void InterpolationFinished();
+
     /// <summary>
     /// A helper class for interpolating between two double precision numbers
     /// in a specified duration of time. 
@@ -69,6 +71,18 @@ namespace GoblinXNA.Helpers
 
         protected double startTime;
         protected double logBase;
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// An event to be called when the interpolation is done.
+        /// </summary>
+        /// <remarks>
+        /// You need to keep accessing the Value property in order to have this event triggered
+        /// when the interpolation finishes. If Value property is not accessed, then this event will 
+        /// never be triggered. This is not a timer class, so do not use this as a timer.
+        /// </remarks>
+        public event InterpolationFinished DoneEvent;
         #endregion
 
         #region Constructors
@@ -188,6 +202,8 @@ namespace GoblinXNA.Helpers
                     {
                         done = true;
                         started = false;
+                        if (DoneEvent != null)
+                            DoneEvent();
                         return endValue;
                     }
                     else

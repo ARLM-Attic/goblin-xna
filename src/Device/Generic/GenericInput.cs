@@ -37,155 +37,126 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Device.Generic
 {
     /// <summary>
-    /// An implementation of 6DOF input device using a combination of mouse and keyboard inputs.
-    /// Good for navigation of 3D space for debugging, but maybe not for an actual game or application.
+    /// An implementation of 6DOF input device using mouse based manipulation (e.g., dragging).
     /// </summary>
     public class GenericInput : InputDevice_6DOF
     {
         #region Member Fields
 
-        private String identifier;
         private bool isAvailable;
         private Vector3 translation;
         private Quaternion rotation;
 
-        private Keys forwardKey;
-        private Keys backwardKey;
-        private Keys leftKey;
-        private Keys rightKey;
-        private Keys upKey;
-        private Keys downKey;
+        private Vector3 initialTranslation;
+        private Quaternion initialRotation;
+        private Matrix baseTransform;
 
-        private bool forwardPressed;
-        private bool backwardPressed;
-        private bool leftPressed;
-        private bool rightPressed;
-        private bool upPressed;
-        private bool downPressed;
-        private bool moveSmoothly;
+        private float panSpeed;
+        private float zoomSpeed;
+        private float rotateSpeed;
 
-        private float sngWalk;
-        private float sngStrafe;
-
-        private float moveSpeed;
-        private float pitchSpeed;
-        private float yawSpeed;
-        private int deltaX;
-        private int deltaY;
-
-        private bool useGenericInput;
-
-        private Point prevMouseLocation;
+        private Point curMouseLocation;
+        private Point prevMouseDragLocation;
         private static GenericInput input;
 
         #endregion
 
-        #region Static Constructors
+        #region Private Constructors
 
         /// <summary>
         /// A private constructor.
         /// </summary>
-        /// <remarks>
-        /// Don't instantiate this constructor.
-        /// </remarks>
         private GenericInput()
         {
-            forwardKey = Keys.W;
-            backwardKey = Keys.S;
-            leftKey = Keys.A;
-            rightKey = Keys.D;
-            upKey = Keys.Z;
-            downKey = Keys.X;
+            panSpeed = 1;
+            zoomSpeed = 1;
+            rotateSpeed = 1;
 
-            forwardPressed = false;
-            backwardPressed = false;
-            leftPressed = false;
-            rightPressed = false;
-            upPressed = false;
-            downPressed = false;
-
-            sngWalk = 0;
-            sngStrafe = 0;
-
-            moveSmoothly = true;
-            moveSpeed = 1;
-            pitchSpeed = 1;
-            yawSpeed = 1;
-
-            translation = Vector3.Zero;
+            translation = new Vector3();
             rotation = Quaternion.Identity;
 
-            prevMouseLocation = new Point(-1, -1);
+            initialTranslation = new Vector3();
+            initialRotation = Quaternion.Identity;
+
+            curMouseLocation = new Point();
+            prevMouseDragLocation = new Point(-1, -1);
+
+            MouseInput.Instance.MouseWheelMoveEvent +=
+                delegate(int delta, int value)
+                {
+                    Vector3 nearSource = Vector3Helper.Get(curMouseLocation.X, curMouseLocation.Y, 0);
+                    Vector3 farSource = Vector3Helper.Get(curMouseLocation.X, curMouseLocation.Y, 1);
+
+                    // Now convert the near and far source to actual near and far 3D points based on our eye location
+                    // and view frustum
+                    Vector3 nearPoint = State.Device.Viewport.Unproject(nearSource,
+                        State.ProjectionMatrix, State.ViewMatrix, Matrix.Identity);
+                    Vector3 farPoint = State.Device.Viewport.Unproject(farSource,
+                        State.ProjectionMatrix, State.ViewMatrix, Matrix.Identity);
+
+                    Vector3 zoomRay = farPoint - nearPoint;
+                    zoomRay.Normalize();
+                    zoomRay *= zoomSpeed * delta / 100;
+
+                    translation += zoomRay;
+                };
 
             MouseInput.Instance.MouseDragEvent += 
                 delegate(int button, Point startLocation, Point currentLocation)
                 {
+                    if (prevMouseDragLocation.X < 0)
+                        prevMouseDragLocation = startLocation;
+
                     if (button == MouseInput.RightButton)
                     {
-                        if (prevMouseLocation.X == -1)
-                        {
-                            prevMouseLocation.X = currentLocation.X;
-                            prevMouseLocation.Y = currentLocation.Y;
-                        }
-                        else
-                        {
-                            deltaX = currentLocation.X - prevMouseLocation.X;
-                            deltaY = currentLocation.Y - prevMouseLocation.Y;
+                        int deltaX = currentLocation.X - prevMouseDragLocation.X;
+                        int deltaY = currentLocation.Y - prevMouseDragLocation.Y;
 
-                            prevMouseLocation.X = currentLocation.X;
-                            prevMouseLocation.Y = currentLocation.Y;
+                        if (!(deltaX == 0 && deltaY == 0))
+                        {
+                            Quaternion change = Quaternion.CreateFromYawPitchRoll
+                                ((float)(deltaX * rotateSpeed * Math.PI / 45),
+                                (float)(deltaY * rotateSpeed * Math.PI / 45), 0);
+                            rotation = Quaternion.Multiply(rotation, change);
                         }
                     }
+                    else if (button == MouseInput.MiddleButton)
+                    {
+                        translation += (currentLocation.Y - prevMouseDragLocation.Y) *
+                            panSpeed * baseTransform.Up;
+                    }
+                    else if (button == MouseInput.LeftButton)
+                    {
+                        Vector3 leftAxis = (currentLocation.X - prevMouseDragLocation.X) / 2.0f * 
+                            panSpeed * baseTransform.Left;
+                        Vector3 forwardAxis = (currentLocation.Y - prevMouseDragLocation.Y) / 2.0f * 
+                            panSpeed * baseTransform.Forward;
+
+                        Vector3 change = leftAxis + forwardAxis;
+
+                        translation += change;
+                    }
+
+                    prevMouseDragLocation = currentLocation;
                 };
 
-            MouseInput.Instance.MousePressEvent +=
+            MouseInput.Instance.MouseMoveEvent +=
+                delegate(Point mouseLocation)
+                {
+                    curMouseLocation = mouseLocation;
+                };
+
+            MouseInput.Instance.MouseReleaseEvent +=
                 delegate(int button, Point mouseLocation)
                 {
-                    if (button == MouseInput.RightButton)
-                    {
-                        prevMouseLocation.X = mouseLocation.X;
-                        prevMouseLocation.Y = mouseLocation.Y;
-                    }
+                    prevMouseDragLocation.X = -1;
                 };
 
-            KeyboardInput.Instance.KeyPressEvent += 
-                delegate(Keys key, KeyModifier modifier)
-                {
-                    if (key == forwardKey)
-                        forwardPressed = true;
-                    else if (key == backwardKey)
-                        backwardPressed = true;
-                    else if (key == leftKey)
-                        leftPressed = true;
-                    else if (key == rightKey)
-                        rightPressed = true;
-                    else if (key == upKey)
-                        upPressed = true;
-                    else if (key == downKey)
-                        downPressed = true;
-                };
-
-            KeyboardInput.Instance.KeyReleaseEvent += 
-                delegate(Keys key, KeyModifier modifier)
-                {
-                    if (key == forwardKey)
-                        forwardPressed = false;
-                    else if (key == backwardKey)
-                        backwardPressed = false;
-                    else if (key == leftKey)
-                        leftPressed = false;
-                    else if (key == rightKey)
-                        rightPressed = false;
-                    else if (key == upKey)
-                        upPressed = false;
-                    else if (key == downKey)
-                        downPressed = false;
-                };
-
-            useGenericInput = false;
             isAvailable = true;
         }
 
@@ -195,8 +166,7 @@ namespace GoblinXNA.Device.Generic
 
         public String Identifier
         {
-            get { return identifier; }
-            set { identifier = value; }
+            get { return "GenericInput"; }
         }
 
         public bool IsAvailable
@@ -208,7 +178,6 @@ namespace GoblinXNA.Device.Generic
         {
             get 
             {
-                useGenericInput = true;
                 return translation; 
             }
         }
@@ -217,8 +186,31 @@ namespace GoblinXNA.Device.Generic
         {
             get 
             {
-                useGenericInput = true;
                 return rotation; 
+            }
+        }
+
+        /// <summary>
+        /// Sets the initial translation. Note that this will also set Translation property.
+        /// </summary>
+        public Vector3 InitialTranslation
+        {
+            set 
+            { 
+                initialTranslation = value;
+                translation = value;
+            }
+        }
+
+        /// <summary>
+        /// Sets the initial rotation. Note that this will also set Rotation property.
+        /// </summary>
+        public Quaternion InitialRotation
+        {
+            set 
+            { 
+                initialRotation = value;
+                rotation = value;
             }
         }
 
@@ -226,102 +218,43 @@ namespace GoblinXNA.Device.Generic
         {
             get
             {
-                KeyboardInput.Instance.InitialRepetitionWait = 100;
-                KeyboardInput.Instance.RepetitionWait = 100;
-                useGenericInput = true;
-                return Matrix.Transform(Matrix.CreateTranslation(translation),
-                    rotation);
+                return Matrix.Transform(Matrix.CreateTranslation(translation), rotation);
             }
         }
 
         /// <summary>
-        /// Gets or sets the key used to move forward.
+        /// Sets the base transform to use for panning.
         /// </summary>
-        public Keys ForwardKey
+        public Matrix BaseTransformation
         {
-            get { return forwardKey; }
-            set { forwardKey = value; }
+            set { baseTransform = value; }
         }
 
         /// <summary>
-        /// Gets or sets the key used to move backward.
+        /// Gets or sets the pan speed. The default value is 1.
         /// </summary>
-        public Keys BackwardKey
+        public float PanSpeed
         {
-            get { return backwardKey; }
-            set { backwardKey = value; }
+            get { return panSpeed; }
+            set { panSpeed = value; }
         }
 
         /// <summary>
-        /// Gets or sets the key used to move left.
+        /// Gets or sets the zoom speed. The default value is 1.
         /// </summary>
-        public Keys LeftKey
+        public float ZoomSpeed
         {
-            get { return leftKey; }
-            set { leftKey = value; }
+            get { return zoomSpeed; }
+            set { zoomSpeed = value; }
         }
 
         /// <summary>
-        /// Gets or sets the key used to move right.
+        /// Gets or sets the rotation speed. The default value is 1.
         /// </summary>
-        public Keys RightKey
+        public float RotateSpeed
         {
-            get { return rightKey; }
-            set { rightKey = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the key used to move upward.
-        /// </summary>
-        public Keys UpKey
-        {
-            get { return upKey; }
-            set { upKey = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the key used to move downward.
-        /// </summary>
-        public Keys DownKey
-        {
-            get { return downKey; }
-            set { downKey = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets whether to move smoothly by introducing slight slidings.
-        /// </summary>
-        public bool MoveSmoothly
-        {
-            get { return moveSmoothly; }
-            set { moveSmoothly = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the move speed (how far it moves for each key type).
-        /// </summary>
-        public float MoveSpeed
-        {
-            get { return moveSpeed; }
-            set { moveSpeed = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets how fast it pitches.
-        /// </summary>
-        public float PitchSpeed
-        {
-            get { return pitchSpeed; }
-            set { pitchSpeed = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets how fast it yaws.
-        /// </summary>
-        public float YawSpeed
-        {
-            get { return yawSpeed; }
-            set { yawSpeed = value; }
+            get { return rotateSpeed; }
+            set { rotateSpeed = value; }
         }
 
         /// <summary>
@@ -345,86 +278,22 @@ namespace GoblinXNA.Device.Generic
         #region Public Methods
 
         /// <summary>
-        /// Resets the translation and rotation.
+        /// Resets the translation and rotation to initial values.
         /// </summary>
         public void Reset()
         {
-            translation = Vector3.Zero;
-            rotation = Quaternion.Identity;
+            translation = initialTranslation;
+            rotation = initialRotation;
         }
 
         public void Update(GameTime gameTime, bool deviceActive)
         {
-            if (!useGenericInput)
-                return;
-
-            if (!(deltaX == 0 && deltaY == 0))
-            {
-                Quaternion change = Quaternion.CreateFromYawPitchRoll
-                    ((float)(deltaX * yawSpeed * Math.PI / 360),
-                    (float)(deltaY * pitchSpeed * Math.PI / 360), 0);
-                rotation = Quaternion.Multiply(rotation, change);
-                deltaX = deltaY = 0;
-            }
-
-            if (forwardPressed)
-                sngWalk = -moveSpeed;
-            else if (backwardPressed)
-                sngWalk = moveSpeed;
-
-            if (leftPressed)
-                sngStrafe = -moveSpeed;
-            else if (rightPressed)
-                sngStrafe = moveSpeed;
-
-            if (upPressed)
-                translation.Y += moveSpeed;
-            else if (downPressed)
-                translation.Y -= moveSpeed;
-
-            if (moveSmoothly)
-            {
-                if (sngWalk > 0)
-                {
-                    sngWalk = sngWalk - 0.005f * (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                    if (sngWalk < 0)
-                        sngWalk = 0;
-                }
-                else
-                {
-                    sngWalk = sngWalk + 0.005f * (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                    if (sngWalk > 0)
-                        sngWalk = 0;
-                }
-
-                // Now, we update the left and right (strafe) movement.
-                if (sngStrafe > 0)
-                {
-                    sngStrafe = sngStrafe - 0.005f * (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                    if (sngStrafe < 0)
-                        sngStrafe = 0;
-                }
-                else
-                {
-                    sngStrafe = sngStrafe + 0.005f * (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                    if (sngStrafe > 0)
-                        sngStrafe = 0;
-                }
-
-                translation.Z += sngWalk;
-                translation.X += sngStrafe;
-            }
-            else
-            {
-                translation.Z += sngWalk;
-                translation.X += sngStrafe;
-
-                sngWalk = sngStrafe = 0;
-            }
+            // nothing to update
         }
 
         public void Dispose()
         {
+            // nothing to dispose
         }
 
         #endregion

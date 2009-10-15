@@ -36,6 +36,8 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using GoblinXNA.Helpers;
+
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
@@ -76,8 +78,8 @@ namespace GoblinXNA.Graphics.Geometry
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 
             float cylinderHeight = height - radius * 2;
-            Vector3 topCenter = new Vector3(0, cylinderHeight / 2, 0);
-            Vector3 bottomCenter = new Vector3(0, -cylinderHeight / 2, 0);
+            Vector3 topCenter = Vector3Helper.Get(0, cylinderHeight / 2, 0);
+            Vector3 bottomCenter = Vector3Helper.Get(0, -cylinderHeight / 2, 0);
 
             double thai = 0, theta = 0;
             double thaiIncr = Math.PI / slices;
@@ -89,7 +91,7 @@ namespace GoblinXNA.Graphics.Geometry
                 for (countB = 0, theta = 0; countB < slices; theta += thetaIncr, countB++)
                 {
                     VertexPositionNormal vert = new VertexPositionNormal();
-                    vert.Position = new Vector3((float)(radius * Math.Sin(thai) * Math.Cos(theta)),
+                    vert.Position = Vector3Helper.Get((float)(radius * Math.Sin(thai) * Math.Cos(theta)),
                         (float)(radius * Math.Cos(thai)) + cylinderHeight / 2, 
                         (float)(radius * Math.Sin(thai) * Math.Sin(theta)));
                     vert.Normal = Vector3.Normalize(vert.Position - topCenter);
@@ -103,7 +105,7 @@ namespace GoblinXNA.Graphics.Geometry
                 for (countB = 0, theta = 0; countB < slices; theta += thetaIncr, countB++)
                 {
                     VertexPositionNormal vert = new VertexPositionNormal();
-                    vert.Position = new Vector3((float)(radius * Math.Sin(thai) * Math.Cos(theta)),
+                    vert.Position = Vector3Helper.Get((float)(radius * Math.Sin(thai) * Math.Cos(theta)),
                         (float)(radius * Math.Cos(thai)) - cylinderHeight / 2,
                         (float)(radius * Math.Sin(thai) * Math.Sin(theta)));
                     vert.Normal = Vector3.Normalize(vert.Position - bottomCenter);
@@ -112,11 +114,11 @@ namespace GoblinXNA.Graphics.Geometry
             }
 
             // Add north pole vertex
-            vertices.Add(new VertexPositionNormal(new Vector3(0, radius + cylinderHeight / 2, 0), 
-                new Vector3(0, 1, 0)));
+            vertices.Add(new VertexPositionNormal(Vector3Helper.Get(0, radius + cylinderHeight / 2, 0),
+                Vector3Helper.Get(0, 1, 0)));
             // Add south pole vertex
-            vertices.Add(new VertexPositionNormal(new Vector3(0, -radius - cylinderHeight / 2, 0), 
-                new Vector3(0, -1, 0)));
+            vertices.Add(new VertexPositionNormal(Vector3Helper.Get(0, -radius - cylinderHeight / 2, 0),
+                Vector3Helper.Get(0, -1, 0)));
 
             mesh.VertexDeclaration = new VertexDeclaration(State.Device,
                 VertexPositionNormal.VertexElements);

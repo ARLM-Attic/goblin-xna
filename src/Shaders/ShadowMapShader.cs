@@ -63,7 +63,7 @@ namespace GoblinXNA.Shaders
             } // get
         } // ShadowDistance
 
-        private Vector3 shadowLightPos = Vector3.Zero;
+        private Vector3 shadowLightPos = new Vector3();
 
         /// <summary>
         /// Shadow light position
@@ -259,7 +259,7 @@ namespace GoblinXNA.Shaders
         {
             base.SetParameters(globalLights, localLights);
 
-            Vector3 lightDir = Vector3.Zero;
+            Vector3 lightDir = new Vector3();
             LightNode lNode = null;
 
             // traverse the local lights in reverse order in order to get closest light sources
@@ -307,16 +307,16 @@ namespace GoblinXNA.Shaders
             if (lightDir.Equals(Vector3.Zero))
                 return;
 
-            Vector3 lightLookPos = Vector3.Zero;
+            Vector3 lightLookPos = new Vector3();
 
             lightViewMatrix = Matrix.CreateLookAt(
                 lightLookPos + lightDir * virtualVisibleRange,
                 lightLookPos,
-                new Vector3(0, 0, 1));
+                Vector3Helper.Get(0, 0, 1));
 
             // Update light pos
             Matrix invView = Matrix.Invert(lightViewMatrix);
-            shadowLightPos = new Vector3(invView.M41, invView.M42, invView.M43);
+            shadowLightPos = Vector3Helper.Get(invView.M41, invView.M42, invView.M43);
         }
         #endregion
 

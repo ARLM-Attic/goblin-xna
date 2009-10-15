@@ -1,3 +1,35 @@
+/************************************************************************************ 
+ * Copyright (c) 2008-2009, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/ 
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,8 +39,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA;
 using GoblinXNA.Graphics;
+using GoblinXNA.UI;
 using GoblinXNA.UI.UI2D;
-using GoblinXNA.UI.Events;
 using GoblinXNA.SceneGraph;
 
 namespace ARDominos
@@ -119,7 +151,7 @@ namespace ARDominos
 
         #region Public Methods
 
-        public void Initialize(Scene scene, ActionListener gameListener, ActionListener modeListener)
+        public void Initialize(Scene scene, ActionPerformed gameListener, ActionPerformed modeListener)
         {
             // Create the main panel which holds all other GUI components
             frame = new G2DPanel();
@@ -140,22 +172,20 @@ namespace ARDominos
             gameAdd.Bounds = new Rectangle(18, 70, 150, 50);
             // Make the Addition mode as the selected one first
             gameAdd.DoClick();
-            gameAdd.AddActionListener(gameListener);
 
             gameEdit = new G2DRadioButton("Edit");
             gameEdit.TextFont = uiFont;
             gameEdit.Bounds = new Rectangle(170, 70, 150, 50);
-            gameEdit.AddActionListener(gameListener);
 
             gamePlay = new G2DRadioButton("Play");
             gamePlay.TextFont = uiFont;
             gamePlay.Bounds = new Rectangle(310, 70, 150, 50);
-            gamePlay.AddActionListener(gameListener);
 
             ButtonGroup gameGroup = new ButtonGroup();
             gameGroup.Add(gameAdd);
             gameGroup.Add(gameEdit);
             gameGroup.Add(gamePlay);
+            gameGroup.AddActionPerformedHandler(gameListener);
 
             frame.AddChild(gameLabel);
             frame.AddChild(gameAdd);
@@ -175,16 +205,15 @@ namespace ARDominos
             modeRadio1.TextFont = uiFont;
             modeRadio1.Bounds = new Rectangle(20, 206, 200, 50);
             modeRadio1.DoClick();
-            modeRadio1.AddActionListener(modeListener);
 
             modeRadio2 = new G2DRadioButton("Line");
             modeRadio2.TextFont = uiFont;
             modeRadio2.Bounds = new Rectangle(220, 206, 250, 50);
-            modeRadio2.AddActionListener(modeListener);
 
             ButtonGroup addGroup = new ButtonGroup();
             addGroup.Add(modeRadio1);
             addGroup.Add(modeRadio2);
+            addGroup.AddActionPerformedHandler(modeListener);
 
             frame.AddChild(modeLabel);
             frame.AddChild(modeRadio1);
