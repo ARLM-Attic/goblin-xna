@@ -1158,6 +1158,8 @@ namespace GoblinXNA.SceneGraph
             {
                 trackMarkers = true;
                 MarkerNode markerNode = (MarkerNode)node;
+                if (!markerUpdateList.Contains(markerNode))
+                    markerUpdateList.Add(markerNode);
                 tmpMat1 = markerNode.WorldTransformation;
                 Matrix.Multiply(ref tmpMat1, ref markerTransform, out parentMarkerTransform);
 

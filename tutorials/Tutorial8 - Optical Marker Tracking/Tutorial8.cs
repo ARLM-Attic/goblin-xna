@@ -79,6 +79,12 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Use ALVAR marker tracking library
             markerLibrary = MarkerLibrary.ALVAR;
 
+            // For some reason, it causes memory conflict when it attempts to update the
+            // marker transformation in the multi-threaded code, so if you're using ARTag
+            // then you should set MultiCore to false
+            if(markerLibrary == MarkerLibrary.ARTag)
+                State.IsMultiCore = false;
+
             // Set up optical marker tracking
             // Note that we don't create our own camera when we use optical marker
             // tracking. It'll be created automatically
@@ -219,10 +225,6 @@ namespace Tutorial8___Optical_Marker_Tracking
             else
             {
                 groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
-
-                // Since we expect that the ground marker array won't move very much, we use a 
-                // small smoothing alpha.
-                groundMarkerNode.Smoother = new DESSmoother(0.2f, 0.1f, 1, 1);
             }
 
             // Since the ground marker's size is 80x52 ARTag units, in order to move the sphere model
