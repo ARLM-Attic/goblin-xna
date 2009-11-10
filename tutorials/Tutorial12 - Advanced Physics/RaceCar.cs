@@ -69,7 +69,7 @@ namespace Tutorial12___Advanced_Physics
             // sets up the callback function when body moves in the simulation
             transformCallback = delegate(IntPtr body, float[] matrix)
             {
-                Matrix mat = MatrixHelper.FloatsToMatrix(matrix);
+                Matrix mat = Matrix.CreateScale(engine.GetScale(body)) * MatrixHelper.FloatsToMatrix(matrix);
 
                 // set the transformation of the vehicle body
                 PhysicsWorldTransform = mat;

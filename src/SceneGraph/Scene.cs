@@ -1266,6 +1266,8 @@ namespace GoblinXNA.SceneGraph
                 renderedEffects.Remove((ParticleNode)node);
                 ((ParticleNode)node).IsRendered = false;
             }
+            else if (node is MarkerNode)
+                markerUpdateList.Remove((MarkerNode)node);
 
             if(node is BranchNode)
                 foreach (Node child in ((BranchNode)node).Children)

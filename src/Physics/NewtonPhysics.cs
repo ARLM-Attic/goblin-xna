@@ -1242,6 +1242,32 @@ namespace GoblinXNA.Physics
         }
 
         /// <summary>
+        /// Gets the scale of an IPhysicsObject.
+        /// </summary>
+        /// <param name="physObj">The physics object to get scale vector</param>
+        /// <returns>A scale vector</returns>
+        public Vector3 GetScale(IPhysicsObject physObj)
+        {
+            if (objectIDs.ContainsKey(physObj))
+                return scaleTable[objectIDs[physObj]];
+            else
+                return Vector3.One;
+        }
+
+        /// <summary>
+        /// Gets the scale of an IPhysicsObject from its pointer.
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        public Vector3 GetScale(IntPtr body)
+        {
+            if (scaleTable.ContainsKey(body))
+                return scaleTable[body];
+            else
+                return Vector3.One;
+        }
+
+        /// <summary>
         /// Set a user defined NewtonSetTransform callback function to be used for this physics object.
         /// If not specified, a default callback function will be used.
         /// </summary>
