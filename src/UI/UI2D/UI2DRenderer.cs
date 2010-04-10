@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ namespace GoblinXNA.UI.UI2D
 {
     /// <summary>
     /// A helper class for performing 2D drawing, such as drawing lines, filling or drawing 
-    /// rectangular or circle shapes.
+    /// rectangular, circular, or polygonal shapes.
     /// </summary>
     public class UI2DRenderer
     {
@@ -629,7 +629,7 @@ namespace GoblinXNA.UI.UI2D
         /// Flushes all of the accumulated 2D drawings including texts and shapes. The texts and shapes are not
         /// drawn until this function is called.
         /// </summary>
-        public static void Flush()
+        public static void Flush(bool clear)
         {
             if (spriteBatch == null)
                 spriteBatch = new SpriteBatch(State.Device);
@@ -687,8 +687,11 @@ namespace GoblinXNA.UI.UI2D
 
             spriteBatch.End();
 
-            opaqueObjects.Clear();
-            queuedObjects.Clear();
+            if (clear)
+            {
+                opaqueObjects.Clear();
+                queuedObjects.Clear();
+            }
         }
 
         #endregion

@@ -112,7 +112,10 @@ extern "C"
 			vector_id.push_back(ids[i]);
 
 		MultiMarker marker(vector_id);
-		marker.Load(filename);
+		if(strstr(filename, ".xml") != NULL)
+			marker.Load(filename, FILE_FORMAT_XML);
+		else
+			marker.Load(filename);
 		multiMarkers.push_back(marker);
 	}
 

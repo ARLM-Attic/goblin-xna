@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -46,6 +47,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class Sphere : Model
     {
+        #region Constructors
+
         /// <summary>
         /// Creates a sphere of the given radius centered around the origin. The sphere 
         /// is subdivided around the Y axis into slices and along the Y axis into stacks 
@@ -59,7 +62,19 @@ namespace GoblinXNA.Graphics.Geometry
         public Sphere(float radius, int slices, int stacks)
             : base(CreateSphere(radius, slices, stacks))
         {
+            primitiveShapeParameters = radius + ", " + slices + ", " + stacks;
         }
+
+        public Sphere(params String[] xmlParams)
+            : base(CreateSphere(float.Parse(xmlParams[0]), int.Parse(xmlParams[1]),
+                int.Parse(xmlParams[2])))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
+        }
+
+        #endregion
+
+        #region Private Static Methods
 
         private static PrimitiveMesh CreateSphere(float radius, int slices, int stacks)
         {
@@ -161,5 +176,7 @@ namespace GoblinXNA.Graphics.Geometry
 
             return mesh;
         }
+
+        #endregion
     }
 }

@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +27,66 @@
  * 
  * ===================================================================================
  * Authors: Ohan Oda (ohan@cs.columbia.edu) 
- *          Mike Sorvillo
  * 
  *************************************************************************************/
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Drawing;
-using System.Drawing.Imaging;
+using System.Text;
+using System.IO;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System.Runtime.InteropServices;
-using System.Windows.Forms;
 
-// Reference for the DirectShow Library for C# originally from
-// http://www.codeproject.com/cs/media/directxcapture.asp
-// Update of this original library with capability of capture individual frame from
-// http://www.codeproject.com/cs/media/DirXVidStrm.asp?df=100&forumid=73014&exp=0&select=1780522
-using DirectX.Capture;
-using DCapture = DirectX.Capture.Capture;
+using DShowNET;
+using DShowNET.Device;
 
 namespace GoblinXNA.Device.Capture
 {
     /// <summary>
-    /// A video capture class that uses the DirectShow library.
+    /// An implementation of IVideoCapture using DShowNET library. The difference from 
+    /// DirectShowCapture class is that it doesn't have the middle layer of DirectX.Capture 
+    /// stuff. 
     /// </summary>
-    public class DirectShowCapture : IVideoCapture
+    public class DirectShowCapture : ISampleGrabberCB, IVideoCapture
     {
+        private enum PlaybackState
+        {
+            Stopped,
+            Paused,
+            Running,
+            Init
+        }
+
         #region Member Fields
 
-        /// <summary>
-        /// Video capture class for DirectShow
-        /// </summary>
-        private DCapture capture;
+        private DsDevice videoDevice;
+
+        /// <summary> base filter of the actually used video devices. </summary>
+        private IBaseFilter capFilter;
+
+        /// <summary> graph builder interface. </summary>
+        private IGraphBuilder graphBuilder;
+
+        /// <summary> capture graph builder interface. </summary>
+        private ICaptureGraphBuilder2 capGraph;
+        private ISampleGrabber sampGrabber;
+
+        /// <summary> control interface. </summary>
+        private IMediaControl mediaCtrl;
+
+        /// <summary> event interface. </summary>
+        private IMediaEventEx mediaEvt;
+
+        /// <summary> grabber filter interface. </summary>
+        private IBaseFilter baseGrabFlt;
+
+        /// <summary> structure describing the bitmap to grab. </summary>
+        private VideoInfoHeader videoInfoHeader;
+
+        private ArrayList capDevices;
 
         private PointF focalPoint;
 
@@ -68,13 +95,16 @@ namespace GoblinXNA.Device.Capture
         private int cameraWidth;
         private int cameraHeight;
         private int imageSize;
-        private IntPtr cameraImage;
         private bool grayscale;
         private bool cameraInitialized;
         private Resolution resolution;
         private FrameRate frameRate;
         private ImageFormat format;
-        private int[] imageData;
+        private IResizer resizer;
+
+        private volatile PlaybackState playbackState = PlaybackState.Stopped;
+
+        private IntPtr grabbedImage;
 
         /// <summary>
         /// Used to count the number of times it failed to capture an image
@@ -84,12 +114,6 @@ namespace GoblinXNA.Device.Capture
         private int failureCount;
 
         private const int FAILURE_THRESHOLD = 100;
-
-        /// <summary>
-        /// A temporary panel for grabbing the video frame from DirectShow interface
-        /// </summary>
-        private Panel tmpPanel;
-        private Bitmap tmpBitmap;
 
         #endregion
 
@@ -103,10 +127,10 @@ namespace GoblinXNA.Device.Capture
             cameraInitialized = false;
             videoDeviceID = -1;
             focalPoint = new PointF(0, 0);
+            grabbedImage = IntPtr.Zero;
 
             cameraWidth = 0;
             cameraHeight = 0;
-            cameraImage = IntPtr.Zero;
             grayscale = false;
 
             failureCount = 0;
@@ -147,14 +171,20 @@ namespace GoblinXNA.Device.Capture
             get { return cameraInitialized; }
         }
 
-        public IntPtr ImagePtr
-        {
-            get { return cameraImage; }
-        }
-
         public ImageFormat Format
         {
             get { return format; }
+        }
+
+        public IResizer MarkerTrackingImageResizer
+        {
+            get { return resizer; }
+            set { resizer = value; }
+        }
+
+        public SpriteEffects RenderFormat
+        {
+            get { return SpriteEffects.FlipVertically; }
         }
 
         #endregion
@@ -204,408 +234,299 @@ namespace GoblinXNA.Device.Capture
                     cameraHeight = 1200;
                     break;
             }
- 
-            imageData = new int[cameraWidth * cameraHeight];
-            imageSize = cameraWidth * cameraHeight;
-            if (!grayscale)
-            {
-                switch (format)
-                {
-                    case ImageFormat.GRAYSCALE_8: break; // Nothing to do 
-                    case ImageFormat.R5G6B5_16: imageSize *= 2; break;
-                    case ImageFormat.B8G8R8_24:
-                    case ImageFormat.R8G8B8_24: imageSize *= 3; break;
-                    case ImageFormat.R8G8B8A8_32:
-                    case ImageFormat.B8G8R8A8_32:
-                    case ImageFormat.A8B8G8R8_32: imageSize *= 4; break;
-                }
-            }
-            cameraImage = Marshal.AllocHGlobal(imageSize);
-
-            Filters filters = null;
-            Filter videoDevice, audioDevice = null;
-            try
-            {
-                filters = new Filters();
-            }
-            catch (Exception exp)
-            {
-                throw new GoblinException("No video capturing devices are found");
-            }
-
-            try
-            {
-                videoDevice = (videoDeviceID >= 0) ? filters.VideoInputDevices[videoDeviceID] : null;
-            }
-            catch (Exception exp)
-            {
-                throw new GoblinException("VideoDeviceID " + videoDeviceID + " is out of the range");
-            }
-            
-            capture = new DCapture(videoDevice, audioDevice);
 
             double frame_rate = 0;
             switch (frameRate)
             {
                 case FrameRate._15Hz: frame_rate = 15; break;
-                case FrameRate._30Hz: frame_rate = 29.99; break;
+                case FrameRate._30Hz: frame_rate = 29.997; break;
                 case FrameRate._50Hz: frame_rate = 50; break;
                 case FrameRate._60Hz: frame_rate = 60; break;
                 case FrameRate._120Hz: frame_rate = 120; break;
                 case FrameRate._240Hz: frame_rate = 240; break;
             }
 
-            if (videoDevice != null)
+            if (!DsUtils.IsCorrectDirectXVersion())
+                throw new GoblinException("DirectX 8.1 NOT installed!");
+
+            if (!DsDev.GetDevicesOfCat(FilterCategory.VideoInputDevice, out capDevices))
+                throw new GoblinException("No video capture devices found!");
+
+            DsDevice dev = null;
+            if (videoDeviceID >= capDevices.Count)
             {
-                // Using MPEG compressor
-                capture.VideoCompressor = filters.VideoCompressors[2]; 
-                capture.FrameRate = frame_rate;
-                try
+                String suggestion = "Try the following device IDs:";
+                for (int i = 0; i < capDevices.Count; i++)
                 {
-                    capture.FrameSize = new Size(cameraWidth, cameraHeight);
+                    suggestion += " " + i + ":" + ((DsDevice)capDevices[i]).Name + ", ";
                 }
-                catch(Exception exp)
-                {
-                    throw new GoblinException("Resolution._" + cameraWidth + "x" + cameraHeight +
-                        " is not supported. Maximum resolution supported is " + 
-                        capture.VideoCaps.MaxFrameSize);
-                }
+                throw new GoblinException("VideoDeviceID " + videoDeviceID + " is out of the range. "
+                    + suggestion);
             }
+            dev = (DsDevice)capDevices[videoDeviceID];
 
-            tmpPanel = new Panel();
-            tmpPanel.Size = new Size(Width, Height);
+            if (dev == null)
+                throw new GoblinException("This video device cannot be accessed");
 
-            try
-            {
-                capture.PreviewWindow = tmpPanel;
-            }
-            catch (Exception exp)
-            {
-                throw new GoblinException("Video capture device " + videoDeviceID + " is used by " +
-                    "other application, and can not be accessed");
-            }
-
-            capture.FrameEvent2 += new DCapture.HeFrame(CaptureDone);
-            capture.GrapImg();
+            StartupVideo(dev.Mon);
 
             cameraInitialized = true;
         }
 
-        public int[] GetImageTexture(bool returnImage, bool copyToImagePtr)
-        {
-            Bitmap image = GetBitmapImage();
+        private void StartupVideo( UCOMIMoniker mon )
+	    {
+		    int hr;
+		    try {
+			    CreateCaptureDevice( mon );
 
-            if (image != null)
-            {
-                failureCount = 0;
-                BitmapData data = image.LockBits(
-                    new System.Drawing.Rectangle(0, 0, image.Width, image.Height),
-                    ImageLockMode.ReadOnly, image.PixelFormat);
+			    GetInterfaces();
 
-                // convert the Bitmap pixel format, that is right to left and
-                // bottom to top, to artag pixel format, that is right to left and
-                // top to bottom
-                if (copyToImagePtr && returnImage)
-                    ReadBmpData(data, cameraImage, imageData, image.Width, image.Height);
-                else if(copyToImagePtr)
-                    ReadBmpData(data, cameraImage, image.Width, image.Height);
-                else if(returnImage)
-                    ReadBmpData(data, imageData, image.Width, image.Height);
+			    SetupGraph();
 
-                image.UnlockBits(data);
-            }
-            else
-            {
-                failureCount++;
+			    hr = mediaCtrl.Run();
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+		    }
+		    catch( Exception ee )
+		    {
+			    throw new GoblinException("Could not start video stream\r\n" + ee.Message);
+		    }
+	    }
 
-                if (failureCount > FAILURE_THRESHOLD)
-                {
-                    throw new GoblinException("Video capture device id:" + videoDeviceID + " is used by " +
-                        "other application, and can not be accessed");
-                }
-            }
-
-            return imageData;
-        }
-
-        /// <summary>
-        /// Displays video capture device property information on a Windows Form object.
+        /// <summary> 
+        /// build the capture graph for grabber. 
         /// </summary>
-        /// <param name="frmOwner">The owner to hold this property form</param>
-        public void ShowVideoCaptureDeviceProperties(System.Windows.Forms.Form frmOwner)
-        {
-            capture.PropertyPages[0].Show(frmOwner);
-        }
+	    private void SetupGraph()
+	    {
+		    int hr;
+		    try {
+			    hr = capGraph.SetFiltergraph( graphBuilder );
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
 
-        /// <summary>
-        /// Displayes video capture pin information on a Windows Form object.
+			    hr = graphBuilder.AddFilter( capFilter, "Ds.NET Video Capture Device" );
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+
+			    AMMediaType media = new AMMediaType();
+			    media.majorType	= MediaType.Video;
+			    media.subType	= MediaSubType.RGB32;
+			    media.formatType = FormatType.VideoInfo;		// ???
+
+			    hr = sampGrabber.SetMediaType( media );
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+
+			    hr = graphBuilder.AddFilter( baseGrabFlt, "Ds.NET Grabber" );
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+
+                Guid cat = PinCategory.Capture;
+                Guid med = MediaType.Video;
+			    hr = capGraph.RenderStream( ref cat, ref med, capFilter, null, baseGrabFlt ); // baseGrabFlt 
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+
+			    media = new AMMediaType();
+			    hr = sampGrabber.GetConnectedMediaType( media );
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+			    if( (media.formatType != FormatType.VideoInfo) || (media.formatPtr == IntPtr.Zero) )
+				    throw new NotSupportedException( "Unknown Grabber Media Format" );
+
+			    videoInfoHeader = (VideoInfoHeader) Marshal.PtrToStructure( media.formatPtr, typeof(VideoInfoHeader) );
+			    Marshal.FreeCoTaskMem( media.formatPtr ); media.formatPtr = IntPtr.Zero;
+
+			    hr = sampGrabber.SetBufferSamples( false );
+			    if( hr == 0 )
+				    hr = sampGrabber.SetOneShot( false );
+			    if( hr == 0 )
+				    hr = sampGrabber.SetCallback( this, 1 );
+			    if( hr < 0 )
+				    Marshal.ThrowExceptionForHR( hr );
+		    }
+		    catch( Exception ee )
+		    {
+			    throw new GoblinException("Could not setup graph\r\n" + ee.Message);
+		    }
+	    }
+
+		/// <summary> 
+        /// create the used COM components and get the interfaces. 
         /// </summary>
-        /// <param name="frmOwner"></param>
-        public void ShowVideoCapturePin(System.Windows.Forms.Form frmOwner)
-        {
-            capture.PropertyPages[1].Show(frmOwner);
-        }
+	    private void GetInterfaces()
+	    {
+		    Type comType = null;
+		    object comObj = null;
+            String errMsg = "";
+		    try {
+			    comType = Type.GetTypeFromCLSID( Clsid.FilterGraph );
+			    if( comType == null )
+				    throw new NotImplementedException( @"DirectShow FilterGraph not installed/registered!" );
+			    comObj = Activator.CreateInstance( comType );
+			    graphBuilder = (IGraphBuilder) comObj; comObj = null;
 
-        /// <summary>
-        /// Starts video recording, and saves the recorded video in a given file.
+			    Guid clsid = Clsid.CaptureGraphBuilder2;
+			    Guid riid = typeof(ICaptureGraphBuilder2).GUID;
+			    comObj = DsBugWO.CreateDsInstance( ref clsid, ref riid );
+			    capGraph = (ICaptureGraphBuilder2) comObj; comObj = null;
+
+			    comType = Type.GetTypeFromCLSID( Clsid.SampleGrabber );
+			    if( comType == null )
+				    throw new NotImplementedException( @"DirectShow SampleGrabber not installed/registered!" );
+			    comObj = Activator.CreateInstance( comType );
+			    sampGrabber = (ISampleGrabber) comObj; comObj = null;
+
+			    mediaCtrl	= (IMediaControl)	graphBuilder;
+			    mediaEvt	= (IMediaEventEx)	graphBuilder;
+			    baseGrabFlt	= (IBaseFilter)		sampGrabber;
+		    }
+		    catch( Exception ee )
+		    {
+			    errMsg = "Could not get interfaces\r\n" + ee.Message;
+		    }
+		    finally
+		    {
+			    if( comObj != null )
+				    Marshal.ReleaseComObject( comObj ); comObj = null;
+		    }
+
+            if(errMsg.Length > 0)
+                throw new GoblinException(errMsg);
+	    }
+
+		/// <summary> 
+        /// create the user selected capture device. 
         /// </summary>
-        /// <param name="filename"></param>
-        /// <returns>If previous video capturing has not been stopped, then false is returned. Otherwise, true.</returns>
-        public bool StartVideoCapturing(String filename)
-        {
-            if (!capture.Stopped)
-                return false;
+	    private void CreateCaptureDevice( UCOMIMoniker mon )
+	    {
+		    object capObj = null;
+            String errMsg = "";
+		    try {
+			    Guid gbf = typeof( IBaseFilter ).GUID;
+			    mon.BindToObject( null, null, ref gbf, out capObj );
+			    capFilter = (IBaseFilter) capObj; capObj = null;
+		    }
+		    catch( Exception ee )
+		    {
+			    errMsg = ee.Message;
+		    }
+		    finally
+		    {
+			    if( capObj != null )
+				    Marshal.ReleaseComObject( capObj ); capObj = null;
+		    }
 
-            capture.Filename = filename;
+            if(errMsg.Length > 0)
+                throw new GoblinException("Could not create capture device\r\n" + errMsg);
+	    }
 
-            if (!capture.Cued)
-                capture.Cue();
-
-            capture.Start();
-
-            return true;
-        }
-
+        #region ISampleGrabberCB Members
         /// <summary>
-        /// Stops the video capturing.
+        /// Buffer Callback method from the  DirectShow.NET ISampleGrabberCB interface.  This method is called
+        /// when a new frame is grabbed by the SampleGrabber.
         /// </summary>
-        public void StopVideoCapturing()
+        /// <param name="SampleTime">The sample time.</param>
+        /// <param name="pBuffer">A pointer to the image buffer that contains the grabbed sample.</param>
+        /// <param name="BufferLen">The length of the image buffer containing the grabbed sample.</param>
+        /// <returns>0 = success.</returns>
+        public int BufferCB(double SampleTime, IntPtr pBuffer, int BufferLen)
         {
-            if (!capture.Stopped)
-                capture.Stop();
+            while (processing) { }
+            grabbedImage = pBuffer;
+            return 0;
         }
-
         /// <summary>
-        /// Gets a Bitmap image object returned by the DirectShow library.
+        /// Sample CallBack method from the ISampleGrabberCB interface (DirectShow.NET).  Not used.
         /// </summary>
+        /// <param name="SampleTime"></param>
+        /// <param name="pSample"></param>
         /// <returns></returns>
-        public Bitmap GetBitmapImage()
+        public int SampleCB(double SampleTime, IMediaSample pSample)
         {
-            if (capture == null)
-                return null;
+            throw new Exception("The method or operation is not implemented.");
+        }
 
-            return tmpBitmap;
+        #endregion
+
+        private bool processing = false;
+
+        public void GetImageTexture(int[] returnImage, ref IntPtr imagePtr)
+        {
+            if (grabbedImage != IntPtr.Zero)
+            {
+                processing = true;
+                Marshal.Copy(grabbedImage, returnImage, 0, returnImage.Length);
+
+                //imagePtr = grabbedImage;
+                int stride = cameraWidth * 3;
+                int srcStride = cameraWidth * 4;
+
+                if (imagePtr != IntPtr.Zero)
+                {
+                    unsafe
+                    {
+                        byte* src = (byte*)(new IntPtr(grabbedImage.ToInt32() + 
+                            (cameraHeight - 1) * srcStride));
+                        byte* dst = (byte*)imagePtr;
+                        for (int i = 0; i < cameraHeight; i++)
+                        {
+                            for (int j = 0, k = 0; j < stride; j += 3, k += 4)
+                            {
+                                //*(dst + j) = *(src + k + 2);
+                                *(dst + j + 1) = *(src + k + 1);
+                                //*(dst + j + 2) = *(src + k + 0);
+                            }
+
+                            src -= srcStride;
+                            dst += stride;
+                        }
+                    }
+                }
+                    
+                processing = false;
+            }
         }
 
         public void Dispose()
         {
-            if (capture != null)
-                capture.Dispose();
+            int hr;
+            try
+            {
+                if (mediaCtrl != null)
+                {
+                    hr = mediaCtrl.Stop();
+                    mediaCtrl = null;
+                }
+
+                if (mediaEvt != null)
+                    mediaEvt = null;
+
+                baseGrabFlt = null;
+                if (sampGrabber != null)
+                    Marshal.ReleaseComObject(sampGrabber); sampGrabber = null;
+
+                if (capGraph != null)
+                    Marshal.ReleaseComObject(capGraph); capGraph = null;
+
+                if (graphBuilder != null)
+                    Marshal.ReleaseComObject(graphBuilder); graphBuilder = null;
+
+                if (capFilter != null)
+                    Marshal.ReleaseComObject(capFilter); capFilter = null;
+
+                if (capDevices != null)
+                {
+                    foreach (DsDevice d in capDevices)
+                        d.Dispose();
+                    capDevices = null;
+                }
+            }
+            catch (Exception)
+            { }
         }
 
         #endregion
 
-        #region Private Methods
-
-        /// <summary>
-        /// A helper function that extracts the image pixels stored in Bitmap instance to an array
-        /// of integers as well as copy them to the memory location pointed by 'cam_image'.
-        /// </summary>
-        /// <param name="bmpDataSource"></param>
-        /// <param name="cam_image"></param>
-        /// <param name="imageData"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        private void ReadBmpData(BitmapData bmpDataSource, IntPtr cam_image, int[] imageData, int width,
-            int height)
-        {
-            unsafe
-            {
-                byte* src = (byte*)bmpDataSource.Scan0;
-                byte* dst = (byte*)cam_image;
-                int R = 0, G = 0, B = 0, A = 0;
-                switch (format)
-                {
-                    case ImageFormat.GRAYSCALE_8:
-                        break;
-                    case ImageFormat.R5G6B5_16:
-                        for (int i = 0; i < height; i++)
-                        {
-                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 2)
-                            {
-                                *(dst + k) = (byte)((*(src + j) & 0xF8) | (*(src + j + 1) >> 5));
-                                *(dst + k + 1) = (byte)(((*(src + j + 1) & 0x1C) << 3) |
-                                    ((*(src + j + 2) & 0xF8) >> 3));
-
-                                imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                                    (*(src + j + 1) << 8) | *(src + j);
-                            }
-
-                            src -= (width * 3);
-                            dst += (width * 2);
-                        }
-                        break;
-                    case ImageFormat.B8G8R8_24:
-                    case ImageFormat.R8G8B8_24:
-                        if (format == ImageFormat.B8G8R8_24)
-                        {
-                            R = 2; G = 1; B = 0;
-                        }
-                        else
-                        {
-                            R = 0; G = 1; B = 2;
-                        }
-
-                        for (int i = 0; i < height; i++)
-                        {
-                            for (int j = 0; j < width * 3; j += 3)
-                            {
-                                *(dst + j) = *(src + j + R);
-                                *(dst + j + 1) = *(src + j + G);
-                                *(dst + j + 2) = *(src + j + B);
-
-                                imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                                    (*(src + j + 1) << 8) | *(src + j);
-                            }
-
-                            src -= (width * 3);
-                            dst += (width * 3);
-                        }
-                        break;
-                    case ImageFormat.A8B8G8R8_32:
-                    case ImageFormat.B8G8R8A8_32:
-                    case ImageFormat.R8G8B8A8_32:
-                        if (format == ImageFormat.A8B8G8R8_32)
-                        {
-                            A = 0; B = 1; G = 2; R = 3;
-                        }
-                        else if (format == ImageFormat.B8G8R8A8_32)
-                        {
-                            B = 0; G = 1; R = 2; A = 3;
-                        }
-                        else
-                        {
-                            R = 0; G = 1; B = 2; A = 3;
-                        }
-
-                        for (int i = 0; i < height; i++)
-                        {
-                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 4)
-                            {
-                                *(dst + k + R) = *(src + j);
-                                *(dst + k + G) = *(src + j + 1);
-                                *(dst + k + B) = *(src + j + 2);
-                                *(dst + k + A) = (byte)255;
-
-                                imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                                    (*(src + j + 1) << 8) | *(src + j);
-                            }
-
-                            src -= (width * 3);
-                            dst += (width * 4);
-                        }
-                        break;
-                }
-            }
-        }
-
-        private void ReadBmpData(BitmapData bmpDataSource, int[] imageData, int width, int height)
-        {
-            unsafe
-            {
-                byte* src = (byte*)bmpDataSource.Scan0;
-                for (int i = 0; i < height; i++)
-                {
-                    for (int j = 0; j < width * 3; j += 3)
-                    {
-                        imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                            (*(src + j + 1) << 8) | *(src + j);
-                    }
-                    src -= (width * 3);
-                }
-            }
-        }
-
-        private void ReadBmpData(BitmapData bmpDataSource, IntPtr cam_image, int width, int height)
-        {
-            unsafe
-            {
-                byte* src = (byte*)bmpDataSource.Scan0;
-                byte* dst = (byte*)cam_image;
-                int R = 0, G = 0, B = 0, A = 0;
-                switch (format)
-                {
-                    case ImageFormat.R5G6B5_16:
-                        for (int i = 0; i < height; i++)
-                        {
-                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 2)
-                            {
-                                *(dst + k) = (byte)((*(src + j) & 0xF8) | (*(src + j + 1) >> 5));
-                                *(dst + k + 1) = (byte)(((*(src + j + 1) & 0x1C) << 3) |
-                                    ((*(src + j + 2) & 0xF8) >> 3));
-                            }
-
-                            src -= (width * 3);
-                            dst += (width * 2);
-                        }
-                        break;
-                    case ImageFormat.B8G8R8_24:
-                    case ImageFormat.R8G8B8_24:
-                        if (format == ImageFormat.B8G8R8_24)
-                        {
-                            R = 2; G = 1; B = 0;
-                        }
-                        else
-                        {
-                            R = 0; G = 1; B = 2;
-                        }
-
-                        for (int i = 0; i < height; i++)
-                        {
-                            for (int j = 0; j < width * 3; j += 3)
-                            {
-                                *(dst + j) = *(src + j + R);
-                                *(dst + j + 1) = *(src + j + G);
-                                *(dst + j + 2) = *(src + j + B);
-                            }
-
-                            src -= (width * 3);
-                            dst += (width * 3);
-                        }
-                        break;
-                    case ImageFormat.A8B8G8R8_32:
-                    case ImageFormat.B8G8R8A8_32:
-                    case ImageFormat.R8G8B8A8_32:
-                        if (format == ImageFormat.A8B8G8R8_32)
-                        {
-                            A = 0; B = 1; G = 2; R = 3;
-                        }
-                        else if (format == ImageFormat.B8G8R8A8_32)
-                        {
-                            B = 0; G = 1; R = 2; A = 3;
-                        }
-                        else
-                        {
-                            R = 0; G = 1; B = 2; A = 3;
-                        }
-
-                        for (int i = 0; i < height; i++)
-                        {
-                            for (int j = 0, k = 0; j < width * 3; j += 3, k += 4)
-                            {
-                                *(dst + k + R) = *(src + j);
-                                *(dst + k + G) = *(src + j + 1);
-                                *(dst + k + B) = *(src + j + 2);
-                                *(dst + k + A) = (byte)255;
-                            }
-
-                            src -= (width * 3);
-                            dst += (width * 4);
-                        }
-                        break;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Assigns the video image returned by the DirectShow library to a temporary Bitmap holder.
-        /// </summary>
-        /// <param name="e"></param>
-        private void CaptureDone(System.Drawing.Bitmap e)
-        {
-            this.tmpBitmap = e;
-        }
-
-        #endregion
     }
 }

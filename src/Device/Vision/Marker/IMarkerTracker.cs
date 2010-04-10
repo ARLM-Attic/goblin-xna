@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 using Microsoft.Xna.Framework;
@@ -47,45 +46,9 @@ namespace GoblinXNA.Device.Vision.Marker
     public interface IMarkerTracker
     {
         /// <summary>
-        /// Gets the x-coordinate of the camera focal point.
-        /// </summary>
-        float CameraFx { get; }
-
-        /// <summary>
-        /// Gets the y-coordinate of the camera focal point.
-        /// </summary>
-        float CameraFy { get; }
-
-        /// <summary>
-        /// Gets the image width. If static image is used, then this is the width of the image.
-        /// </summary>
-        int ImageWidth { get; }
-
-        /// <summary>
-        /// Gets the image height. If static image is used, then this is the height of the image.
-        /// </summary>
-        int ImageHeight { get; }
-
-        /// <summary>
         /// Gets whether the tracker has been initialized.
         /// </summary>
         bool Initialized { get; }
-
-        /// <summary>
-        /// Gets or sets the static image used for tracking. 
-        /// </summary>
-        /// <remarks>
-        /// You need to set this value if you want to perform marker tracking using a
-        /// static image instead of a live video stream. 
-        /// </remarks>
-        String StaticImageFile { get; set; }
-
-        /// <summary>
-        /// Gets the static image data in int array (in Bgr32 format). This value is non-null
-        /// only if StaticImageFile property is set.
-        /// </summary>
-        /// <see cref="StaticImageFile"/>
-        int[] StaticImage { get; }
 
         /// <summary>
         /// Gets the camera projection matrix used for this marker tracker.
@@ -118,15 +81,10 @@ namespace GoblinXNA.Device.Vision.Marker
         Object AssociateMarker(params Object[] markerConfigs);
 
         /// <summary>
-        /// Processes a static image set in the property.
-        /// </summary>
-        void ProcessImage();
-
-        /// <summary>
         /// Processes the video image captured from an initialized video capture device. 
         /// </summary>
         /// <param name="captureDevice">An initialized video capture device</param>
-        void ProcessImage(IVideoCapture captureDevice);
+        void ProcessImage(IVideoCapture captureDevice, IntPtr imagePtr);
 
         /// <summary>
         /// Checks whether a marker identified by 'markerID' is found in the processed image

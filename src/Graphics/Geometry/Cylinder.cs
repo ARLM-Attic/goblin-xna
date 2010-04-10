@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -46,6 +47,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class Cylinder : Model
     {
+        #region Constructors
+
         /// <summary>
         /// Creates a cylinder (actually a truncated cone) oriented along the Y axis. The base of the cylinder 
         /// is placed at Y = -height/2, and the top at height/2 = height. A cylinder is subdivided around 
@@ -60,7 +63,20 @@ namespace GoblinXNA.Graphics.Geometry
         public Cylinder(float bottom, float top, float height, int slices)
             : base(CreateCylinder(bottom, top, height, slices))
         {
+            primitiveShapeParameters = bottom + ", " + top + ", " + height + ", " + slices;
         }
+
+        public Cylinder(params String[] xmlParams)
+            : base(CreateCylinder(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]), 
+                float.Parse(xmlParams[2]), int.Parse(xmlParams[3])))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2] + ", "
+                + xmlParams[3];
+        }
+
+        #endregion
+
+        #region Private Static Methods
 
         private static PrimitiveMesh CreateCylinder(float bottom, float top, float height, int slices)
         {
@@ -234,5 +250,7 @@ namespace GoblinXNA.Graphics.Geometry
 
             return mesh;
         }
+
+        #endregion
     }
 }

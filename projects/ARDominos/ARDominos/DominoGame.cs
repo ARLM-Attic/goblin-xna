@@ -30,6 +30,8 @@
  * 
  *************************************************************************************/ 
 
+//#define USE_ARTAG
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -63,21 +65,6 @@ using GoblinXNA.Device.Util;
 namespace ARDominos
 {
     /// <summary>
-    /// An enum that indicates which marker tracking library to use.
-    /// </summary>
-    enum MarkerLibrary
-    {
-        /// <summary>
-        /// ARTag library developed by Mark Fiala
-        /// </summary>
-        ARTag,
-        /// <summary>
-        /// ALVAR library developed by VTT
-        /// </summary>
-        ALVAR
-    }
-
-    /// <summary>
     /// The main domino game. 
     /// </summary>
     public class DominoGame : Microsoft.Xna.Framework.Game
@@ -87,8 +74,6 @@ namespace ARDominos
 
         // A GoblinXNA scene graph
         static Scene scene;
-
-        MarkerLibrary markerLibrary;
 
         // A marker node for tracking the ground plane (game board)
         MarkerNode markerNode;
@@ -237,12 +222,11 @@ namespace ARDominos
             // Increase the gravity
             scene.PhysicsEngine.Gravity = 30.0f;
 
-            // Use ALVAR tracking library
-            markerLibrary = MarkerLibrary.ALVAR;
+            ((NewtonPhysics)scene.PhysicsEngine).MaxSimulationSubSteps = 5;
 
             // Creates several physics material to associate appropriate collision sounds for each
             // different materials
-            PhysicsMaterial physMat = new PhysicsMaterial();
+            NewtonMaterial physMat = new NewtonMaterial();
             // Domino to domino material interaction
             physMat.MaterialName1 = "Domino";
             physMat.MaterialName2 = "Domino";
@@ -275,7 +259,7 @@ namespace ARDominos
 
             };
 
-            PhysicsMaterial physMat2 = new PhysicsMaterial();
+            NewtonMaterial physMat2 = new NewtonMaterial();
             // Gound to ball material interaction
             physMat2.MaterialName1 = "Ground";
             physMat2.MaterialName2 = "Ball";
@@ -304,7 +288,7 @@ namespace ARDominos
 
             };
 
-            PhysicsMaterial physMat3 = new PhysicsMaterial();
+            NewtonMaterial physMat3 = new NewtonMaterial();
             physMat3.MaterialName1 = "Ground";
             physMat3.MaterialName2 = "Domino";
             physMat3.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
@@ -331,7 +315,7 @@ namespace ARDominos
 
             };
 
-            PhysicsMaterial physMat4 = new PhysicsMaterial();
+            NewtonMaterial physMat4 = new NewtonMaterial();
             physMat4.MaterialName1 = "Ball";
             physMat4.MaterialName2 = "Domino";
             physMat4.Elasticity = 0.5f;
@@ -359,7 +343,7 @@ namespace ARDominos
 
             };
 
-            PhysicsMaterial physMat5 = new PhysicsMaterial();
+            NewtonMaterial physMat5 = new NewtonMaterial();
             physMat5.MaterialName1 = "Ball";
             physMat5.MaterialName2 = "Ball";
             physMat5.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
@@ -386,7 +370,7 @@ namespace ARDominos
 
             };
 
-            PhysicsMaterial physMat6 = new PhysicsMaterial();
+            NewtonMaterial physMat6 = new NewtonMaterial();
             physMat6.MaterialName1 = "Ball";
             physMat6.MaterialName2 = "Obstacle";
             physMat6.Elasticity = 0.7f;
@@ -1277,18 +1261,15 @@ namespace ARDominos
             scene.AddVideoCaptureDevice(captureDevice);
 
             IMarkerTracker tracker = null;
-            if (markerLibrary == MarkerLibrary.ARTag)
-            {
-                tracker = new ARTagTracker();
-                tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, captureDevice.Height,
-                    false, "ARDominoARTag.cf");
-            }
-            else
-            {
-                tracker = new ALVARMarkerTracker();
-                ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
-                tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
-            }
+#if USE_ARTAG
+            tracker = new ARTagTracker();
+            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, captureDevice.Height,
+                false, "ARDominoARTag.cf");
+#else
+            tracker = new ALVARMarkerTracker();
+            ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+#endif
 
             scene.MarkerTracker = tracker;
 
@@ -1297,18 +1278,15 @@ namespace ARDominos
             scene.PhysicsEngine.GravityDirection = -Vector3.UnitZ;
 
             // Create a marker node to track the ground plane
-            if (markerLibrary == MarkerLibrary.ARTag)
-            {
-                markerNode = new MarkerNode(scene.MarkerTracker, "ground");
-            }
-            else
-            {
-                int[] ids = new int[54];
-                for (int i = 0; i < ids.Length; i++)
-                    ids[i] = i;
+#if USE_ARTAG
+            markerNode = new MarkerNode(scene.MarkerTracker, "ground");
+#else
+            int[] ids = new int[54];
+            for (int i = 0; i < ids.Length; i++)
+                ids[i] = i;
 
-                markerNode = new MarkerNode(scene.MarkerTracker, "ARDominoALVAR.txt", ids);
-            }
+            markerNode = new MarkerNode(scene.MarkerTracker, "ARDominoALVAR.txt", ids);
+#endif
 
             scene.RootNode.AddChild(markerNode);
         }
@@ -1327,10 +1305,11 @@ namespace ARDominos
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            if(markerLibrary == MarkerLibrary.ARTag)
-                groundNode.Model = new Box(130, 89, 0.2f);
-            else
-                groundNode.Model = new Box(126, 86, 0.2f);
+#if USE_ARTAG
+            groundNode.Model = new Box(130, 89, 0.2f);
+#else
+            groundNode.Model = new Box(129.5f, 99, 0.2f);
+#endif
 
             groundNode.Physics.Collidable = true;
             groundNode.Physics.Shape = ShapeType.Box;
@@ -1342,7 +1321,7 @@ namespace ARDominos
             groundNode.Model.ReceiveShadows = true;
 
             Material groundMaterial = new Material();
-            groundMaterial.Diffuse = Color.Gray.ToVector4();
+            groundMaterial.Diffuse = new Vector4(0.5f, 0.5f, 0.5f, 0.5f);
             groundMaterial.Specular = Color.White.ToVector4();
             groundMaterial.SpecularPower = 20;
 

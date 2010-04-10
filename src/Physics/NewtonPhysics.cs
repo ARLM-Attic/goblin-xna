@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -181,7 +181,7 @@ namespace GoblinXNA.Physics
 
         private IDictionary<String, int> materialIDs;
         private List<String> materialPairs;
-        private IDictionary<IntPtr, IPhysicsMaterial> materials;
+        private IDictionary<IntPtr, NewtonMaterial> materials;
 
         private IDictionary<IntPtr, Joint> joints;
 
@@ -193,6 +193,8 @@ namespace GoblinXNA.Physics
         private IDictionary<IntPtr, Stack<Vector3>> torques;
 
         private List<List<Vector3>> collisionMesh;
+
+        private int numSubSteps;
 
         #region Newton Physics
         private IntPtr nWorld;
@@ -243,7 +245,7 @@ namespace GoblinXNA.Physics
 
             materialIDs = new Dictionary<String, int>();
             materialPairs = new List<string>();
-            materials = new Dictionary<IntPtr, IPhysicsMaterial>();
+            materials = new Dictionary<IntPtr, NewtonMaterial>();
 
             joints = new Dictionary<IntPtr, Joint>();
             jointsToBeAdded = new List<Joint>();
@@ -259,9 +261,11 @@ namespace GoblinXNA.Physics
 
             collisionMesh = new List<List<Vector3>>();
 
+            numSubSteps = 1;
+
             transformCallback = delegate(IntPtr body, float[] pMatrix)
             {
-                if (reverseIDs[body].Manipulatable)
+                if (!reverseIDs.ContainsKey(body) || reverseIDs[body].Manipulatable)
                     return;
 
                 ShapeType shape = reverseIDs[body].Shape;
@@ -288,6 +292,9 @@ namespace GoblinXNA.Physics
 
             applyForceAndTorqueCallback = delegate(IntPtr pNewtonBody)
             {
+                if (!reverseIDs.ContainsKey(pNewtonBody))
+                    return;
+
                 float[] force = new float[3];
                 force[0] = force[1] = force[2] = 0;
                 if (reverseIDs[pNewtonBody].ApplyGravity)
@@ -333,6 +340,9 @@ namespace GoblinXNA.Physics
             rayCastFilterCallback = delegate(IntPtr pNewtonBody, float[] pHitNormal, int pCollisionID,
                 IntPtr pUserData, float pIntersetParam)
             {
+                if (!reverseIDs.ContainsKey(pNewtonBody))
+                    return -1;
+
                 IPhysicsObject physObj = reverseIDs[pNewtonBody];
                 if (physObj.Pickable)
                 {
@@ -345,7 +355,10 @@ namespace GoblinXNA.Physics
 
             materialContactBeginCallback = delegate(IntPtr pMaterial, IntPtr pNewtonBody0, IntPtr pNewtonBody1)
             {
-                IPhysicsMaterial physMat = materials[Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)];
+                if (!materials.ContainsKey(Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)))
+                    return 1;
+
+                NewtonMaterial physMat = materials[Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)];
 
                 if (physMat.ContactBeginCallback == null)
                     return 1;
@@ -358,7 +371,10 @@ namespace GoblinXNA.Physics
 
             materialContactProcessCallback = delegate(IntPtr pMaterial, IntPtr pContact)
             {
-                IPhysicsMaterial physMat = materials[Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)];
+                if (!materials.ContainsKey(Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)))
+                    return 1;
+
+                NewtonMaterial physMat = materials[Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)];
 
                 if (physMat.ContactProcessCallback == null)
                     return 1;
@@ -388,7 +404,10 @@ namespace GoblinXNA.Physics
 
             materialContactEndCallback = delegate(IntPtr pMaterial)
             {
-                IPhysicsMaterial physMat = materials[Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)];
+                if (!materials.ContainsKey(Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)))
+                    return;
+
+                NewtonMaterial physMat = materials[Newton.NewtonMaterialGetMaterialPairUserData(pMaterial)];
 
                 if (physMat.ContactEndCallback == null)
                     return;
@@ -472,6 +491,16 @@ namespace GoblinXNA.Physics
         }
 
         /// <summary>
+        /// Gets or sets the maximum number of sub steps for physics
+        /// simulation.
+        /// </summary>
+        public int MaxSimulationSubSteps
+        {
+            get { return numSubSteps; }
+            set { numSubSteps = value; }
+        }
+
+        /// <summary>
         /// True if we want to speed up the physics simulation by using bounding box
         /// collision detection instead of triangle mesh collision detection
         /// </summary>
@@ -499,7 +528,7 @@ namespace GoblinXNA.Physics
             WorldSize = worldSize;
 
             List<IPhysicsObject> physObjs = new List<IPhysicsObject>(objectIDs.Keys);
-            List<IPhysicsMaterial> physMats = new List<IPhysicsMaterial>(materials.Values);
+            List<NewtonMaterial> physMats = new List<NewtonMaterial>(materials.Values);
             List<Joint> physJoint = new List<Joint>(joints.Values);
 
             objectIDs.Clear();
@@ -511,7 +540,7 @@ namespace GoblinXNA.Physics
             materialIDs.Clear();
 
             joints.Clear();
-            jointsToBeAdded.Clear();
+            //jointsToBeAdded.Clear();
 
             foreach (IPhysicsMaterial physMat in physMats)
                 AddPhysicsMaterial(physMat);
@@ -681,8 +710,6 @@ namespace GoblinXNA.Physics
             scaleTable.Add(body, scale);
             reverseIDs.Add(body, physObj);
 
-            AddJoint();
-
             Newton.NewtonReleaseCollision(nWorld, collision);
         }
 
@@ -698,7 +725,7 @@ namespace GoblinXNA.Physics
             Vector3 scale;
             newTransform.Decompose(out scale, out rot, out trans);
 
-            if (!scaleTable[body].Equals(scale))
+            if (!scaleTable[body].Equals(scale) || physObj.ShapeModified)
             {
                 IntPtr collision = GetNewtonCollision(physObj, scale);
 
@@ -707,6 +734,8 @@ namespace GoblinXNA.Physics
 
                 scaleTable.Remove(body);
                 scaleTable.Add(body, scale);
+
+                physObj.ShapeModified = false;
             }
 
             // rigidbody is dynamic if and only if mass is non zero, otherwise static
@@ -880,6 +909,9 @@ namespace GoblinXNA.Physics
         /// material properties to be added</param>
         public void AddPhysicsMaterial(IPhysicsMaterial physMat)
         {
+            if (!(physMat is NewtonMaterial))
+                throw new GoblinException("You need to add NewtonMaterial for NewtonPhysics");
+
             String pairName = physMat.MaterialName1 + "_" + physMat.MaterialName2;
             if (!materialPairs.Contains(pairName))
             {
@@ -915,12 +947,12 @@ namespace GoblinXNA.Physics
 
                 IntPtr material = Marshal.AllocHGlobal(1);
                 Newton.NewtonMaterialSetCollisionCallback(nWorld, mat1ID, mat2ID, material,
-                    (physMat.ContactBeginCallback != null) ? materialContactBeginCallback : null, 
-                    (physMat.ContactProcessCallback != null) ? materialContactProcessCallback : null, 
-                    (physMat.ContactEndCallback != null) ? materialContactEndCallback : null);
+                    (((NewtonMaterial)physMat).ContactBeginCallback != null) ? materialContactBeginCallback : null, 
+                    (((NewtonMaterial)physMat).ContactProcessCallback != null) ? materialContactProcessCallback : null, 
+                    (((NewtonMaterial)physMat).ContactEndCallback != null) ? materialContactEndCallback : null);
 
                 if (!materials.ContainsKey(material))
-                    materials.Add(material, physMat);
+                    materials.Add(material, (NewtonMaterial)physMat);
 
                 materialPairs.Add(pairName);
             }
@@ -933,9 +965,18 @@ namespace GoblinXNA.Physics
         /// material properties to be removed</param>
         public void RemovePhysicsMaterial(IPhysicsMaterial physMat)
         {
+            if (!(physMat is NewtonMaterial))
+                throw new GoblinException("You can only remove NewtonMaterial from NewtonPhysics");
+
             materialPairs.Remove(physMat.MaterialName1 + "_" + physMat.MaterialName2);
         }
 
+        /// <summary>
+        /// Creates a Newton joint object and add it to simulation.
+        /// </summary>
+        /// <param name="child"></param>
+        /// <param name="parent"></param>
+        /// <param name="info"></param>
         public void CreateJoint(IPhysicsObject child, IPhysicsObject parent, JointInfo info)
         {
             Joint joint = new Joint();
@@ -947,17 +988,35 @@ namespace GoblinXNA.Physics
         }
 
         /// <summary>
+        /// Removes all of the added joints.
+        /// </summary>
+        public void RemoveAllJoints()
+        {
+            foreach (IntPtr joint in joints.Keys)
+                Newton.NewtonDestroyJoint(nWorld, joint);
+
+            joints.Clear();
+        }
+
+        /// <summary>
         /// Updates the physical simulation.
         /// </summary>
         /// <param name="elapsedTime">The amount of time to advance the simulation in
         /// seconds</param>
         public void Update(float elapsedTime)
         {
-            int updateTime = Math.Max((int)(elapsedTime / 0.016f * 2), 2);
-            if (updateTime > 5)
-                updateTime = 5;
-            for(int i = 0; i < updateTime; i++)
-                Newton.NewtonUpdate(nWorld, updateTime);
+            if (jointsToBeAdded.Count > 0)
+                AddJoint();
+
+            if (numSubSteps > 1)
+            {
+                int updateTime = Math.Max((int)(elapsedTime / 0.016f * 2), 2);
+                updateTime = Math.Min(numSubSteps, updateTime);
+                for(int i = 0; i < updateTime; i++)
+                    Newton.NewtonUpdate(nWorld, updateTime);
+            }
+            else
+                Newton.NewtonUpdate(nWorld, elapsedTime);
 
             float[] floats1 = new float[16];
             float[] floats2 = new float[16];
@@ -1236,9 +1295,14 @@ namespace GoblinXNA.Physics
         public Vector3 GetVelocity(IPhysicsObject physObj)
         {
             float[] speed = new float[3];
-            Newton.NewtonBodyGetVelocity(objectIDs[physObj], speed);
+            if (objectIDs.ContainsKey(physObj))
+            {
+                Newton.NewtonBodyGetVelocity(objectIDs[physObj], speed);
 
-            return new Vector3(speed[0], speed[1], speed[2]);
+                return new Vector3(speed[0], speed[1], speed[2]);
+            }
+            else
+                return Vector3.Zero;
         }
 
         /// <summary>
@@ -1548,6 +1612,8 @@ namespace GoblinXNA.Physics
             }
             else
             {
+                List<Vector3> vertices = null;
+
                 switch (physObj.Shape)
                 {
                     case ShapeType.Box:
@@ -1642,7 +1708,7 @@ namespace GoblinXNA.Physics
                         }
                         break;
                     case ShapeType.ConvexHull:
-                        List<Vector3> vertices = physObj.Vertices;
+                        vertices = physObj.MeshProvider.Vertices;
                         float[] vertexCloud = new float[vertices.Count * 3];
                         for (int i = 0; i < vertices.Count; i++)
                         {
@@ -1661,118 +1727,46 @@ namespace GoblinXNA.Physics
 
                         List<float> vertPtr = new List<float>();
                         int ndx = 0;
-                        Vector3 vert = new Vector3();
-                        if (physObj.Model.Mesh != null)
+
+                        if (physObj.MeshProvider != null)
                         {
-                            foreach (ModelMesh modelMesh in physObj.Model.Mesh)
+                            List<int> indices = physObj.MeshProvider.Indices;
+                            vertices = physObj.MeshProvider.Vertices;
+
+                            if (physObj.MeshProvider.PrimitiveType == PrimitiveType.TriangleList)
                             {
-                                bool needTransform = !physObj.Model.Transforms[modelMesh.ParentBone.Index].
-                                     Equals(Matrix.Identity);
-                                foreach (ModelMeshPart part in modelMesh.MeshParts)
-                                {
-                                    int stride = part.VertexStride;
-                                    int numberv = part.NumVertices;
-                                    byte[] data = new byte[stride * numberv];
-
-                                    modelMesh.VertexBuffer.GetData<byte>(data);
-
-                                    int[] indices = new int[part.PrimitiveCount * 3];
-
-                                    if (modelMesh.IndexBuffer.IndexElementSize == IndexElementSize.SixteenBits)
-                                    {
-                                        short[] tmp = new short[part.PrimitiveCount * 3];
-                                        modelMesh.IndexBuffer.GetData<short>(tmp, 0,
-                                            tmp.Length);
-                                        Array.Copy(tmp, 0, indices, 0, indices.Length);
-                                    }
-                                    else
-                                        modelMesh.IndexBuffer.GetData<int>(indices, 0,
-                                            indices.Length);
-
-                                    for (int i = 0; i < indices.Length; i += 3)
-                                    {
-                                        vertPtr.Clear();
-                                        bool fail = false;
-                                        for (int j = 0; j < 3; j++)
-                                        {
-                                            if (indices[i + j] >= numberv)
-                                            {
-                                                fail = true;
-                                                break;
-                                            }
-
-                                            ndx = indices[i + j] * stride;
-
-                                            float x = BitConverter.ToSingle(data, ndx);
-                                            float y = BitConverter.ToSingle(data, ndx + 4);
-                                            float z = BitConverter.ToSingle(data, ndx + 8);
-                                            if (needTransform)
-                                            {
-                                                vert = Matrix.Multiply(Matrix.CreateTranslation(new Vector3(x, y, z)),
-                                                    physObj.Model.Transforms[modelMesh.ParentBone.Index]).Translation;
-                                                x = vert.X;
-                                                y = vert.Y;
-                                                z = vert.Z;
-                                            }
-
-                                            vertPtr.Add(x * scale.X);
-                                            vertPtr.Add(y * scale.Y);
-                                            vertPtr.Add(z * scale.Z);
-                                        }
-
-                                        if (!fail)
-                                            Newton.NewtonTreeCollisionAddFace(collision, 3, vertPtr.ToArray(),
-                                                sizeof(float) * 3, 1);
-                                    }
-
-                                }
-                            }
-                        }
-                        else if ((physObj.Model is Model) && ((Model)physObj.Model).PrimitiveMesh != null)
-                        {
-                            int stride = ((Model)physObj.Model).PrimitiveMesh.VertexDeclaration.GetVertexStrideSize(0);
-                            int numberv = ((Model)physObj.Model).PrimitiveMesh.NumberOfVertices;
-                            byte[] data = new byte[stride * numberv];
-
-                            ((Model)physObj.Model).PrimitiveMesh.VertexBuffer.GetData<byte>(data);
-
-                            short[] indices = new short[
-                                ((Model)physObj.Model).PrimitiveMesh.IndexBuffer.SizeInBytes / sizeof(short)];
-                            ((Model)physObj.Model).PrimitiveMesh.IndexBuffer.GetData<short>(indices);
-
-                            if (((Model)physObj.Model).PrimitiveMesh.PrimitiveType == PrimitiveType.TriangleList)
-                            {
-                                for (int i = 0; i < indices.Length; i += 3)
+                                for (int i = 0; i < indices.Count; i += 3)
                                 {
                                     vertPtr.Clear();
                                     for (int j = 0; j < 3; j++)
                                     {
-                                        ndx = indices[i + j] * stride;
-                                        vertPtr.Add(BitConverter.ToSingle(data, ndx) * scale.X);
-                                        vertPtr.Add(BitConverter.ToSingle(data, ndx + 4) * scale.Y);
-                                        vertPtr.Add(BitConverter.ToSingle(data, ndx + 8) * scale.Z);
+                                        ndx = indices[i + j];
+
+                                        vertPtr.Add(vertices[ndx].X * scale.X);
+                                        vertPtr.Add(vertices[ndx].Y * scale.Y);
+                                        vertPtr.Add(vertices[ndx].Z * scale.Z);
                                     }
 
                                     Newton.NewtonTreeCollisionAddFace(collision, 3, vertPtr.ToArray(),
                                         sizeof(float) * 3, 1);
                                 }
                             }
-                            else if (((Model)physObj.Model).PrimitiveMesh.PrimitiveType == PrimitiveType.TriangleFan)
+                            else if (physObj.MeshProvider.PrimitiveType == PrimitiveType.TriangleFan)
                             {
                                 for (int i = 0; i < 2; i++)
                                 {
-                                    ndx = indices[1] * stride;
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx) * scale.X);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 4) * scale.Y);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 8) * scale.Z);
+                                    ndx = indices[1];
+                                    vertPtr.Add(vertices[ndx].X * scale.X);
+                                    vertPtr.Add(vertices[ndx].Y * scale.Y);
+                                    vertPtr.Add(vertices[ndx].Z * scale.Z);
                                 }
 
-                                for (int i = 2; i < indices.Length; i++)
+                                for (int i = 2; i < indices.Count; i++)
                                 {
-                                    ndx = indices[i] * stride;
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx) * scale.X);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 4) * scale.Y);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 8) * scale.Z);
+                                    ndx = indices[i];
+                                    vertPtr.Add(vertices[ndx].X * scale.X);
+                                    vertPtr.Add(vertices[ndx].Y * scale.Y);
+                                    vertPtr.Add(vertices[ndx].Z * scale.Z);
 
                                     Newton.NewtonTreeCollisionAddFace(collision, 3, vertPtr.ToArray(),
                                         sizeof(float) * 3, 1);
@@ -1780,22 +1774,22 @@ namespace GoblinXNA.Physics
                                     vertPtr.RemoveRange(6, 3);
                                 }
                             }
-                            else if (((Model)physObj.Model).PrimitiveMesh.PrimitiveType == PrimitiveType.TriangleStrip)
+                            else if (physObj.MeshProvider.PrimitiveType == PrimitiveType.TriangleStrip)
                             {
                                 for (int i = 0; i < 2; i++)
                                 {
-                                    ndx = indices[1] * stride;
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx) * scale.X);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 4) * scale.Y);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 8) * scale.Z);
+                                    ndx = indices[1];
+                                    vertPtr.Add(vertices[ndx].X * scale.X);
+                                    vertPtr.Add(vertices[ndx].Y * scale.Y);
+                                    vertPtr.Add(vertices[ndx].Z * scale.Z);
                                 }
 
-                                for (int i = 2; i < indices.Length; i++)
+                                for (int i = 2; i < indices.Count; i++)
                                 {
-                                    ndx = indices[i] * stride;
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx) * scale.X);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 4) * scale.Y);
-                                    vertPtr.Add(BitConverter.ToSingle(data, ndx + 8) * scale.Z);
+                                    ndx = indices[i];
+                                    vertPtr.Add(vertices[ndx].X * scale.X);
+                                    vertPtr.Add(vertices[ndx].Y * scale.Y);
+                                    vertPtr.Add(vertices[ndx].Z * scale.Z);
 
                                     Newton.NewtonTreeCollisionAddFace(collision, 3, vertPtr.ToArray(),
                                         sizeof(float) * 3, 1);
@@ -1805,7 +1799,7 @@ namespace GoblinXNA.Physics
                             }
                             else
                             {
-                                Log.Write("PrimitiveType: " + ((Model)physObj.Model).PrimitiveMesh.PrimitiveType.ToString() +
+                                Log.Write("PrimitiveType: " + physObj.MeshProvider.PrimitiveType.ToString() +
                                     " is not supported for ShapeType.TriangleMesh collision");
                             }
                         }

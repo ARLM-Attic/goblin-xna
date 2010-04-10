@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Xml;
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -57,6 +60,7 @@ namespace GoblinXNA.SceneGraph
     public class Scene : DrawableGameComponent
     {
         #region Member Fields
+        protected const int VIDEO_BUFFER_SIZE = 1;
         /// <summary>
         /// The root node of this scene graph
         /// </summary>
@@ -99,18 +103,8 @@ namespace GoblinXNA.SceneGraph
         /// A list of particle effects that need to be rendered
         /// </summary>
         protected List<ParticleNode> renderedEffects;
-        /// <summary>
-        /// A list of network objects that can be transferred over the network
-        /// </summary>
-        protected Dictionary<String, NetObj> networkObjects;
-        /// <summary>
-        /// The network server implementation used in this scene graph
-        /// </summary>
-        protected IServer networkServer;
-        /// <summary>
-        /// The network client implementation used in this scene graph
-        /// </summary>
-        protected IClient networkClient;
+        
+        protected INetworkHandler networkHandler;
         /// <summary>
         /// The current camera node associated with this scene graph
         /// </summary>
@@ -126,13 +120,23 @@ namespace GoblinXNA.SceneGraph
         protected List<LightNode> globalLights;
         protected Stack<LightNode> localLights;
 
+        /// <summary>
+        /// The marker tracker object
+        /// </summary>
+        protected IMarkerTracker markerTracker;
+        /// <summary>
+        /// The video capture object
+        /// </summary>
+        protected List<IVideoCapture> videoCaptures;
+
+        protected Texture2D[] videoTextures;
+
         protected List<LODNode> lodNodes;
 
         protected GoblinXNA.Graphics.Environment environment;
 
         protected SpriteBatch spriteBatch;
 
-        protected IMarkerTracker tracker;
         protected bool trackMarkers;
         protected bool markerModuleInited;
         protected List<MarkerNode> markerUpdateList;
@@ -162,23 +166,42 @@ namespace GoblinXNA.SceneGraph
 
         protected List<LightSource> globalLightSources;
 
-        #region For Networking
-        protected List<byte[]> networkMessages;
-        protected List<byte> reliableInOrderMsgs;
-        protected List<byte> unreliableInOrderMsgs;
-        protected List<byte> reliableUnOrderMsgs;
-        protected List<byte> unreliableUnOrderMsgs;
-        #endregion
+        protected bool clientPerformPhysicsSimulation;
+
+        protected float physicsElapsedTime;
 
         /// <summary>
         /// For stereo rendering
         /// </summary>
         protected bool renderLeftView;
 
-        protected Thread updateThread;
+        protected float uiElapsedTime;
+
+        protected ResolveTexture2D screen;
+
+        #region For Threading
+
+        protected Thread markerTrackingThread;
+        protected Thread physicsThread;
+        protected bool isMarkerTrackingThreaded;
+        protected bool isPhysicsThreaded;
+
+        #endregion
+
+        #region For Video Image Buffering
+
+        protected int curVideoBufferIndex;
+        protected int prevVideoBufferIndex;
+        protected int prevMarkerProcessedIndex;
+        protected bool renderingVideoTexture;
+        protected bool copyingVideoImage;
+        protected int[][][] bufferedVideoImages;
+        protected IntPtr[] bufferedVideoPointers;
+        protected int prevPointerSize;
+        protected IntPtr nullPtr = IntPtr.Zero;
         protected bool readyToUpdateTracker;
-        protected int[] videoImage;
-        protected int[] tmpImage;
+
+        #endregion
 
         // Indicates whether the scene graph is currently being processed. This is used
         // to avoid adding a node while processing (removing while processing is acceptable)
@@ -186,11 +209,8 @@ namespace GoblinXNA.SceneGraph
 
         #region For Augmented Reality Scene
         protected bool showCameraImage;
-        protected int overlayVideoID;
         protected int trackerVideoID;
-        protected int actualOverlayVideoID;
         protected int actualTrackerVideoID;
-        protected bool overlayAndTrackerUseSameID;
         protected Dictionary<int, int> videoIDs;
         protected bool freezeVideo;
 
@@ -199,7 +219,14 @@ namespace GoblinXNA.SceneGraph
         protected bool waitForVideoIDChange;
         protected bool waitForTrackerUpdate;
 
+        // These variables are used for synchronizing the threaded (if State.MultiCore is true)
+        // tracker update with the actual frame update
+        protected uint trackerUpdateCount;
+        protected uint frameUpdateCount;
+
         protected float prevTrackerTime;
+
+        protected Rectangle videoRect;
 
         #region For Stereo Augmented Reality
         protected int leftEyeVideoID;
@@ -207,9 +234,6 @@ namespace GoblinXNA.SceneGraph
         protected bool singleVideoStereo;
         protected int actualLeftEyeVideoID;
         protected int actualRightEyeVideoID;
-        protected int leftEyeVideoImageShift;
-        protected int rightEyeVideoImageShift;
-        protected Rectangle videoVisibleArea;
         #endregion
 
         #endregion
@@ -239,15 +263,18 @@ namespace GoblinXNA.SceneGraph
         /// <param name="mainGame">The main Game class</param>
         public Scene(Game mainGame) : base(mainGame)
         {
-            uiRenderer = new UIRenderer(mainGame);
             mainGame.Components.Add(this);
             this.DrawOrder = 101;
+
+            uiRenderer = new UIRenderer();
 
             spriteBatch = new SpriteBatch(State.Device);
 
             rootNode = new BranchNode("Root");
             rootNode.SceneGraph = this;
             nodeTable = new Dictionary<string, Node>();
+
+            videoCaptures = new List<IVideoCapture>();
             
             nodeRenderGroups = new Dictionary<int, List<GeometryNode>>();
             renderGroups = new Dictionary<int, bool>();
@@ -259,7 +286,6 @@ namespace GoblinXNA.SceneGraph
 
             transparencySortOrder = new DefaultTransparencyComparer();
 
-            networkObjects = new Dictionary<String, NetObj>();
             cameraNode = null;
             prevCameraTrans = new Vector3();
 
@@ -279,6 +305,8 @@ namespace GoblinXNA.SceneGraph
             preferPerPixelLighting = false;
 
             enableFrustumCulling = true;
+
+            clientPerformPhysicsSimulation = false;
 
             aabbColor = Color.YellowGreen;
             aabbShader = new SimpleEffectShader();
@@ -310,12 +338,9 @@ namespace GoblinXNA.SceneGraph
             backgroundColor = Color.CornflowerBlue;
 
             showCameraImage = false;
-            actualOverlayVideoID = -1;
             trackerVideoID = 0;
             actualTrackerVideoID = 0;
-            overlayAndTrackerUseSameID = true;
             videoIDs = new Dictionary<int, int>();
-            readyToUpdateTracker = false;
             freezeVideo = false;
             waitForVideoIDChange = false;
             waitForTrackerUpdate = false;
@@ -327,23 +352,36 @@ namespace GoblinXNA.SceneGraph
             rightEyeVideoID = -1;
             actualLeftEyeVideoID = -1;
             actualRightEyeVideoID = -1;
-            leftEyeVideoImageShift = 0;
-            rightEyeVideoImageShift = 0;
             singleVideoStereo = true;
-            videoVisibleArea = new Rectangle(0, 0, State.Width, State.Height);
 
-            networkMessages = new List<byte[]>();
-            reliableInOrderMsgs = new List<byte>();
-            unreliableInOrderMsgs = new List<byte>();
-            reliableUnOrderMsgs = new List<byte>();
-            unreliableUnOrderMsgs = new List<byte>();
+            trackerUpdateCount = 0;
+            frameUpdateCount = 0;
+            readyToUpdateTracker = false;
+
+            physicsElapsedTime = 0;
+
+            videoRect = new Rectangle(0, 0, State.Width, State.Height);
 
             processing = false;
 
-            if (State.IsMultiCore)
+            isMarkerTrackingThreaded = ((State.ThreadOption & (ushort)ThreadOptions.MarkerTracking) != 0);
+            isPhysicsThreaded = ((State.ThreadOption & (ushort)ThreadOptions.PhysicsSimulation) != 0);
+
+            // two per index for image buffers for stereo handling (even if stereo AR is not used)
+            curVideoBufferIndex = 0;
+            prevVideoBufferIndex = 0;
+            prevMarkerProcessedIndex = 0;
+            bufferedVideoImages = new int[2][][];
+            videoTextures = new Texture2D[2];
+            bufferedVideoPointers = new IntPtr[VIDEO_BUFFER_SIZE];
+
+            for (int i = 0; i < 2; i++)
+                bufferedVideoImages[i] = new int[VIDEO_BUFFER_SIZE][];
+
+            if (isMarkerTrackingThreaded)
             {
-                updateThread = new Thread(UpdateTracker);
-                updateThread.Start();
+                markerTrackingThread = new Thread(UpdateTracker);
+                markerTrackingThread.Start();
             }
         }
 
@@ -439,7 +477,7 @@ namespace GoblinXNA.SceneGraph
         /// </remarks>
         public IMarkerTracker MarkerTracker
         {
-            get { return tracker; }
+            get { return markerTracker; }
             set
             {
                 if (value == null)
@@ -449,20 +487,35 @@ namespace GoblinXNA.SceneGraph
                     throw new GoblinException("You have to initialize the tracker before you assign " +
                         "to Scene.MarkerTracker");
 
-                tracker = value;
-                MarkerBase.Instance.Tracker = tracker;
+                markerTracker = value;
 
                 if (cameraNode == null)
                 {
-                    MarkerBase.Instance.InitCameraNode();
-                    RootNode.AddChild(MarkerBase.Instance.CameraNode);
-                    CameraNode = (CameraNode)MarkerBase.Instance.CameraNode;
+                    Camera markerCamera = new Camera();
+
+                    markerCamera.View = Matrix.CreateLookAt(new Vector3(0, 0, 0), new Vector3(0, 0, -1),
+                        new Vector3(0, 1, 0));
+
+                    markerCamera.Projection = markerTracker.CameraProjection;
+
+                    CameraNode markerCameraNode = new CameraNode("MarkerCameraNode", markerCamera);
+                    RootNode.AddChild(markerCameraNode);
+                    CameraNode = markerCameraNode;
                 }
                 else
                 {
-                    cameraNode.Camera.Projection = tracker.CameraProjection;
+                    cameraNode.Camera.Projection = markerTracker.CameraProjection;
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets a list of video capture instances.
+        /// </summary>
+        /// <returns>The video capture class</returns>
+        public List<IVideoCapture> VideoCaptures
+        {
+            get { return videoCaptures; }
         }
 
         /// <summary>
@@ -504,36 +557,12 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets or sets the specific network server implementation used for this scene graph.
-        /// By default, LidgrenServer is used.
+        /// Gets or sets the network handler implementation used for this scene graph.
         /// </summary>
-        public IServer NetworkServer
+        public INetworkHandler NetworkHandler
         {
-            get { return networkServer; }
-            set
-            {
-                if (networkServer != null)
-                    networkServer.Shutdown();
-
-                networkServer = value;
-                networkServer.Initialize();
-            }
-        }
-        /// <summary>
-        /// Gets or sets the specific network client implementation used for this scene graph.
-        /// By default, LidgrenClient is used.
-        /// </summary>
-        public IClient NetworkClient
-        {
-            get { return networkClient; }
-            set
-            {
-                if (networkClient != null)
-                    networkClient.Shutdown();
-
-                networkClient = value;
-                networkClient.Connect();
-            }
+            get { return networkHandler; }
+            set { networkHandler = value; }
         }
 
         /// <summary>
@@ -593,6 +622,19 @@ namespace GoblinXNA.SceneGraph
         {
             get { return enableFrustumCulling; }
             set { enableFrustumCulling = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets whether to have each client perform their own physics simulation when
+        /// the application requires networking. It is necessary to have the server perform physics 
+        /// simulation in order to have synchronized simulation result, but in case the server
+        /// does not maintain a list of physics objects, it is necessary for the client to perform
+        /// physics simulation on the client's side. The default value is false.
+        /// </summary>
+        public bool ClientPerformSelfPhysicsSimulation
+        {
+            get { return clientPerformPhysicsSimulation; }
+            set { clientPerformPhysicsSimulation = value; }
         }
 
         /// <summary>
@@ -674,79 +716,40 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         public List<IVideoCapture> VideoCapture
         {
-            get { return MarkerBase.Instance.VideoCaptures; }
+            get { return videoCaptures; }
         }
 
         /// <summary>
         /// Gets or sets whether to show camera captured physical image in the background.
-        /// (By default, this is false. If showing camera image, then needs to be set to true 
-        /// before initializing the marker tracker using InitMarkerTracker method)
+        /// By default, this is false. 
         /// </summary>
-        /// <remarks>
-        /// If you want to show a static image used by the tracker, you need to set the 
-        /// Scene.OverlayVideoID to -1. Use VideoVisibleArea property to define the visible
-        /// video rendered on the background if you prefer to render only a part of the video
-        /// image instead of the entire image on the background.
-        /// </remarks>
         /// <see cref="OverlayVideoID"/>
-        /// <seealso cref="VideoVisibleArea"/>
         public bool ShowCameraImage
         {
             get { return showCameraImage; }
-            set 
-            {
-                //if (value && (MarkerBase.Instance.VideoCaptures.Count == 0))
-                //    throw new GoblinException("You need to add at least one video capture device " +
-                //        "before you can show the camera image");
-
-                showCameraImage = value;
-                if (showCameraImage && !MarkerBase.Instance.RenderInitialized)
-                    MarkerBase.Instance.InitRendering();
-            }
+            set { showCameraImage = value; }
         }
 
         /// <summary>
         /// Gets or sets the video capture device ID used to provide the overlaid physical image.
         /// This ID should correspond to the videoDeviceID given to the initialized video device
-        /// using InitVideoCapture method. If you want to show a static image used by the tracker,
-        /// you should set this to -1.
+        /// using InitVideoCapture method. 
         /// </summary>
+        /// <remarks>
+        /// Getting or setting this property is exactly same as getting or setting the LeftEyeVideoID
+        /// property.
+        /// </remarks>
         /// <exception cref="GoblinException"></exception>
         public int OverlayVideoID
         {
-            get { return overlayVideoID; }
-            set 
-            {
-                // Wait for the tracker update to end before modifying the ID
-                while (waitForTrackerUpdate) { }
-                waitForVideoIDChange = true;
-                if (value < 0)
-                {
-                    MarkerBase.Instance.ActiveCaptureDevice = -1;
-                    actualOverlayVideoID = -1;
-                    overlayVideoID = -1;
-                    overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
-                    waitForVideoIDChange = false;
-                    return;
-                }
-
-                if (!videoIDs.ContainsKey(value))
-                    throw new GoblinException("OverlayVideoID " + value + " does not exist");
-
-                actualOverlayVideoID = videoIDs[value];
-                overlayVideoID = value;
-                MarkerBase.Instance.ActiveCaptureDevice = actualOverlayVideoID;
-
-                overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
-                waitForVideoIDChange = false;
-            }
+            get { return LeftEyeVideoID; }
+            set { LeftEyeVideoID = value; }
         }
 
         /// <summary>
         /// Gets or sets the video capture device ID used to perform marker tracking (if available).
         /// This ID should correspond to the videoDeviceID given to the initialized video device
-        /// using InitVideoCapture method. If you want to process a static image used by the tracker,
-        /// you should set this to -1.
+        /// using InitVideoCapture method. 
         /// </summary>
         public int TrackerVideoID
         {
@@ -756,22 +759,13 @@ namespace GoblinXNA.SceneGraph
                 // Wait for the tracker update to end before modifying the ID
                 while (waitForTrackerUpdate) { }
                 waitForVideoIDChange = true;
-                if (value < 0)
-                {
-                    actualTrackerVideoID = -1;
-                    trackerVideoID = -1;
-                    overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
-                    waitForVideoIDChange = false;
-                    return;
-                }
-
                 if (!videoIDs.ContainsKey(value))
                     throw new GoblinException("TrackerVideoID " + value + " does not exist");
 
                 actualTrackerVideoID = videoIDs[value];
                 trackerVideoID = value;
+                InitializeVideoPointerSize(videoCaptures[actualTrackerVideoID]);
 
-                overlayAndTrackerUseSameID = (overlayVideoID == trackerVideoID);
                 waitForVideoIDChange = false;
             }
         }
@@ -781,6 +775,8 @@ namespace GoblinXNA.SceneGraph
         /// single camera for stereo, then you should set both LeftEyeVideoID and RightEyeVideoID to 
         /// the same video ID. 
         /// </summary>
+        /// <exception cref="GoblinException">If video ID is not valid or your camera node does not
+        /// contain stereo information.</exception>
         /// <see cref="RightEyeVideoID"/>
         public int LeftEyeVideoID
         {
@@ -790,10 +786,21 @@ namespace GoblinXNA.SceneGraph
                 if (!videoIDs.ContainsKey(value))
                     throw new GoblinException("VideoID " + value + " does not exist");
 
+                //if (!cameraNode.Stereo)
+                //    throw new GoblinException("You should set OverlayVideoID instead since your current " +
+                //        "camera node does not contain stereo information");
+
+                // Wait for the tracker update to end before modifying the ID
+                while (waitForTrackerUpdate) { }
+                waitForVideoIDChange = true;
+
                 actualLeftEyeVideoID = videoIDs[value];
                 leftEyeVideoID = value;
+                InitializeVideoImageSize(0, videoCaptures[actualLeftEyeVideoID]);
 
                 singleVideoStereo = (leftEyeVideoID == rightEyeVideoID);
+
+                waitForVideoIDChange = false;
             }
         }
 
@@ -802,6 +809,8 @@ namespace GoblinXNA.SceneGraph
         /// single camera for stereo, then you should set both LeftEyeVideoID and RightEyeVideoID to 
         /// the same video ID.
         /// </summary>
+        /// <exception cref="GoblinException">If video ID is not valid or your camera node does not
+        /// contain stereo information.</exception>
         /// <see cref="LeftEyeVideoID"/>
         public int RightEyeVideoID
         {
@@ -811,51 +820,22 @@ namespace GoblinXNA.SceneGraph
                 if (!videoIDs.ContainsKey(value))
                     throw new GoblinException("VideoID " + value + " does not exist");
 
+                if (!cameraNode.Stereo)
+                    throw new GoblinException("You should set OverlayVideoID instead since your current " +
+                        "camera node does not contain stereo information");
+
+                // Wait for the tracker update to end before modifying the ID
+                while (waitForTrackerUpdate) { }
+                waitForVideoIDChange = true;
+
                 actualRightEyeVideoID = videoIDs[value];
                 rightEyeVideoID = value;
+                InitializeVideoImageSize(1, videoCaptures[actualRightEyeVideoID]);
 
                 singleVideoStereo = (leftEyeVideoID == rightEyeVideoID);
+
+                waitForVideoIDChange = false;
             }
-        }
-
-        /// <summary>
-        /// Gets or sets the shift amount of the overlaid video image in pixels for left eye.
-        /// </summary>
-        /// <remarks>
-        /// Sets this property only if you want to do stereo video overlay using single camera.
-        /// </remarks>
-        public int LeftEyeVideoImageShift
-        {
-            get { return leftEyeVideoImageShift; }
-            set { leftEyeVideoImageShift = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the shift amount of the overlaid video image in pixels for right eye.
-        /// </summary>
-        /// <remarks>
-        /// Sets this property only if you want to do stereo video overlay using single camera.
-        /// </remarks>
-        public int RightEyeVideoImageShift
-        {
-            get { return rightEyeVideoImageShift; }
-            set { rightEyeVideoImageShift = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the visible area (in rectangle) of the video overlay image rendered on the background. 
-        /// The default is (0, 0, State.Width, State.Height) which fills the entire background with
-        /// the video image when ShowCameraImage is set to true. 
-        /// </summary>
-        /// <remarks>
-        /// If you modify the back buffer width and height after initializing Scene, make sure to 
-        /// modify this information as well so that the overlaid image fills the entire background.
-        /// This property can be used to render only a part of the video image instead of full image.
-        /// </remarks>
-        public Rectangle VideoVisibleArea
-        {
-            get { return videoVisibleArea; }
-            set { videoVisibleArea = value; }
         }
 
         /// <summary>
@@ -934,7 +914,6 @@ namespace GoblinXNA.SceneGraph
         /// <param name="parentWorldTransformation"></param>
         /// <param name="markerTransform"></param>
         /// <param name="calculateAll"></param>
-        /// <param name="elapsedTime"></param>
         protected virtual void RecursivePrepareForRendering(Node node,
             ref Matrix parentWorldTransformation, ref Matrix markerTransform, bool calculateAll)
         {
@@ -972,11 +951,19 @@ namespace GoblinXNA.SceneGraph
                         tmpQuat1 = tNode.Rotation;
                         tmpVec1 = tNode.Scale;
 
-                        Matrix.CreateFromQuaternion(ref tmpQuat1, out tmpMat1);
-                        Matrix.CreateScale(ref tmpVec1, out tmpMat2);
-                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out nodeWorldTransformation);
+                        tmpVec2 = tNode.PreTranslation;
+                        tmpVec3 = tNode.PostTranslation;
 
-                        nodeWorldTransformation.Translation = tNode.Translation;
+                        Matrix.CreateTranslation(ref tmpVec2, out tmpMat1);
+                        Matrix.CreateScale(ref tmpVec1, out tmpMat2);
+                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+
+                        Matrix.CreateFromQuaternion(ref tmpQuat1, out tmpMat1);
+                        Matrix.Multiply(ref tmpMat3, ref tmpMat1, out tmpMat2);
+
+                        Matrix.CreateTranslation(ref tmpVec3, out tmpMat1);
+                        Matrix.Multiply(ref tmpMat2, ref tmpMat1, out nodeWorldTransformation);
+
                         tNode.ComposedTransform = nodeWorldTransformation;
                         tNode.IsWorldTransformationDirty = false;
                     }
@@ -1033,7 +1020,7 @@ namespace GoblinXNA.SceneGraph
                 if (State.EnableNetworking && State.IsServer)
                     prevMatrix = gNode.WorldTransformation;
 
-                if (!(State.EnableNetworking && !State.IsServer))
+                if (clientPerformPhysicsSimulation || !(State.EnableNetworking && !State.IsServer))
                 {
                     if (physicsEngine != null && gNode.AddToPhysicsEngine)
                     {
@@ -1075,7 +1062,7 @@ namespace GoblinXNA.SceneGraph
 
                 if(gNode.PhysicsStateChanged && physicsEngine != null)
                 {
-                    if(gNode.AddToPhysicsEngine)
+                    if (gNode.AddToPhysicsEngine)
                         physicsEngine.AddPhysicsObject(gNode.Physics);
                     else
                         physicsEngine.RemovePhysicsObject(gNode.Physics);
@@ -1295,7 +1282,8 @@ namespace GoblinXNA.SceneGraph
 
                 opaqueGroups.Add(node);
 
-                networkObjects.Add(node.Network.Identifier, new NetObj(node.Network));
+                if (networkHandler != null)
+                    networkHandler.AddNetworkObject(node.Network);
 
                 node.IsRendered = true;
             }
@@ -1332,7 +1320,8 @@ namespace GoblinXNA.SceneGraph
 
                 transparentGroup.Add(node);
 
-                networkObjects.Add(node.Network.Identifier, new NetObj(node.Network));
+                if (networkHandler != null)
+                    networkHandler.AddNetworkObject(node.Network);
 
                 node.IsRendered = true;
                 needTransparencySort = true;
@@ -1364,7 +1353,8 @@ namespace GoblinXNA.SceneGraph
 
                 occluderGroup.Add(node);
 
-                networkObjects.Add(node.Network.Identifier, new NetObj(node.Network));
+                if (networkHandler != null)
+                    networkHandler.AddNetworkObject(node.Network);
 
                 node.IsRendered = true;
             }
@@ -1383,7 +1373,8 @@ namespace GoblinXNA.SceneGraph
                 {
                     nodeRenderGroups[node.GroupID].Remove(node);
                     opaqueGroups.Remove(node);
-                    networkObjects.Remove(node.Network.Identifier);
+                    if (networkHandler != null)
+                        networkHandler.RemoveNetworkObject(node.Network);
                     if(physicsEngine != null && node.AddToPhysicsEngine)
                         physicsEngine.RemovePhysicsObject(node.Physics);
 
@@ -1393,7 +1384,8 @@ namespace GoblinXNA.SceneGraph
                 else if (transparentGroup.Contains(node))
                 {
                     transparentGroup.Remove(node);
-                    networkObjects.Remove(node.Network.Identifier);
+                    if (networkHandler != null)
+                        networkHandler.RemoveNetworkObject(node.Network);
                     if(physicsEngine != null && node.AddToPhysicsEngine)
                         physicsEngine.RemovePhysicsObject(node.Physics);
                 }
@@ -1402,7 +1394,8 @@ namespace GoblinXNA.SceneGraph
                     occluderGroup.Remove(node);
                     if(physicsEngine != null && node.AddToPhysicsEngine)
                         physicsEngine.RemovePhysicsObject(node.Physics);
-                    networkObjects.Remove(node.Network.Identifier);
+                    if (networkHandler != null)
+                        networkHandler.RemoveNetworkObject(node.Network);
                 }
 
                 node.IsRendered = false;
@@ -1498,11 +1491,7 @@ namespace GoblinXNA.SceneGraph
 
             if (showCameraImage)
             {
-                spriteBatch.Begin();
-
-                int x = videoVisibleArea.X, y = videoVisibleArea.Y, width = videoVisibleArea.Width,
-                    height = videoVisibleArea.Height;
-                Texture2D image = MarkerBase.Instance.BackgroundTexture;
+                bool secondImage = false;
                 // If not doing stereo video overlay
                 if (leftEyeVideoID >= 0 && rightEyeVideoID >= 0)
                 {
@@ -1510,37 +1499,35 @@ namespace GoblinXNA.SceneGraph
                     // video if renderLeftView is true, and left eye video if false
                     if (renderLeftView)
                     {
-                        if (!singleVideoStereo)
+                        // If right eye video is not the default overlaid video, then
+                        // we use the additional image
+                        if (rightEyeVideoID != leftEyeVideoID)
                         {
-                            // If right eye video is not the default overlaid video, then
-                            // we use the additional image
-                            if (rightEyeVideoID != overlayVideoID)
-                            {
-                                image = MarkerBase.Instance.AdditionalBackgroundTexture;
-                            }
+                            secondImage = true;
                         }
-
-                        x += rightEyeVideoImageShift;
-                    }
-                    else
-                    {
-                        if (!singleVideoStereo)
-                        {
-                            // If left eye video is not the default overlaid video, then
-                            // we use the additional image
-                            if (leftEyeVideoID != overlayVideoID)
-                            {
-                                image = MarkerBase.Instance.AdditionalBackgroundTexture;
-                            }
-                        }
-
-                        x += leftEyeVideoImageShift;
                     }
                 }
 
-                spriteBatch.Draw(image, new Rectangle(x, y, width, height), Color.White);
+                while (copyingVideoImage) { }
+                renderingVideoTexture = true;
+                spriteBatch.Begin();
+                if (secondImage)
+                {
+                    IVideoCapture capDev = videoCaptures[actualRightEyeVideoID];
+                    spriteBatch.Draw(videoTextures[1], videoRect,
+                        new Rectangle(0, 0, capDev.Width, capDev.Height),
+                        Color.White, 0, Vector2.Zero, capDev.RenderFormat, 0);
+                }
+                else
+                {
+                    IVideoCapture capDev = videoCaptures[actualLeftEyeVideoID];
+                    spriteBatch.Draw(videoTextures[0], videoRect,
+                        new Rectangle(0, 0, capDev.Width, capDev.Height),
+                        Color.White, 0, Vector2.Zero, capDev.RenderFormat, 0);
+                }
 
                 spriteBatch.End();
+                renderingVideoTexture = false;
             }
             else if (backgroundTexture != null)
             {
@@ -1554,6 +1541,8 @@ namespace GoblinXNA.SceneGraph
             if (occluderGroup.Count > 0 || showCameraImage || (backgroundTexture != null))
                 State.Device.RenderState.DepthBufferEnable = true;
 
+            State.Restore3DSettings();
+            State.AlphaBlendingEnabled = true;
             // First render all of the opaque geometries
             foreach (int renderGroup in nodeRenderGroups.Keys)
             {
@@ -1616,7 +1605,6 @@ namespace GoblinXNA.SceneGraph
 
             // Then render all of the geometries with transparent material
             GeometryNode transparentNode = null;
-            State.Device.RenderState.DepthBufferWriteEnable = false;
             for (int i = 0; i < transparentGroup.Count; i++)
             {
                 transparentNode = transparentGroup[i];
@@ -1679,7 +1667,7 @@ namespace GoblinXNA.SceneGraph
                 }
             }
 
-            State.Device.RenderState.DepthBufferWriteEnable = true;
+            State.AlphaBlendingEnabled = false;
 
             // Show shadows we calculated above
             try
@@ -1693,21 +1681,89 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Initializes the sizes of the buffered video image holders. 
+        /// </summary>
+        /// <param name="id">Either 0 (left eye) or 1 (right eye). Should be 0 if mono.</param>
+        /// <param name="videoDevice"></param>
+        protected virtual void InitializeVideoImageSize(int id, IVideoCapture videoDevice)
+        {
+            int imageSize = videoDevice.Width * videoDevice.Height;
+            if ((bufferedVideoImages[id][0] == null) || (imageSize != bufferedVideoImages[id][0].Length))
+            {
+                for (int i = 0; i < VIDEO_BUFFER_SIZE; i++)
+                    bufferedVideoImages[id][i] = new int[imageSize];
+
+                videoTextures[id] = new Texture2D(State.Device, videoDevice.Width, videoDevice.Height,
+                    1, TextureUsage.None, SurfaceFormat.Bgr32);
+            }
+        }
+
+        /// <summary>
+        /// Initilizes the sizes of the bufferd video image pointers.
+        /// </summary>
+        /// <param name="videoDevice"></param>
+        protected virtual void InitializeVideoPointerSize(IVideoCapture videoDevice)
+        {
+            int imageSize = videoDevice.Width * videoDevice.Height;
+            // if IResizer is set, then we'll use the size of the resized image
+            // Note that the ScalingFactor is multiplied twice; one for width, and the other for height
+            if (videoDevice.MarkerTrackingImageResizer != null)
+                imageSize = (int)(imageSize * videoDevice.MarkerTrackingImageResizer.ScalingFactor *
+                    videoDevice.MarkerTrackingImageResizer.ScalingFactor);
+
+            if (!videoDevice.GrayScale)
+            {
+                switch (videoDevice.Format)
+                {
+                    case ImageFormat.GRAYSCALE_8: break; // Nothing to do 
+                    case ImageFormat.R5G6B5_16: imageSize *= 2; break;
+                    case ImageFormat.B8G8R8_24:
+                    case ImageFormat.R8G8B8_24: imageSize *= 3; break;
+                    case ImageFormat.R8G8B8A8_32:
+                    case ImageFormat.B8G8R8A8_32:
+                    case ImageFormat.A8B8G8R8_32: imageSize *= 4; break;
+                }
+            }
+
+            if (prevPointerSize == 0)
+            {
+                for (int i = 0; i < bufferedVideoPointers.Length; i++)
+                    bufferedVideoPointers[i] = Marshal.AllocHGlobal(imageSize);
+            }
+            else if (prevPointerSize != imageSize)
+            {
+                for (int i = 0; i < bufferedVideoPointers.Length; i++)
+                {
+                    Marshal.FreeHGlobal(bufferedVideoPointers[i]);
+                    bufferedVideoPointers[i] = Marshal.AllocHGlobal(imageSize);
+                }
+            }
+
+            prevPointerSize = imageSize;
+        }
+
+        /// <summary>
         /// Updates the optical marker tracker as well as the video image
         /// </summary>
         protected virtual void UpdateTracker()
         {
-            if (State.IsMultiCore)
+            if (isMarkerTrackingThreaded)
             {
                 while (true)
                 {
-                    if (readyToUpdateTracker)
+                    if (readyToUpdateTracker && (videoCaptures.Count > 0))
                     {
+                        // Synchronize the frame update with tracker update
+                        while (trackerUpdateCount > frameUpdateCount)
+                        {
+                            Thread.Sleep(10);
+                        }
                         UpdateTrackerAndImage();
+                        trackerUpdateCount++;
                     }
                 }
             }
-            else
+            else if(videoCaptures.Count > 0)
                 UpdateTrackerAndImage();
         }
 
@@ -1716,76 +1772,114 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         protected void UpdateTrackerAndImage()
         {
+            if(freezeVideo)
+                return;
+
             // Wait for video ID to change before updating the tracker and image
             while (waitForVideoIDChange) { }
             waitForTrackerUpdate = true;
-            if (showCameraImage)
+
+            // If a static image is used and the image is already processed, then we don't
+            // need to process it again
+            if (!((videoCaptures[actualTrackerVideoID] is NullCapture) &&
+                ((NullCapture)videoCaptures[actualTrackerVideoID]).IsImageAlreadyProcessed))
             {
-                if (tracker == null)
+                if (showCameraImage)
                 {
-                    if(!freezeVideo)
-                        tmpImage = MarkerBase.Instance.VideoCaptures[actualOverlayVideoID].
-                            GetImageTexture(true, false);
-                }
-                else
-                {
-                    if (overlayAndTrackerUseSameID)
+                    if (markerTracker != null)
                     {
-                        if (actualOverlayVideoID < 0)
+                        if (cameraNode.Stereo)
                         {
-                            tmpImage = tracker.StaticImage;
-                            tracker.ProcessImage();
+                            if (leftEyeVideoID == trackerVideoID)
+                            {
+                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                                    bufferedVideoImages[0][curVideoBufferIndex],
+                                    ref bufferedVideoPointers[curVideoBufferIndex]);
+
+                                if (leftEyeVideoID != rightEyeVideoID)
+                                    videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                                        bufferedVideoImages[1][curVideoBufferIndex],
+                                        ref nullPtr);
+                            }
+                            else if (rightEyeVideoID == trackerVideoID)
+                            {
+                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                                    bufferedVideoImages[0][curVideoBufferIndex],
+                                    ref nullPtr);
+
+                                videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                                    bufferedVideoImages[1][curVideoBufferIndex],
+                                    ref bufferedVideoPointers[curVideoBufferIndex]);
+                            }
+                            else
+                            {
+                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                                    bufferedVideoImages[0][curVideoBufferIndex],
+                                    ref nullPtr);
+
+                                if (leftEyeVideoID != rightEyeVideoID)
+                                    videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                                        bufferedVideoImages[1][curVideoBufferIndex],
+                                        ref nullPtr);
+
+                                videoCaptures[actualTrackerVideoID].GetImageTexture(
+                                    null, ref bufferedVideoPointers[curVideoBufferIndex]);
+                            }
+
+                            SetTextureData(0);
+                            SetTextureData(1);
                         }
                         else
                         {
-                            if (!freezeVideo)
-                                tmpImage = MarkerBase.Instance.VideoCaptures[actualOverlayVideoID].
-                                    GetImageTexture(true, true);
-                            tracker.ProcessImage(MarkerBase.Instance.VideoCaptures[actualOverlayVideoID]);
+                            if (leftEyeVideoID == trackerVideoID)
+                            {
+                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                                    bufferedVideoImages[0][curVideoBufferIndex],
+                                    ref bufferedVideoPointers[curVideoBufferIndex]);
+                            }
+                            else
+                            {
+                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                                    bufferedVideoImages[0][curVideoBufferIndex],
+                                    ref nullPtr);
+
+                                videoCaptures[actualTrackerVideoID].GetImageTexture(
+                                    null, ref bufferedVideoPointers[curVideoBufferIndex]);
+                            }
+
+                            SetTextureData(0);
                         }
+
+                        markerTracker.ProcessImage(videoCaptures[actualTrackerVideoID],
+                            bufferedVideoPointers[curVideoBufferIndex]);
                     }
                     else
                     {
-                        if (actualOverlayVideoID < 0)
-                            tmpImage = tracker.StaticImage;
-                        else if (!freezeVideo)
-                            tmpImage = MarkerBase.Instance.VideoCaptures[actualOverlayVideoID].
-                                GetImageTexture(true, false);
+                        videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                            bufferedVideoImages[0][curVideoBufferIndex], ref nullPtr);
 
-                        if (actualTrackerVideoID < 0)
-                            tracker.ProcessImage();
-                        else
-                        {
-                            if(!freezeVideo)
-                                MarkerBase.Instance.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
-                            tracker.ProcessImage(MarkerBase.Instance.VideoCaptures[actualTrackerVideoID]);
-                        }
+                        SetTextureData(0);
+
+                        if (cameraNode.Stereo && (leftEyeVideoID != rightEyeVideoID))
+                            videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                                bufferedVideoImages[1][curVideoBufferIndex], ref nullPtr);
                     }
                 }
-
-                // Update 2nd camera's video image if using two cameras for stereoscopic view
-                if (cameraNode.Stereo && !singleVideoStereo)
+                else if (trackMarkers && (markerTracker != null))
                 {
-                    MarkerBase.Instance.UpdateAdditionalImage(MarkerBase.Instance.VideoCaptures[
-                        (leftEyeVideoID == overlayVideoID) ? actualRightEyeVideoID : actualLeftEyeVideoID].
-                        GetImageTexture(true, false));
-                }
-            }
-            else if (trackMarkers && (tracker != null))
-            {
-                if (actualTrackerVideoID < 0)
-                    tracker.ProcessImage();
-                else
-                {
-                    if (!freezeVideo)
-                        MarkerBase.Instance.VideoCaptures[actualTrackerVideoID].GetImageTexture(false, true);
-                    tracker.ProcessImage(MarkerBase.Instance.VideoCaptures[actualTrackerVideoID]);
+                    videoCaptures[actualTrackerVideoID].GetImageTexture(null,
+                        ref bufferedVideoPointers[curVideoBufferIndex]);
+                    markerTracker.ProcessImage(videoCaptures[actualTrackerVideoID],
+                        bufferedVideoPointers[curVideoBufferIndex]);
                 }
             }
 
-            // Assign the video image right before updating the markers so that the marker 
-            // transformation is synchronized with the video image
-            videoImage = tmpImage;
+            if (videoCaptures[actualTrackerVideoID] is NullCapture)
+                ((NullCapture)videoCaptures[actualTrackerVideoID]).IsImageAlreadyProcessed = true;
+
+            prevVideoBufferIndex = curVideoBufferIndex;
+            curVideoBufferIndex = (curVideoBufferIndex + 1) % VIDEO_BUFFER_SIZE;
+
             float elapsedTime = 0;
             float curTime = (float)DateTime.Now.TimeOfDay.TotalMilliseconds;
             if (prevTrackerTime != 0)
@@ -1801,33 +1895,28 @@ namespace GoblinXNA.SceneGraph
             waitForTrackerUpdate = false;
         }
 
-        protected void AddNetMessage(List<byte> msgs, List<byte> riMsgs, List<byte> ruMsgs,
-            List<byte> uriMsgs, List<byte> uruMsgs, INetworkObject networkObj)
+        /// <summary>
+        /// Sets the video texture data.
+        /// </summary>
+        /// <param name="id"></param>
+        protected void SetTextureData(int id)
         {
-            byte[] id = ByteHelper.ConvertToByte(networkObj.Identifier + ":");
-            byte[] data = networkObj.GetMessage();
-            short size = (short)(id.Length + data.Length);
+            if(videoTextures[id].IsDisposed)
+                videoTextures[id] = new Texture2D(State.Device, videoTextures[id].Width, videoTextures[id].Height,
+                    1, TextureUsage.None, SurfaceFormat.Bgr32);
 
-            msgs.AddRange(BitConverter.GetBytes(size));
-            msgs.AddRange(id);
-            msgs.AddRange(data);
-
-            if (networkObj.Reliable)
+            while (renderingVideoTexture) { }
+            copyingVideoImage = true;
+            try
             {
-                if (networkObj.Ordered)
-                    riMsgs.AddRange(msgs);
-                else
-                    ruMsgs.AddRange(msgs);
+                videoTextures[id].SetData<int>(bufferedVideoImages[id][curVideoBufferIndex]);
             }
-            else
+            catch (Exception exp)
             {
-                if (networkObj.Ordered)
-                    uriMsgs.AddRange(msgs);
-                else
-                    uruMsgs.AddRange(msgs);
+                GraphicsDevice.Textures[0] = null;
+                videoTextures[id].SetData<int>(bufferedVideoImages[id][curVideoBufferIndex]);
             }
-
-            msgs.Clear();
+            copyingVideoImage = false;
         }
 
         /// <summary>
@@ -1938,9 +2027,34 @@ namespace GoblinXNA.SceneGraph
             }
         }
 
+        /// <summary>
+        /// Updates the physics simulatin.
+        /// </summary>
+        protected void UpdatePhysicsSimulation()
+        {
+            physicsEngine.Update(physicsElapsedTime);
+            physicsElapsedTime = 0;
+        }
+
         #endregion
 
         #region Public Methods
+
+        /// <summary>
+        /// Gets a Node object added to this scene graph with its node name.
+        /// Null is returned if the name does not exist.
+        /// </summary>
+        /// <remarks>
+        /// If you try to access a node right after adding it to the scene graph, this method will
+        /// throw an exception since the node won't be added to the node list until the scene graph
+        /// is processed after Draw(...) method is called.
+        /// </remarks>
+        /// <param name="name">The name of the node you're looking for</param>
+        /// <returns></returns>
+        public Node GetNode(String name)
+        {
+            return nodeTable[name];
+        }
 
         /// <summary>
         /// Indicates whether a node with the specified name exists in the current scene graph.
@@ -1950,17 +2064,6 @@ namespace GoblinXNA.SceneGraph
         public bool HasNode(String name)
         {
             return nodeTable.ContainsKey(name);
-        }
-
-        /// <summary>
-        /// Gets a Node object added to this scene graph with its node name.
-        /// Null is returned if the name does not exist.
-        /// </summary>
-        /// <param name="name">The name of the node you're looking for</param>
-        /// <returns></returns>
-        public Node GetNode(String name)
-        {
-            return nodeTable[name];
         }
 
         /// <summary>
@@ -1975,52 +2078,30 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Adds a network object to send or receive messages associated with the
-        /// object over the network.
-        /// </summary>
-        /// <param name="networkObj"></param>
-        public void AddNetworkObject(INetworkObject networkObj)
-        {
-            if (!networkObjects.ContainsKey(networkObj.Identifier))
-                networkObjects.Add(networkObj.Identifier, new NetObj(networkObj));
-        }
-
-        /// <summary>
-        /// Removes a network object.
-        /// </summary>
-        /// <param name="networkObj"></param>
-        public void RemoveNetworkObject(INetworkObject networkObj)
-        {
-            networkObjects.Remove(networkObj.Identifier);
-        }
-
-        /// <summary>
         /// Adds a video streaming decoder implementation for background rendering and 
         /// marker tracking.
         /// </summary>
         /// <remarks>
         /// The video capture device should be initialized before it can be added.
         /// </remarks>
-        /// <param name="decoder">A video streaming decoder implementation</param>
+        /// <param name="device">A video streaming decoder implementation</param>
         /// <exception cref="GoblinException">If the device is not initialized</exception>
-        public virtual void AddVideoCaptureDevice(IVideoCapture decoder)
+        public virtual void AddVideoCaptureDevice(IVideoCapture device)
         {
-            if (decoder == null)
+            if (device == null)
                 return;
 
-            if (!decoder.Initialized)
+            if (!device.Initialized)
                 throw new GoblinException("You should initialize the video capture device first " +
                     "before you add it");
 
-            MarkerBase.Instance.VideoCaptures.Add(decoder);
+            if(!videoCaptures.Contains(device))
+                videoCaptures.Add(device);
 
-            overlayVideoID = decoder.VideoDeviceID;
-            trackerVideoID = decoder.VideoDeviceID;
-            actualOverlayVideoID = videoIDs.Count;
-            actualTrackerVideoID = videoIDs.Count;
-            MarkerBase.Instance.ActiveCaptureDevice = actualOverlayVideoID;
-            videoIDs.Add(decoder.VideoDeviceID, actualOverlayVideoID);
-            overlayAndTrackerUseSameID = true;
+            videoIDs.Add(device.VideoDeviceID, videoIDs.Count);
+
+            LeftEyeVideoID = device.VideoDeviceID;
+            TrackerVideoID = device.VideoDeviceID;
         }
 
         /// <summary>
@@ -2030,8 +2111,9 @@ namespace GoblinXNA.SceneGraph
         /// <param name="format"></param>
         public void CaptureScene(String filename, ImageFileFormat format)
         {
-            ResolveTexture2D screen = new ResolveTexture2D(State.Device, State.Width, State.Height,
-                1, SurfaceFormat.Color);
+            if(screen == null)
+                screen = new ResolveTexture2D(State.Device, State.Width, State.Height,
+                    1, SurfaceFormat.Color);
 
             State.Device.ResolveBackBuffer(screen);
 
@@ -2044,8 +2126,7 @@ namespace GoblinXNA.SceneGraph
         /// need to render the scene more than once (e.g., when rendering multiple viewport or stereoscopic
         /// view).
         /// </summary>
-        /// <param name="renderUI">Whether to render 2D UI</param>
-        public void RenderScene(bool renderUI)
+        public void RenderScene()
         {
             if (cameraNode.Stereo)
             {
@@ -2079,11 +2160,119 @@ namespace GoblinXNA.SceneGraph
 
             RenderSceneGraph(globalLightSources);
 
-            if (renderUI)
+            if (cameraNode.Stereo)
             {
-                GameTime tmpTime = new GameTime();
-                uiRenderer.Draw(tmpTime);
+                if (renderLeftView) // if rendering right eye (it's already flipped here)
+                    uiRenderer.Draw(0, true);
+                else
+                    uiRenderer.Draw(uiElapsedTime, false);
             }
+            else
+                uiRenderer.Draw(uiElapsedTime, true);
+        }
+
+        /// <summary>
+        /// Saves the current scene graph structure into an XML file.
+        /// </summary>
+        /// <param name="filename"></param>
+        public void SaveSceneGraph(String filename)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
+
+            XmlElement xmlRootNode = xmlDoc.CreateElement("SceneGraph");
+            xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
+            xmlDoc.AppendChild(xmlRootNode);
+
+            RecursiveSave(xmlRootNode, rootNode, xmlDoc);
+
+            try
+            {
+                xmlDoc.Save(filename);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException("Failed to save the scene: " + filename);
+            }
+        }
+
+        /// <summary>
+        /// Recursively saves the scene graph nodes into an XML document.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        /// <param name="node"></param>
+        /// <param name="xmlDoc"></param>
+        private void RecursiveSave(XmlElement xmlNode, Node node, XmlDocument xmlDoc)
+        {
+            XmlElement parentXmlNode = node.Save(xmlDoc);
+            xmlNode.AppendChild(parentXmlNode);
+
+            if (node is BranchNode && ((BranchNode)node).Children.Count > 0)
+            {
+                XmlElement childXmlNode = xmlDoc.CreateElement("Children");
+                parentXmlNode.AppendChild(childXmlNode);
+
+                foreach (Node child in ((BranchNode)node).Children)
+                    RecursiveSave(childXmlNode, child, xmlDoc);
+            }
+        }
+
+        /// <summary>
+        /// Loads a scene graph from an XML file.
+        /// </summary>
+        /// <param name="filename"></param>
+        public void LoadSceneGraph(String filename)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+
+            try
+            {
+                xmlDoc.Load(filename);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException(exp.Message);
+            }
+
+            // Before loading the scene graph, first remove all of the currently added nodes
+            RecursivelyRemoveFromRendering(rootNode);
+
+            foreach(XmlNode xmlNode in xmlDoc.ChildNodes)
+            {
+                if((xmlNode is XmlElement) && xmlNode.Name.Equals("SceneGraph"))
+                    rootNode = (BranchNode)RecursiveLoad((XmlElement)xmlNode.FirstChild);
+            }
+        }
+
+        /// <summary>
+        /// Recursively loads each scene graph node from XML elements.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        /// <returns></returns>
+        public Node RecursiveLoad(XmlElement xmlNode)
+        {
+            Type nodeType = Type.GetType(xmlNode.Name);
+            Node node = (Node)Activator.CreateInstance(nodeType);
+            node.Load(xmlNode);
+            node.SceneGraph = this;
+
+            if (node is CameraNode)
+                cameraNode = (CameraNode)node;
+
+            foreach (XmlElement childXmlNode in xmlNode.ChildNodes)
+            {
+                if (childXmlNode.Name.Equals("Children"))
+                {
+                    BranchNode branch = (BranchNode)node;
+                    foreach (XmlElement child in childXmlNode.ChildNodes)
+                    {
+                        Node childNode = RecursiveLoad(child);
+                        branch.AddChild(childNode);
+                    }
+                }
+            }
+
+            return node;
         }
 
         #endregion
@@ -2103,126 +2292,8 @@ namespace GoblinXNA.SceneGraph
                     cameraNode.WorldTransformation.Forward, cameraNode.WorldTransformation.Up);
 
             // Take care of the networking
-            if (State.EnableNetworking)
-            {
-                networkMessages.Clear();
-                bool sendAll = false;
-                if (State.IsServer)
-                    networkServer.ReceiveMessage(ref networkMessages);
-                else
-                    networkClient.ReceiveMessage(ref networkMessages);
-
-                String identifier = "";
-                String[] splits = null;
-                char[] seps = { ':' };
-                byte[] inputData = null;
-                byte[] data = null;
-                short size = 0;
-                int index = 0;
-                foreach (byte[] msg in networkMessages)
-                {
-                    index = 0;
-                    while (index < msg.Length)
-                    {
-                        size = ByteHelper.ConvertToShort(msg, index);
-                        data = ByteHelper.Truncate(msg, index + 2, size);
-                        //Console.WriteLine("Received: " + ByteHelper.ConvertToString(data));
-                        splits = ByteHelper.ConvertToString(data).Split(seps);
-                        identifier = splits[0];
-                        if ((data.Length - identifier.Length) > 0)
-                            inputData = ByteHelper.Truncate(data, identifier.Length + 1,
-                                data.Length - identifier.Length - 1);
-
-                        if (networkObjects.ContainsKey(identifier))
-                            networkObjects[identifier].NetworkObject.InterpretMessage(inputData);
-                        else if (identifier.Equals("NewConnectionEstablished"))
-                            sendAll = true;
-                        else
-                            Log.Write("Network Identifier: " + identifier + " is not found");
-
-                        index += (size + 2);
-                    }
-
-                    // If we're server, then broadcast the message received from the client to
-                    // all of the connected clients except the client which sent the message
-                    //if (State.IsServer)
-                    //    networkServer.BroadcastMessage(msg, true, true, true);
-                }
-
-                foreach (NetObj netObj in networkObjects.Values)
-                    if (!netObj.NetworkObject.Hold)
-                        netObj.TimeElapsedSinceLastTransmit +=
-                            (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-
-                reliableInOrderMsgs.Clear();
-                unreliableInOrderMsgs.Clear();
-                reliableUnOrderMsgs.Clear();
-                unreliableUnOrderMsgs.Clear();
-                List<byte> msgs = new List<byte>();
-
-                if (State.IsServer)
-                {
-                    if (sendAll)
-                    {
-                        foreach (NetObj netObj in networkObjects.Values)
-                        {
-                            if (!netObj.NetworkObject.Hold)
-                                AddNetMessage(msgs, reliableInOrderMsgs, reliableUnOrderMsgs,
-                                    unreliableInOrderMsgs, unreliableUnOrderMsgs, netObj.NetworkObject);
-                        }
-                    }
-                    else
-                    {
-                        if (networkServer.NumConnectedClients >= State.NumberOfClientsToWait)
-                        {
-                            foreach (NetObj netObj in networkObjects.Values)
-                                if (!netObj.NetworkObject.Hold &&
-                                    (netObj.NetworkObject.ReadyToSend || netObj.IsTimeToTransmit))
-                                {
-                                    AddNetMessage(msgs, reliableInOrderMsgs, reliableUnOrderMsgs,
-                                        unreliableInOrderMsgs, unreliableUnOrderMsgs, netObj.NetworkObject);
-
-                                    netObj.NetworkObject.ReadyToSend = false;
-                                    netObj.TimeElapsedSinceLastTransmit = 0;
-                                }
-                        }
-                    }
-
-                    if (reliableInOrderMsgs.Count > 0)
-                        networkServer.BroadcastMessage(reliableInOrderMsgs.ToArray(), true, true, false);
-                    if (reliableUnOrderMsgs.Count > 0)
-                        networkServer.BroadcastMessage(reliableUnOrderMsgs.ToArray(), true, false, false);
-                    if (unreliableInOrderMsgs.Count > 0)
-                        networkServer.BroadcastMessage(unreliableInOrderMsgs.ToArray(), false, true, false);
-                    if (unreliableUnOrderMsgs.Count > 0)
-                        networkServer.BroadcastMessage(unreliableUnOrderMsgs.ToArray(), false, false, false);
-                }
-                else
-                {
-                    if (networkClient.IsConnected)
-                    {
-                        foreach (NetObj netObj in networkObjects.Values)
-                            if (!netObj.NetworkObject.Hold && 
-                                (netObj.NetworkObject.ReadyToSend || netObj.IsTimeToTransmit))
-                            {
-                                AddNetMessage(msgs, reliableInOrderMsgs, reliableUnOrderMsgs,
-                                    unreliableInOrderMsgs, unreliableUnOrderMsgs, netObj.NetworkObject);
-
-                                netObj.NetworkObject.ReadyToSend = false;
-                                netObj.TimeElapsedSinceLastTransmit = 0;
-                            }
-
-                        if (reliableInOrderMsgs.Count > 0)
-                            networkClient.SendMessage(reliableInOrderMsgs.ToArray(), true, true);
-                        if (reliableUnOrderMsgs.Count > 0)
-                            networkClient.SendMessage(reliableUnOrderMsgs.ToArray(), true, false);
-                        if (unreliableInOrderMsgs.Count > 0)
-                            networkClient.SendMessage(unreliableInOrderMsgs.ToArray(), false, true);
-                        if (unreliableUnOrderMsgs.Count > 0)
-                            networkClient.SendMessage(unreliableUnOrderMsgs.ToArray(), false, false);
-                    }
-                }
-            }
+            if (State.EnableNetworking && (networkHandler != null))
+                networkHandler.Update((float)gameTime.ElapsedGameTime.TotalMilliseconds);
 
             base.Update(gameTime);
         }
@@ -2232,20 +2303,22 @@ namespace GoblinXNA.SceneGraph
             if (rootNode == null || cameraNode == null)
                 return;
 
-            if (State.IsMultiCore)
+            uiElapsedTime = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+
+            if (isMarkerTrackingThreaded)
                 readyToUpdateTracker = true;
             else
                 UpdateTracker();
 
             bool updatePhysicsEngine = (physicsEngine != null);
 
-            if (State.EnableNetworking)
+            if (!clientPerformPhysicsSimulation && State.EnableNetworking && (networkHandler != null))
             {
                 // If we're the server, then don't update the physics simulation until we get
                 // connections from clients
                 if (State.IsServer)
                 {
-                    if (networkServer.NumConnectedClients < State.NumberOfClientsToWait)
+                    if (networkHandler.NetworkServer.NumConnectedClients < State.NumberOfClientsToWait)
                         updatePhysicsEngine = false;
                 }
                 else
@@ -2253,12 +2326,22 @@ namespace GoblinXNA.SceneGraph
             }
 
             if (updatePhysicsEngine)
-                physicsEngine.Update((float)gameTime.ElapsedRealTime.TotalSeconds);
-
-            if (showCameraImage && (videoImage != null))
-                MarkerBase.Instance.UpdateRendering(videoImage);
+            {
+                physicsElapsedTime += (float)gameTime.ElapsedRealTime.TotalSeconds;
+                if (isPhysicsThreaded)
+                {
+                    if (physicsThread == null || physicsThread.ThreadState != ThreadState.Running)
+                    {
+                        physicsThread = new Thread(UpdatePhysicsSimulation);
+                        physicsThread.Start();
+                    }
+                }
+                else
+                    UpdatePhysicsSimulation();
+            }
 
             PrepareSceneForRendering();
+            frameUpdateCount++;
 
             // If the camera position changed, then we need to re-sort the transparency group
             if (!prevCameraTrans.Equals(cameraNode.WorldTransformation.Translation))
@@ -2302,18 +2385,21 @@ namespace GoblinXNA.SceneGraph
                 if (lodNode.AutoComputeLevelOfDetail)
                     lodNode.Update(cameraNode.WorldTransformation.Translation);
 
-            RenderScene(false);
+            RenderScene();
         }
 
         protected override void Dispose(bool disposing)
         {
-            if(updateThread != null)
-                updateThread.Abort();
+            uiRenderer.Dispose();
+
+            if (markerTrackingThread != null)
+                markerTrackingThread.Abort();
+            if (physicsThread != null)
+                physicsThread.Abort();
 
             renderGroups.Clear();
             nodeRenderGroups.Clear();
             transparentGroup.Clear();
-            networkObjects.Clear();
             renderedEffects.Clear();
             occluderGroup.Clear();
 
@@ -2326,55 +2412,31 @@ namespace GoblinXNA.SceneGraph
 
             if(physicsEngine != null)
                 physicsEngine.Dispose();
-            if (networkServer != null)
-                networkServer.Shutdown();
-            if (networkClient != null)
-                networkClient.Shutdown();
+            if (networkHandler != null)
+                networkHandler.Dispose();
 
-            if (markerModuleInited)
-                MarkerBase.Instance.Dispose();
+            if (markerTracker != null)
+                markerTracker.Dispose();
+
+            foreach (IVideoCapture videoCap in videoCaptures)
+                videoCap.Dispose();
 
             Sound.Dispose();
             InputMapper.Instance.Dispose();
 
+            for (int i = 0; i < bufferedVideoPointers.Length; i++)
+                if (bufferedVideoPointers[i] != IntPtr.Zero)
+                {
+                    try
+                    {
+                        Marshal.FreeHGlobal(bufferedVideoPointers[i]);
+                    }
+                    catch (Exception) { }
+                }
+
             base.Dispose(disposing);
         }
 
-        #endregion
-
-        #region Protected Classes
-        protected class NetObj
-        {
-            private INetworkObject networkObject;
-            private float timeElapsedSinceLastTransmit;
-            private float transmitSpan;
-
-            public NetObj(INetworkObject netObj)
-            {
-                this.networkObject = netObj;
-                timeElapsedSinceLastTransmit = 0;
-                if (networkObject.SendFrequencyInHertz != 0)
-                    transmitSpan = 1000 / (float)networkObject.SendFrequencyInHertz;
-                else
-                    transmitSpan = float.MaxValue;
-            }
-
-            public INetworkObject NetworkObject
-            {
-                get { return networkObject; }
-            }
-
-            public float TimeElapsedSinceLastTransmit
-            {
-                get { return timeElapsedSinceLastTransmit; }
-                set { timeElapsedSinceLastTransmit = value; }
-            }
-
-            public bool IsTimeToTransmit
-            {
-                get { return (timeElapsedSinceLastTransmit >= transmitSpan); }
-            }
-        }
         #endregion
     }
 }

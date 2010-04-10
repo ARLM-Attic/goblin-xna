@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -47,6 +48,8 @@ namespace GoblinXNA.Graphics
     /// </summary>
     public interface IModel
     {
+        #region Properties
+
         /// <summary>
         /// Flag indicating whether model is enabled and should be rendered.
         /// </summary>
@@ -76,12 +79,6 @@ namespace GoblinXNA.Graphics
         /// Gets or sets the shader technique to use
         /// </summary>
         String ShaderTechnique { get; set; }
-
-        /// <summary>
-        /// Gets the geometry data of this model 
-        /// </summary>
-        /// <remarks>If PrimitiveMesh is non-null, then this is probably null</remarks>
-        ModelMeshCollection Mesh { get; }
 
         /// <summary>
         /// Gets the minimum bounding box used for display and by the physics engine
@@ -122,19 +119,13 @@ namespace GoblinXNA.Graphics
         int TriangleCount { get; }
 
         /// <summary>
-        /// Gets the transform matrices of each mesh part of this model
-        /// </summary>
-        Matrix[] Transforms { get; }
-
-        /// <summary>
-        /// Gets all of the vertices in the mesh.
-        /// </summary>
-        List<Vector3> Vertices { get; }
-
-        /// <summary>
         /// Gets or sets whether to use the material setting set inside the model file
         /// </summary>
         bool UseInternalMaterials { get; set; }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>
         /// Disposes of model contents.
@@ -179,5 +170,27 @@ namespace GoblinXNA.Graphics
         /// </remarks>
         /// <param name="renderMatrix">Transform of this model</param>
         void UseShadows(Matrix renderMatrix);
+
+        /// <summary>
+        /// Saves the information necessary to create this model.
+        /// </summary>
+        /// <param name="xmlDoc"></param>
+        /// <returns></returns>
+        XmlElement SaveModelCreationInfo(XmlDocument xmlDoc);
+
+        /// <summary>
+        /// Saves the information of this model to an XML element.
+        /// </summary>
+        /// <param name="xmlDoc">The XML document to be saved.</param>
+        /// <returns></returns>
+        XmlElement Save(XmlDocument xmlDoc);
+
+        /// <summary>
+        /// Loads the information of this model from an XML element.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        void Load(XmlElement xmlNode);
+
+        #endregion
     }
 }

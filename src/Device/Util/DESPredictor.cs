@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Xml;
 using System.Text;
+using System.ComponentModel;
 
 using Microsoft.Xna.Framework;
 
@@ -134,6 +135,8 @@ namespace GoblinXNA.Device.Util
         {
         }
 
+        public DESPredictor() : this(0.5f, 50){}
+
         #endregion
 
         #region Public Methods
@@ -222,6 +225,40 @@ namespace GoblinXNA.Device.Util
             Matrix.CreateFromQuaternion(ref Qt, out tmpMat1);
             Matrix.CreateTranslation(ref Pt, out tmpMat2);
             Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
+        }
+
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("transAlpha", transAlpha.ToString());
+            xmlNode.SetAttribute("rotAlpha", rotAlpha.ToString());
+            xmlNode.SetAttribute("delta", delta.ToString());
+
+            if (transThreshold != -1)
+                xmlNode.SetAttribute("transThreshold", transThreshold.ToString());
+            if (rotThreshold != -1)
+                xmlNode.SetAttribute("rotThreshold", rotThreshold.ToString());
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("transAlpha"))
+                transAlpha = float.Parse(xmlNode.GetAttribute("transAlpha"));
+            if (xmlNode.HasAttribute("rotAlpha"))
+                rotAlpha = float.Parse(xmlNode.GetAttribute("rotAlpha"));
+            if (xmlNode.HasAttribute("delta"))
+                delta = int.Parse(xmlNode.GetAttribute("delta"));
+
+            if (transAlpha <= 0 || transAlpha >= 1 || rotAlpha <= 0 || rotAlpha >= 1)
+                throw new GoblinException("alpha value has to be between 0.0f and 1.0f excluding 0 and 1");
+
+            if (xmlNode.HasAttribute("transThreshold"))
+                transThreshold = float.Parse(xmlNode.GetAttribute("transThreshold"));
+            if (xmlNode.HasAttribute("rotThreshold"))
+                rotThreshold = float.Parse(xmlNode.GetAttribute("rotThreshold"));
         }
 
         #endregion

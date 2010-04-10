@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,9 +33,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.IO;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
@@ -74,13 +72,10 @@ namespace GoblinXNA.Device.Vision.Marker
         /// rgb_greybar =1 for RGB images, =0 for greyscale
         /// </summary>
         private char rgb_greybar;
-        private int[] imageData;
-        private IntPtr cam_image;
 
         private bool initialized;
 
         private String configFilename;
-        private String imageFilename;
 
         private int glWindowID;
         private bool glInitialized;
@@ -102,10 +97,7 @@ namespace GoblinXNA.Device.Vision.Marker
             camera_fx = 0;
             camera_fy = 0;
             configFilename = "";
-            imageFilename = "";
 
-            cam_image = IntPtr.Zero;
-            imageData = null;
             initialized = false;
             glInitialized = false;
             artag_object_ids = new List<int>();
@@ -127,94 +119,9 @@ namespace GoblinXNA.Device.Vision.Marker
             get { return artag_object_ids; }
         }
 
-        public float CameraFx
-        {
-            get { return camera_fx; }
-        }
-
-        public float CameraFy
-        {
-            get { return camera_fy; }
-        }
-
-        public int ImageWidth
-        {
-            get { return img_width; }
-        }
-
-        public int ImageHeight
-        {
-            get { return img_height; }
-        }
-
         public bool Initialized
         {
             get { return initialized; }
-        }
-
-        /// <summary>
-        /// Gets or sets the static image used for tracking. JPEG, GIF, and BMP formats are
-        /// supported.
-        /// </summary>
-        /// <remarks>
-        /// You need to set this value if you want to perform marker tracking using a
-        /// static image instead of a live video stream. 
-        /// </remarks>
-        /// <exception cref="GoblinException">Either if tracker is not initialized, or if the
-        /// image format is not supported.</exception>
-        public String StaticImageFile
-        {
-            get { return imageFilename; }
-            set
-            {
-                if (!value.Equals(imageFilename))
-                {
-                    imageFilename = value;
-
-                    // make sure we are initialized
-                    if (!initialized)
-                        throw new MarkerException("ARTagTracker is not initialized. Call InitTracker(...)");
-
-                    String fileType = Path.GetExtension(imageFilename);
-
-                    int bpp = 0;
-                    int w = 0, h = 0;
-
-                    if (fileType.Equals(".jpg") || fileType.Equals(".jpeg") ||
-                        fileType.Equals(".gif") || fileType.Equals(".bmp"))
-                    {
-                        Bitmap image = new Bitmap(imageFilename);
-
-                        w = image.Width;
-                        h = image.Height;
-
-                        BitmapData data = image.LockBits(
-                            new System.Drawing.Rectangle(0, 0, w, h),
-                            ImageLockMode.ReadOnly, image.PixelFormat);
-
-                        imageData = new int[w * h];
-                        int imageSize = w * h * 3;
-                        cam_image = Marshal.AllocHGlobal(imageSize);
-
-                        ReadBmpData(data, cam_image, imageData, w, h);
-
-                        image.UnlockBits(data);
-                    }
-                    else
-                        throw new MarkerException("We currently do not support reading images other " +
-                            "than .jpg, .jpeg, .gif, and .bmp format");
-
-                    // if the image size is different from the previously configured size, then we
-                    // need to re-initialize the ARTag tracker. 
-                    if ((w != img_width) || (h != img_height))
-                        InitTracker(camera_fx, camera_fy, w, h, (rgb_greybar == (char)0), configFilename);
-                }
-            }
-        }
-
-        public int[] StaticImage
-        {
-            get { return imageData; }
         }
 
         public Matrix CameraProjection
@@ -426,25 +333,11 @@ namespace GoblinXNA.Device.Vision.Marker
         }
 
         /// <summary>
-        /// Processes a static image set in the StaticImageFile property.
-        /// </summary>>
-        /// <see cref="StaticImageFile"/>
-        /// <exception cref="MarkerException"></exception>
-        public void ProcessImage()
-        {
-            if (cam_image == IntPtr.Zero)
-                throw new MarkerException("You either forgot to add your video capture " +
-                    "device or didn't set the static image file");
-
-            ARTagDllBridge.artag_find_objects_wrapped(cam_image, rgb_greybar);
-        }
-
-        /// <summary>
         /// Processes the video image captured from an initialized video capture device. 
         /// </summary>
         /// <param name="captureDevice">An initialized video capture device</param>
         /// <exception cref="MarkerException"></exception>
-        public void ProcessImage(IVideoCapture captureDevice)
+        public void ProcessImage(IVideoCapture captureDevice, IntPtr imagePtr)
         {
             // make sure we are initialized
             if (!initialized)
@@ -468,7 +361,7 @@ namespace GoblinXNA.Device.Vision.Marker
                 ((fy != 0) && (fy != camera_fy)))
                 InitTracker(fx, fy, w, h, captureDevice.GrayScale, configFilename);
 
-            ARTagDllBridge.artag_find_objects_wrapped(captureDevice.ImagePtr, rgb_greybar);
+            ARTagDllBridge.artag_find_objects_wrapped(imagePtr, rgb_greybar);
         }
 
         /// <summary>
@@ -644,40 +537,6 @@ namespace GoblinXNA.Device.Vision.Marker
             Cursor.Hide();
 
             glInitialized = true;
-        }
-
-        /// <summary>
-        /// A helper function that extracts the image pixels stored in Bitmap instance to an array
-        /// of integers as well as copy them to the memory location pointed by 'cam_image'.
-        /// </summary>
-        /// <param name="bmpDataSource"></param>
-        /// <param name="cam_image"></param>
-        /// <param name="imageData"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        private void ReadBmpData(BitmapData bmpDataSource, IntPtr cam_image, int[] imageData, int width,
-            int height)
-        {
-            unsafe
-            {
-                byte* src = (byte*)bmpDataSource.Scan0;
-                byte* dst = (byte*)cam_image;
-                for (int i = 0; i < height; i++)
-                {
-                    for (int j = 0; j < width * 3; j += 3)
-                    {
-                        *(dst + j) = *(src + j);
-                        *(dst + j + 1) = *(src + j + 1);
-                        *(dst + j + 2) = *(src + j + 2);
-
-                        imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                            (*(src + j + 1) << 8) | *(src + j);
-                    }
-
-                    src += bmpDataSource.Stride;
-                    dst += (width * 3);
-                }
-            }
         }
 
         #endregion

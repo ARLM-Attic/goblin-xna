@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using GoblinXNA.Graphics;
@@ -164,6 +165,7 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Override Methods
+
         public override Node CloneNode()
         {
             ParticleNode node = (ParticleNode) base.CloneNode();
@@ -174,11 +176,34 @@ namespace GoblinXNA.SceneGraph
             return node;
         }
 
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            foreach (ParticleEffect effect in particleEffects)
+                xmlNode.AppendChild(effect.Save(xmlDoc));
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            foreach (XmlElement element in xmlNode.ChildNodes)
+            {
+                ParticleEffect effect = (ParticleEffect)Activator.CreateInstance(Type.GetType(element.Name));
+                effect.Load(element);
+                particleEffects.Add(effect);
+            }
+        }
+
         public override void Dispose()
         {
             foreach (ParticleEffect effect in particleEffects)
                 effect.Dispose();
         }
+
         #endregion
     }
 }

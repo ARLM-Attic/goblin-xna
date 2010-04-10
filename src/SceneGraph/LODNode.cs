@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
+using System.ComponentModel;
 
 using Microsoft.Xna.Framework;
 
@@ -72,7 +74,7 @@ namespace GoblinXNA.SceneGraph
         {
             levelOfDetail = 0;
             this.models = models;
-            if (models.Count == 0)
+            if (models != null && models.Count == 0)
                 throw new GoblinException("'models' should contain more than one models");
             base.Model = models[0];
             autoComputeLevelOfDetail = false;
@@ -85,6 +87,8 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="models">A list of models with different level of details</param>
         public LODNode(List<IModel> models) : this("", models) { }
+
+        public LODNode() : this(null) { }
 
         #endregion
 
@@ -110,7 +114,11 @@ namespace GoblinXNA.SceneGraph
         public virtual List<IModel> Models
         {
             get { return models; }
-            set { models = value; }
+            set 
+            { 
+                models = value;
+                base.Model = models[0];
+            }
         }
 
         /// <summary>
@@ -215,6 +223,22 @@ namespace GoblinXNA.SceneGraph
         public override Node CloneNode()
         {
             throw new GoblinException("You should not clone LOD node");
+        }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            // NOT FINISHED YET
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            // NOT FINISHED YET
         }
 
         #endregion

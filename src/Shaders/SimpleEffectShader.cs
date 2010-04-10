@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@ namespace GoblinXNA.Shaders
     /// in the scene graph, so the light sources are added in the reverse order. If there are less than
     /// three local light sources, then global light sources are added in the normal order.
     /// </remarks>
-    public class SimpleEffectShader : IShader
+    public class SimpleEffectShader : IShader, IAlphaBlendable
     {
         #region Member Fields
 
@@ -64,6 +64,10 @@ namespace GoblinXNA.Shaders
         private Matrix projectionMatrix;
         private BasicEffect basicEffect;
         private List<LightSource> lightSources;
+        private Vector3 ambientLight;
+        private float[] originalAlphas;
+        private bool originalSet;
+        private int alphaIndexer;
 
         #region Temporary Variables
 
@@ -92,6 +96,10 @@ namespace GoblinXNA.Shaders
 
             basicEffect = new BasicEffect(State.Device, null);
             lightSources = new List<LightSource>();
+            ambientLight = Vector3.Zero;
+
+            originalSet = false;
+            alphaIndexer = 0;
         }
         #endregion
 
@@ -116,6 +124,21 @@ namespace GoblinXNA.Shaders
         }
         #endregion
 
+        #region IAlphaBlendable implementations
+        public void SetOriginalAlphas(ModelEffectCollection effectCollection)
+        {
+            if (originalSet)
+                return;
+
+            originalAlphas = new float[effectCollection.Count];
+
+            for (int i = 0; i < effectCollection.Count; i++)
+                originalAlphas[i] = ((BasicEffect)effectCollection[i]).Alpha;
+
+            originalSet = true;
+        }
+        #endregion
+
         #region IShader implementations
         public void SetParameters(Material material)
         {
@@ -123,30 +146,37 @@ namespace GoblinXNA.Shaders
             {
                 if (material.InternalEffect is BasicEffect)
                 {
+                    BasicEffect be = (BasicEffect)material.InternalEffect;
                     // maintein the previous lighting effects
-                    BasicDirectionalLight[] lights = {basicEffect.DirectionalLight0,
-                        basicEffect.DirectionalLight1, basicEffect.DirectionalLight2};
 
-                    Vector3 ambientLightColor = basicEffect.AmbientLightColor;
-                    bool lightEnabled = basicEffect.LightingEnabled;
-                    bool perPixelLighting = basicEffect.PreferPerPixelLighting;
-
-                    basicEffect = (BasicEffect)material.InternalEffect;
-                    basicEffect.Alpha = material.Diffuse.W;
-
-                    BasicDirectionalLight[] lights2 = {basicEffect.DirectionalLight0,
-                        basicEffect.DirectionalLight1, basicEffect.DirectionalLight2};
-                    for (int i = 0; i < lights2.Length; i++)
+                    if (lightSources.Count > 0)
                     {
-                        lights2[i].DiffuseColor = lights[i].DiffuseColor;
-                        lights2[i].SpecularColor = lights[i].SpecularColor;
-                        lights2[i].Direction = lights[i].Direction;
-                        lights2[i].Enabled = lights[i].Enabled;
+                        BasicDirectionalLight[] lights = {be.DirectionalLight0,
+                            be.DirectionalLight1, be.DirectionalLight2};
+
+                        bool atLeastOneLight = false;
+                        int numLightSource = lightSources.Count;
+                        for (int i = 0; i < numLightSource; i++)
+                        {
+                            lights[i].Enabled = true;
+                            lights[i].DiffuseColor = Vector3Helper.GetVector3(lightSources[i].Diffuse);
+                            lights[i].Direction = lightSources[i].Direction;
+                            lights[i].SpecularColor = Vector3Helper.GetVector3(lightSources[i].Specular);
+                            atLeastOneLight = true;
+                        }
+
+                        be.LightingEnabled = atLeastOneLight;
+                        
+                        be.PreferPerPixelLighting = basicEffect.PreferPerPixelLighting;
                     }
 
-                    basicEffect.LightingEnabled = lightEnabled;
-                    basicEffect.PreferPerPixelLighting = perPixelLighting;
-                    basicEffect.AmbientLightColor = ambientLightColor;
+                    Vector3 diffuse = Vector3Helper.GetVector3(material.Diffuse);
+                    if (!diffuse.Equals(Vector3.Zero))
+                        be.DiffuseColor = diffuse;
+                    be.Alpha = originalAlphas[alphaIndexer] * material.Diffuse.W;
+                    be.AmbientLightColor = ambientLight;
+
+                    alphaIndexer = (alphaIndexer + 1) % originalAlphas.Length;
                 }
                 else
                     Log.Write("Passed internal effect is not BasicEffect, so we can not apply the " +
@@ -252,7 +282,7 @@ namespace GoblinXNA.Shaders
                 }
             }
             
-            basicEffect.AmbientLightColor = Vector3Helper.GetVector3(ambientLightColor);
+            ambientLight = Vector3Helper.GetVector3(ambientLightColor);
 
             if (lightSources.Count > 0)
             {
@@ -272,6 +302,8 @@ namespace GoblinXNA.Shaders
 
                 basicEffect.LightingEnabled = atLeastOneLight;
             }
+
+            basicEffect.AmbientLightColor = ambientLight;
         }
 
         /// <summary>
@@ -326,6 +358,12 @@ namespace GoblinXNA.Shaders
             {
                 basicEffect.End();
             }
+        }
+
+        public void Dispose()
+        {
+            if (basicEffect != null)
+                basicEffect.Dispose();
         }
 
         #endregion

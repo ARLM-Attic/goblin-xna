@@ -157,5 +157,18 @@ namespace GoblinXNA.Helpers
         {
             return new Vector3(color.R / 255f, color.G / 255f, color.B / 255f);
         }
+
+        public static Color FromString(String colorVals)
+        {
+            byte r, g, b, a;
+
+            String[] vals = colorVals.Split(':', ' ', '}');
+            r = byte.Parse(vals[1]);
+            g = byte.Parse(vals[3]);
+            b = byte.Parse(vals[5]);
+            a = byte.Parse(vals[7]);
+
+            return new Color(r, g, b, a);
+        }
     }
 }

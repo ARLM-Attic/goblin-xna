@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -80,7 +80,7 @@ namespace GoblinXNA.Device.InterSense
                 get
                 {
                     if (stations[index] == null)
-                        stations[index] = new InterSenseStation(index, info[index].transform);
+                        stations[index] = new InterSenseStation(index);
 
                     return stations[index];
                 }
@@ -225,6 +225,30 @@ namespace GoblinXNA.Device.InterSense
             {
                 return ((InterSenseStation)stationArray[(long)stationHash["InterSenseStation" + curStationID]]).
                     WorldTransformation;
+            }
+        }
+
+        /// <summary>.
+        /// Gets the raw orientation vector from the intersense station
+        /// </summary>
+        public Vector3 OrientationVector
+        {
+            get
+            {
+                return ((InterSenseStation)stationArray[(long)stationHash["InterSenseStation" + curStationID]]).
+                    OrientationVector;
+            }
+        }
+
+        /// <summary>
+        /// Gets the raw position vector from the intersense station.
+        /// </summary>
+        public Vector3 PositionVector
+        {
+            get
+            {
+                return ((InterSenseStation)stationArray[(long)stationHash["InterSenseStation" + curStationID]]).
+                    PositionVector;
             }
         }
 

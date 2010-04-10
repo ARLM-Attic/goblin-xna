@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -109,5 +109,10 @@ namespace GoblinXNA.Shaders
         /// <param name="techniqueName">The name of the shader technique to use</param>
         /// <param name="renderDelegate">A delegate function which contains the mesh preparation</param>
         void Render(Matrix worldMatrix, String techniqueName, RenderHandler renderDelegate);
+
+        /// <summary>
+        /// Disposes this shader.
+        /// </summary>
+        void Dispose();
     }
 }

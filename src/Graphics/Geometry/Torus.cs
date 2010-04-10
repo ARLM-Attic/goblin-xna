@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -46,6 +47,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class Torus : Model
     {
+        #region Constructors
+
         /// <summary>
         /// Creates a torus of the given inner and outer radius around the Y axis centered around 
         /// the origin. The torus is subdivided around the Y axis into slices and around the
@@ -62,7 +65,20 @@ namespace GoblinXNA.Graphics.Geometry
         public Torus(float inner, float outer, int slices, int stacks)
             : base(CreateTorus(inner, outer, slices, stacks))
         {
+            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + stacks;
         }
+
+        public Torus(params String[] xmlParams)
+            : base(CreateTorus(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]),
+                int.Parse(xmlParams[2]), int.Parse(xmlParams[3])))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2]
+                + ", " + xmlParams[3];
+        }
+
+        #endregion
+
+        #region Private Static Methods
 
         private static PrimitiveMesh CreateTorus(float inner, float outer, int slices, int stacks)
         {
@@ -167,5 +183,7 @@ namespace GoblinXNA.Graphics.Geometry
 
             return mesh;
         }
+
+        #endregion
     }
 }

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 namespace GoblinXNA.Graphics.Geometry
 {
@@ -41,6 +42,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class PartialDisk : Disk
     {
+        #region Constructors
+
         /// <summary>
         /// Creates a partial disk on the Y = 0 plane. A partial disk is similar to a 
         /// full disk, except that only the subset of the disk from start through start + sweep is
@@ -57,6 +60,18 @@ namespace GoblinXNA.Graphics.Geometry
         public PartialDisk(float inner, float outer, int slices, double start, double sweep, bool twoSided)
             : base(inner, outer, slices, start, sweep, twoSided)
         {
+            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + start + ", " +
+                sweep + ", " + twoSided;
         }
+
+        public PartialDisk(params String[] xmlParams)
+            : base(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]), int.Parse(xmlParams[2]),
+                double.Parse(xmlParams[3]), double.Parse(xmlParams[4]), bool.Parse(xmlParams[5]))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2] + ", "
+                + xmlParams[3] + ", " + xmlParams[4] + ", " + xmlParams[5];
+        }
+
+        #endregion
     }
 }

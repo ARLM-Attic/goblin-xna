@@ -161,7 +161,7 @@ namespace ARDominos
             indices[33] = 21; indices[34] = 23; indices[35] = 22;
 
             mesh.IndexBuffer = new IndexBuffer(State.Device, typeof(short), 36,
-                BufferUsage.WriteOnly);
+                BufferUsage.None);
             mesh.IndexBuffer.SetData(indices);
 
             mesh.SizeInBytes = VertexPositionNormalTexture.SizeInBytes;

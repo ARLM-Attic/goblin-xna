@@ -1,3 +1,37 @@
+/************************************************************************************ 
+ * Copyright (c) 2008-2010, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/ 
+
+//#define USE_ARTAG
+
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -24,23 +58,9 @@ using GoblinXNA.Helpers;
 namespace Tutorial8___Optical_Marker_Tracking
 {
     /// <summary>
-    /// An enum that indicates which marker tracking library to use.
-    /// </summary>
-    enum MarkerLibrary
-    {
-        /// <summary>
-        /// ARTag library developed by Mark Fiala
-        /// </summary>
-        ARTag,
-        /// <summary>
-        /// ALVAR library developed by VTT
-        /// </summary>
-        ALVAR
-    }
-
-    /// <summary>
     /// This tutorial demonstrates how to use both the ALVAR and ARTag optical marker tracker 
-    /// library with our Goblin XNA framework. Please read the README.pdf included with this 
+    /// library with our Goblin XNA framework. If you're using ARTag, then uncomment the define
+    /// command at the beginning of this file. Please read the README.pdf included with this 
     /// project before running this tutorial. If you're using ARTag, please remove calib.xml
     /// from the solution explorer so that you can successfully build the project. 
     /// </summary>
@@ -51,7 +71,8 @@ namespace Tutorial8___Optical_Marker_Tracking
         Scene scene;
         MarkerNode groundMarkerNode, toolbarMarkerNode;
         GeometryNode boxNode;
-        MarkerLibrary markerLibrary;
+        // set this to false if you are going to use a webcam
+        bool useStaticImage = true;
 
         public Tutorial8()
         {
@@ -76,14 +97,12 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Use the newton physics engine to perform collision detection
             scene.PhysicsEngine = new NewtonPhysics();
 
-            // Use ALVAR marker tracking library
-            markerLibrary = MarkerLibrary.ALVAR;
-
             // For some reason, it causes memory conflict when it attempts to update the
             // marker transformation in the multi-threaded code, so if you're using ARTag
-            // then you should set MultiCore to false
-            if(markerLibrary == MarkerLibrary.ARTag)
-                State.IsMultiCore = false;
+            // then you should not enable the marker tracking thread
+#if !USE_ARTAG
+            State.ThreadOption = (ushort)ThreadOptions.MarkerTracking;
+#endif
 
             // Set up optical marker tracking
             // Note that we don't create our own camera when we use optical marker
@@ -138,9 +157,22 @@ namespace Tutorial8___Optical_Marker_Tracking
             // and frame rate values may cause exceptions or simply be ignored, depending 
             // on the device driver.  The values set here will work for a Microsoft VX 6000, 
             // and many other webcams.
-            DirectShowCapture captureDevice = new DirectShowCapture();
-            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480, 
-                ImageFormat.R8G8B8_24, false);
+            IVideoCapture captureDevice = null;
+
+            if (useStaticImage)
+            {
+                captureDevice = new NullCapture();
+                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._800x600,
+                    ImageFormat.R8G8B8_24, false);
+
+                ((NullCapture)captureDevice).StaticImageFile = "testImage800x600.jpg";
+            }
+            else
+            {
+                captureDevice = new DirectShowCapture();
+                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                    ImageFormat.R8G8B8_24, false);
+            }
 
             // Add this video capture device to the scene so that it can be used for
             // the marker tracker
@@ -148,21 +180,18 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             IMarkerTracker tracker = null;
 
-            if (markerLibrary == MarkerLibrary.ALVAR)
-            {
-                // Create an optical marker tracker that uses ALVAR library
-                tracker = new ALVARMarkerTracker();
-                ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
-                tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
-            }
-            else
-            {
-                // Create an optical marker tracker that uses ARTag library
-                tracker = new ARTagTracker();
-                // Set the configuration file to look for the marker specifications
-                tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
-                    captureDevice.Height, false, "ARTag.cf");
-            }
+#if USE_ARTAG
+            // Create an optical marker tracker that uses ARTag library
+            tracker = new ARTagTracker();
+            // Set the configuration file to look for the marker specifications
+            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
+                captureDevice.Height, false, "ARTag.cf");
+#else
+            // Create an optical marker tracker that uses ALVAR library
+            tracker = new ALVARMarkerTracker();
+            ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+#endif
 
             // Set the marker tracker to use for our scene
             scene.MarkerTracker = tracker;
@@ -175,10 +204,13 @@ namespace Tutorial8___Optical_Marker_Tracking
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            if (markerLibrary == MarkerLibrary.ALVAR)
-                groundNode.Model = new Box(95, 59, 0.1f);
-            else
-                groundNode.Model = new Box(85, 66, 0.1f);
+
+#if USE_ARTAG
+            groundNode.Model = new Box(85, 66, 0.1f);
+#else
+            groundNode.Model = new Box(95, 59, 0.1f);
+#endif
+                
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 
@@ -201,6 +233,7 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Create a geometry node with a model of a sphere that will be overlaid on
             // top of the ground marker array
             GeometryNode sphereNode = new GeometryNode("Sphere");
+            ModelLoader loader = new ModelLoader();
             sphereNode.Model = new Sphere(3, 20, 20);
 
             // Add this sphere model to the physics engine for collision detection
@@ -210,24 +243,20 @@ namespace Tutorial8___Optical_Marker_Tracking
             sphereNode.Model.CastShadows = true;
             sphereNode.Model.ReceiveShadows = true;
 
-            // Create a marker node to track a ground marker array. 
-            if (markerLibrary == MarkerLibrary.ALVAR)
-            {
-                // Create an array to hold a list of marker IDs that are used in the marker
-                // array configuration (even though these are already specified in the configuration
-                // file, ALVAR still requires this array)
-                int[] ids = new int[28];
-                for (int i = 0; i < ids.Length; i++)
-                    ids[i] = i;
+#if USE_ARTAG
+            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
+#else
+            // Create an array to hold a list of marker IDs that are used in the marker
+            // array configuration (even though these are already specified in the configuration
+            // file, ALVAR still requires this array)
+            int[] ids = new int[28];
+            for (int i = 0; i < ids.Length; i++)
+                ids[i] = i;
 
-                groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.txt", ids);
-            }
-            else
-            {
-                groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
-            }
+            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.txt", ids);
+#endif
 
-            // Since the ground marker's size is 80x52 ARTag units, in order to move the sphere model
+            // Since the ground marker's size is 80x52 ALVAR (or ARTag) units, in order to move the sphere model
             // to the center of the ground marker, we shift it by 40x26 units and also make it
             // float from the ground marker's center
             TransformNode sphereTransNode = new TransformNode();
@@ -235,7 +264,7 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             // Create a material to apply to the sphere model
             Material sphereMaterial = new Material();
-            sphereMaterial.Diffuse = new Vector4(0, 0.5f, 0, 1);
+            sphereMaterial.Diffuse = new Vector4(0, 1, 0, 1);
             sphereMaterial.Specular = Color.White.ToVector4();
             sphereMaterial.SpecularPower = 10;
 
@@ -262,22 +291,19 @@ namespace Tutorial8___Optical_Marker_Tracking
             boxNode.Model.ReceiveShadows = true;
 
             // Create a marker node to track a toolbar marker array.
-            if (markerLibrary == MarkerLibrary.ALVAR)
-            {
-                int[] ids = new int[2];
-                ids[0] = 29;
-                ids[1] = 30;
+#if USE_ARTAG
+            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1");
 
-                toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "Toolbar.txt", ids);
-            }
-            else
-            {
-                toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1");
+            // Since we expect that the toolbar marker array will move a lot, we use a large 
+            // smoothing alpha.
+            toolbarMarkerNode.Smoother = new DESSmoother(0.8f, 0.8f, 1, 1);
+#else
+            ids = new int[2];
+            ids[0] = 29;
+            ids[1] = 30;
 
-                // Since we expect that the toolbar marker array will move a lot, we use a large 
-                // smoothing alpha.
-                toolbarMarkerNode.Smoother = new DESSmoother(0.8f, 0.8f, 1, 1);
-            }
+            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "Toolbar.txt", ids);
+#endif
 
             scene.RootNode.AddChild(toolbarMarkerNode);
 
@@ -354,10 +380,13 @@ namespace Tutorial8___Optical_Marker_Tracking
                     // half of each dimension of the 8x8x8 box model.  The approach used here requires that
                     // the ground marker array remains visible at all times.
                     Vector3 shiftVector = Vector3.Zero;
-                    if (markerLibrary == MarkerLibrary.ALVAR)
-                        shiftVector = new Vector3(4, -4, 4);
-                    else
-                        shiftVector = new Vector3(4, 4, 4);
+
+#if USE_ARTAG
+                    shiftVector = new Vector3(4, 4, 4);
+#else
+                    shiftVector = new Vector3(4, -4, 4);
+#endif
+                        
                     Matrix mat = Matrix.CreateTranslation(shiftVector) * 
                         toolbarMarkerNode.WorldTransformation * 
                         Matrix.Invert(groundMarkerNode.WorldTransformation);

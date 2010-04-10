@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -270,6 +270,34 @@ namespace GoblinXNA.Helpers
 
             return Matrix.CreateScale(scale) *
                 Matrix.CreateFromQuaternion(rot) * Matrix.CreateTranslation(trans);
+        }
+
+        public static Matrix FromString(String matVals)
+        {
+            Matrix mat = Matrix.Identity;
+
+            String[] strs = matVals.Split(':', ' ', '{', '}');
+            mat.M11 = float.Parse(strs[4]);
+            mat.M12 = float.Parse(strs[6]);
+            mat.M13 = float.Parse(strs[8]);
+            mat.M14 = float.Parse(strs[10]);
+
+            mat.M21 = float.Parse(strs[14]);
+            mat.M22 = float.Parse(strs[16]);
+            mat.M23 = float.Parse(strs[18]);
+            mat.M24 = float.Parse(strs[20]);
+
+            mat.M31 = float.Parse(strs[24]);
+            mat.M32 = float.Parse(strs[26]);
+            mat.M33 = float.Parse(strs[28]);
+            mat.M34 = float.Parse(strs[30]);
+
+            mat.M41 = float.Parse(strs[34]);
+            mat.M42 = float.Parse(strs[36]);
+            mat.M43 = float.Parse(strs[38]);
+            mat.M44 = float.Parse(strs[40]);
+
+            return mat;
         }
 
         /// <summary>

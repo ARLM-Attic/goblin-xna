@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,10 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
@@ -231,6 +233,37 @@ namespace GoblinXNA.SceneGraph
             return parentID;
         }
 
+        /// <summary>
+        /// Saves the information of this node to an XML document.
+        /// </summary>
+        /// <param name="xmlDoc"></param>
+        /// <returns></returns>
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            if (name.Length > 0)
+                xmlNode.SetAttribute("name", name);
+            xmlNode.SetAttribute("enabled", enabled.ToString());
+
+            return xmlNode;
+        }
+
+        /// <summary>
+        /// Loads the information of this node from an XML element.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if(xmlNode.HasAttribute("name"))
+                name = xmlNode.GetAttribute("name");
+            if(xmlNode.HasAttribute("enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
+        }
+
+        /// <summary>
+        /// Disposes this node.
+        /// </summary>
         public virtual void Dispose()
         {
             parent = null;

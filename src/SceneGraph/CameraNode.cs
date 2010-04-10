@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
@@ -70,18 +71,23 @@ namespace GoblinXNA.SceneGraph
             : base(name)
         {
             this.camera = camera;
-            if (camera is StereoCamera)
-                isStereo = true;
-            else
-                isStereo = false;
+            
             worldTransform = Matrix.Identity;
             compoundViewMatrix = Matrix.Identity;
             leftCompoundMatrix = Matrix.Identity;
             rightCompoundMatrix = Matrix.Identity;
 
-            viewFrustum = new BoundingFrustum(camera.Projection);
-            leftViewFrustum = new BoundingFrustum(camera.Projection);
-            rightViewFrustum = new BoundingFrustum(camera.Projection);
+            if (camera != null)
+            {
+                if (camera is StereoCamera)
+                    isStereo = true;
+                else
+                    isStereo = false;
+
+                viewFrustum = new BoundingFrustum(camera.Projection);
+                leftViewFrustum = new BoundingFrustum(camera.Projection);
+                rightViewFrustum = new BoundingFrustum(camera.Projection);
+            }
         }
 
         /// <summary>
@@ -89,6 +95,8 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="camera"></param>
         public CameraNode(Camera camera) : this("", camera) { }
+
+        public CameraNode() : this(null) { }
 
         #endregion
 
@@ -289,6 +297,32 @@ namespace GoblinXNA.SceneGraph
 
             numBytesDecoded = bytesDecoded;
             return parentID;
+        }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("stereo", "" + isStereo);
+
+            xmlNode.AppendChild(camera.Save(xmlDoc));
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("stereo"))
+                isStereo = bool.Parse(xmlNode.GetAttribute("stereo"));
+
+            camera = (Camera)Activator.CreateInstance(Type.GetType(xmlNode.FirstChild.Name));
+            camera.Load((XmlElement)xmlNode.FirstChild);
+
+            viewFrustum = new BoundingFrustum(camera.Projection);
+            leftViewFrustum = new BoundingFrustum(camera.Projection);
+            rightViewFrustum = new BoundingFrustum(camera.Projection);
         }
 
         #endregion

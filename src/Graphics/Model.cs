@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,21 +31,25 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA.Shaders;
 using GoblinXNA.Graphics;
 using GoblinXNA.Helpers;
+using GoblinXNA.Physics;
 
 namespace GoblinXNA.Graphics
 {
     /// <summary>
     /// This implementation is suitable for DirectX models and primitive shapes.
     /// </summary>
-    public class Model : IModel
+    public class Model : IModel, IPhysicsMeshProvider
     {
         #region Fields
 
@@ -69,7 +73,13 @@ namespace GoblinXNA.Graphics
         protected Matrix[] transforms;
         protected Matrix[] animationTransforms;
         protected List<Vector3> vertices;
+        protected List<int> indices;
         protected bool useInternalMaterials;
+
+        protected String modelLoaderName;
+        protected String resourceName;
+        protected String shaderName;
+        protected String primitiveShapeParameters;
 
         #region For Drawing Bounding Box
 
@@ -139,10 +149,16 @@ namespace GoblinXNA.Graphics
             offsetToOrigin = false;
 
             vertices = new List<Vector3>();
+            indices = new List<int>();
 
             this.primitiveMesh = primitiveMesh;
             CalculateMinimumBoundingBox();
             shader = new SimpleEffectShader();
+
+            resourceName = "";
+            primitiveShapeParameters = "";
+            shaderName = TypeDescriptor.GetClassName(shader);
+            modelLoaderName = "";
 
             enabled = true;
             useInternalMaterials = false;
@@ -225,15 +241,25 @@ namespace GoblinXNA.Graphics
             set { technique = value; }
         }
 
-        /// <summary>
-        /// Gets the geometry data of this model.
-        /// </summary>
-        /// <remarks>
-        /// If PrimitiveMesh is non-null, then this is probably null
-        /// </remarks>
-        public ModelMeshCollection Mesh
+        public List<Vector3> Vertices
         {
-            get { return mesh; }
+            get { return vertices; }
+        }
+
+        public List<int> Indices
+        {
+            get { return indices; }
+        }
+
+        public PrimitiveType PrimitiveType
+        {
+            get
+            {
+                if (mesh != null)
+                    return PrimitiveType.TriangleList;
+                else
+                    return primitiveMesh.PrimitiveType;
+            }
         }
 
         /// <summary>
@@ -328,16 +354,58 @@ namespace GoblinXNA.Graphics
         }
 
         /// <summary>
-        /// Gets the transform matrices of each mesh part of this model
+        /// Gets or sets the name of the resource (asset name) used to create this model. 
+        /// This name should not contain any extensions.
         /// </summary>
-        public Matrix[] Transforms
+        /// <remarks>
+        /// This information is necessary for saving and loading scene graph from an XML file.
+        /// </remarks>
+        /// <see cref="ModelLoaderName"/>
+        public String ResourceName
         {
-            get { return transforms; }
+            get { return resourceName; }
+            set { resourceName = value; }
         }
 
-        public List<Vector3> Vertices
+        /// <summary>
+        /// Gets or sets the name of the model loader if this model was loaded using a specific
+        /// model loader.
+        /// </summary>
+        /// <remarks>
+        /// This information is necessary for saving and loading scene graph from an XML file if
+        /// the ResourceName is specified.
+        /// </remarks>
+        public String ModelLoaderName
         {
-            get { return vertices; }
+            get { return modelLoaderName; }
+            set { modelLoaderName = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the name of the shader used to illuminate this model. The default value 
+        /// is SimpleEffectShader.
+        /// </summary>
+        /// <remarks>
+        /// This information is necessary for saving and loading scene graph from an XML file.
+        /// </remarks>
+        public String ShaderName
+        {
+            get { return shaderName; }
+            set { shaderName = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the parameters needed to be passed to a class that contructs a primitive
+        /// shape. 
+        /// </summary>
+        /// <remarks>
+        /// This information is necessary for saving and loading scene graph from an XML file if
+        /// the ResourceName is not specified.
+        /// </remarks>
+        public String PrimitiveShapeParameters
+        {
+            get { return primitiveShapeParameters; }
+            set { primitiveShapeParameters = value; }
         }
 
         #endregion
@@ -357,32 +425,43 @@ namespace GoblinXNA.Graphics
                 foreach (ModelMesh modelMesh in mesh)
                 {
                     needTransform = !transforms[modelMesh.ParentBone.Index].Equals(Matrix.Identity);
+
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {
-                        int stride = part.VertexStride;
-                        int numberv = part.NumVertices;
-                        byte[] data = new byte[stride * numberv];
+                        Vector3[] data = new Vector3[part.NumVertices];
 
-                        modelMesh.VertexBuffer.GetData<byte>(data);
+                        modelMesh.VertexBuffer.GetData<Vector3>(part.StreamOffset + part.BaseVertex * part.VertexStride,
+                            data, 0, part.NumVertices, part.VertexStride);
 
-                        for (int ndx = 0; ndx < data.Length; ndx += stride)
+                        for (int ndx = 0; ndx < data.Length; ndx++)
                         {
-                            float x = BitConverter.ToSingle(data, ndx);
-                            float y = BitConverter.ToSingle(data, ndx + 4);
-                            float z = BitConverter.ToSingle(data, ndx + 8);
-
-                            tmpVec1.X = x; tmpVec1.Y = y; tmpVec1.Z = z;
                             if (needTransform)
-                            {
-                                Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                                Matrix.Multiply(ref tmpMat1, ref transforms[modelMesh.ParentBone.Index], out tmpMat2);
-                                vertices.Add(tmpMat2.Translation);
-                            }
-                            else
-                                vertices.Add(tmpVec1);
+                                Vector3.Transform(ref data[ndx], ref transforms[modelMesh.ParentBone.Index], 
+                                    out data[ndx]);
                         }
 
                         triangleCount += part.PrimitiveCount;
+
+                        vertices.AddRange(data);
+
+                        int[] tmpIndices = new int[part.PrimitiveCount * 3];
+
+                        if (modelMesh.IndexBuffer.IndexElementSize == IndexElementSize.SixteenBits)
+                        {
+                            short[] tmp = new short[part.PrimitiveCount * 3];
+                            modelMesh.IndexBuffer.GetData<short>(part.StartIndex * 2, tmp, 0,
+                                tmp.Length);
+                            Array.Copy(tmp, 0, tmpIndices, 0, tmpIndices.Length);
+                        }
+                        else
+                            modelMesh.IndexBuffer.GetData<int>(part.StartIndex * 2, tmpIndices, 0,
+                                tmpIndices.Length);
+
+                        if (part.BaseVertex != 0)
+                            for (int i = 0; i < tmpIndices.Length; i++)
+                                tmpIndices[i] += part.BaseVertex;
+
+                        indices.AddRange(tmpIndices);
                     }
                 }
             }
@@ -404,6 +483,15 @@ namespace GoblinXNA.Graphics
                 }
 
                 triangleCount += primitiveMesh.NumberOfPrimitives;
+
+                if (primitiveMesh.IndexBuffer.BufferUsage == BufferUsage.None)
+                {
+                    short[] tmpIndices = new short[primitiveMesh.IndexBuffer.SizeInBytes / sizeof(short)];
+                    primitiveMesh.IndexBuffer.GetData<short>(tmpIndices);
+                    int[] tmpIntIndices = new int[tmpIndices.Length];
+                    Array.Copy(tmpIndices, tmpIntIndices, tmpIndices.Length);
+                    indices.AddRange(tmpIntIndices);
+                }
             }
 
             if (vertices.Count == 0)
@@ -473,7 +561,8 @@ namespace GoblinXNA.Graphics
                 return;
 
             Model srcModel = (Model)model;
-            mesh = srcModel.Mesh;
+            vertices.AddRange(((IPhysicsMeshProvider)model).Vertices);
+            indices.AddRange(((IPhysicsMeshProvider)model).Indices);
             primitiveMesh = srcModel.PrimitiveMesh;
             animatedMesh = srcModel.AnimatedMesh;
             if (animatedMesh != null)
@@ -486,7 +575,6 @@ namespace GoblinXNA.Graphics
             triangleCount = srcModel.TriangleCount;
             boundingBox = srcModel.MinimumBoundingBox;
             boundingSphere = srcModel.MinimumBoundingSphere;
-            transforms = srcModel.Transforms;
             UseInternalMaterials = srcModel.UseInternalMaterials;
         }
 
@@ -534,27 +622,41 @@ namespace GoblinXNA.Graphics
 
                     Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
 
-                    foreach (ModelMeshPart part in modelMesh.MeshParts)
+                    if (UseInternalMaterials)
                     {
-                        if (UseInternalMaterials)
+                        if (shader is IAlphaBlendable)
+                            ((IAlphaBlendable)shader).SetOriginalAlphas(modelMesh.Effects);
+
+                        foreach (BasicEffect be in modelMesh.Effects)
                         {
-                            material.InternalEffect = part.Effect;
+                            material.InternalEffect = be;
                             shader.SetParameters(material);
+
+                            be.View = State.ViewMatrix;
+                            be.Projection = State.ProjectionMatrix;
+                            be.World = tmpMat1;
                         }
 
-                        shader.Render(
-                            tmpMat1,
-                            technique,
-                            delegate
-                            {
-                                State.Device.Vertices[0].SetSource(
-                                    modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
-                                State.Device.Indices = modelMesh.IndexBuffer;
-                                State.Device.VertexDeclaration = part.VertexDeclaration;
-                                State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                    part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
+                        modelMesh.Draw();
+                    }
+                    else
+                    {
+                        foreach (ModelMeshPart part in modelMesh.MeshParts)
+                        {
+                            shader.Render(
+                                tmpMat1,
+                                technique,
+                                delegate
+                                {
+                                    State.Device.Vertices[0].SetSource(
+                                        modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
+                                    State.Device.Indices = modelMesh.IndexBuffer;
+                                    State.Device.VertexDeclaration = part.VertexDeclaration;
+                                    State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
+                                        part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
 
-                            });
+                                });
+                        }
                     }
                 }
             }
@@ -631,7 +733,11 @@ namespace GoblinXNA.Graphics
             vertices.Clear();
             mesh = null;
             animatedMesh = null;
-            shader = null;
+
+            if (shader != null)
+                shader.Dispose();
+            if (primitiveMesh != null)
+                primitiveMesh.Dispose();
         }
 
         /// <summary>
@@ -775,7 +881,72 @@ namespace GoblinXNA.Graphics
             }
         }
 
-        #endregion
+        public virtual XmlElement SaveModelCreationInfo(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement("ModelCreationInfo");
 
+            if (mesh != null && resourceName.Length == 0)
+                throw new GoblinException("ResourceName must be specified in order to " +
+                    "save this model information to an XML file");
+
+            if (resourceName.Length > 0)
+            {
+                xmlNode.SetAttribute("resourceName", resourceName);
+                if (modelLoaderName.Length == 0)
+                    throw new GoblinException("ModelLoaderName must be specified if ResourceName " +
+                        "is specified");
+
+                xmlNode.SetAttribute("modelLoaderName", modelLoaderName);
+            }
+            else
+            {
+                if (primitiveShapeParameters.Length == 0)
+                    throw new GoblinException("PrimitiveShapeParameters must be specified if " +
+                        "ResourceName does not contain a file extension");
+
+                xmlNode.SetAttribute("primitiveShapeParameters", primitiveShapeParameters);
+            }
+
+            xmlNode.SetAttribute("shaderName", shaderName);
+            if (technique.Length > 0)
+                xmlNode.SetAttribute("shaderTechniqueName", technique);
+
+            return xmlNode;
+        }
+
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("enabled", enabled.ToString());
+            xmlNode.SetAttribute("useLighting", useLighting.ToString());
+            xmlNode.SetAttribute("castShadow", castShadow.ToString());
+            xmlNode.SetAttribute("receiveShadow", receiveShadow.ToString());
+            xmlNode.SetAttribute("showBoundingBox", showBoundingBox.ToString());
+            xmlNode.SetAttribute("useInternalMaterials", useInternalMaterials.ToString());
+            xmlNode.SetAttribute("offsetToOrigin", offsetToOrigin.ToString());
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
+            if (xmlNode.HasAttribute("useLighting"))
+                useLighting = bool.Parse(xmlNode.GetAttribute("useLighting"));
+            if (xmlNode.HasAttribute("castShadow"))
+                castShadow = bool.Parse(xmlNode.GetAttribute("castShadow"));
+            if (xmlNode.HasAttribute("receiveShadow"))
+                receiveShadow = bool.Parse(xmlNode.GetAttribute("receiveShadow"));
+            if (xmlNode.HasAttribute("showBoundingBox"))
+                showBoundingBox = bool.Parse(xmlNode.GetAttribute("showBoundingBox"));
+            if (xmlNode.HasAttribute("useInternalMaterials"))
+                useInternalMaterials = bool.Parse(xmlNode.GetAttribute("useInternalMaterials"));
+            if (xmlNode.HasAttribute("offsetToOrigin"))
+                offsetToOrigin = bool.Parse(xmlNode.GetAttribute("offsetToOrigin"));
+        }
+
+        #endregion
     }
 }

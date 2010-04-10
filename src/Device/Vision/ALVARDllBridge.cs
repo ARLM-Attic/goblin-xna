@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,6 +59,9 @@ namespace GoblinXNA.Device.Vision
 
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_set_marker_size")]
         public static extern void alvar_set_marker_size(int id, double markerSize);
+
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_set_detect_additional")]
+        public static extern void alvar_set_detect_additional(bool enable);
 
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_set_hide_texture_configuration")]
         public static extern void alvar_set_hide_texture_configuration(uint size, uint depth, 

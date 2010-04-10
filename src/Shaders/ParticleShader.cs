@@ -153,5 +153,13 @@ namespace GoblinXNA.Shaders
                 effect.End();
             }
         }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            if (texture2d != null)
+                texture2d.Dispose();
+        }
     }
 }

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -133,6 +134,7 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Override Methods
+
         public override Node CloneNode()
         {
             SoundNode node = (SoundNode)base.CloneNode();
@@ -141,6 +143,23 @@ namespace GoblinXNA.SceneGraph
 
             return node;
         }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+           
+            // nothing to add to the XML info
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            // nothing to load
+        }
+
         #endregion
     }
 }

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
  * ===================================================================================
  * Authors: Mark Eaddy
  *          Ohan Oda (ohan@cs.columbia.edu)
+ *          Steve Henderson (henderso@cs.columbia.edu)
  * 
  *************************************************************************************/ 
 
@@ -48,24 +49,18 @@ namespace GoblinXNA.Device.InterSense
         #region Member Fields
 		private long nStationIndex;
 
-		//the head transform is: (0, -0.1397, -0.1524), as x,y,z in intersense format.
-		// We make it DX format
-		private Matrix matTRANSFORM_TRACKER2EYE;
-		//NOTE: removed readonly above, so it could be serialized
-		//also removed static, so each tracker can have its own transform (seems possible)
-
 		private Matrix mat;
 		private ISDllBridge.ISD_STATION_STATE_TYPE state;
+
+        private Vector3 positionVector;
+        private Vector3 orientationVector;
         #endregion
 
         #region Constructors
 
-        public InterSenseStation(long _nStationIndex, Matrix tracker_to_eye_transform)
+        public InterSenseStation(long _nStationIndex)
 		{
 			nStationIndex = _nStationIndex;
-			matTRANSFORM_TRACKER2EYE = tracker_to_eye_transform;
-
-            matTRANSFORM_TRACKER2EYE = Matrix.Identity;
             mat = Matrix.Identity;
         }
 
@@ -73,15 +68,25 @@ namespace GoblinXNA.Device.InterSense
 
         #region Properties
 
+        /// <summary>
+        /// The raw position vector from the Intersense Tracker
+        /// </summary>
+        public Vector3 PositionVector
+        {
+            get { return positionVector; }
+        }
+
+        /// <summary>
+        /// The raw orientation vector from the Intersense Tracker
+        /// </summary>
+        public Vector3 OrientationVector
+        {
+            get { return orientationVector; }
+        }
+
         public Matrix WorldTransformation
         {
             get { return mat; }
-        }
-
-        public Matrix TransformTrackerToEye
-        {
-            get { return matTRANSFORM_TRACKER2EYE; }
-            set { matTRANSFORM_TRACKER2EYE = value; }
         }
 
         #endregion
@@ -92,44 +97,82 @@ namespace GoblinXNA.Device.InterSense
 		{
 			Debug.Assert(nStationIndex != -1);
 			state = dataISense.Station[nStationIndex];
-			CreateDXTransformationMatrix();
+            positionVector.X = state.Position[0];
+            positionVector.Y = state.Position[1];
+            positionVector.Z = state.Position[2];
+            orientationVector.X = state.Orientation[0];
+            orientationVector.Y = state.Orientation[1];
+            orientationVector.Z = state.Orientation[2];
+            CreateWorldMatrix();
         }
 
         #endregion
 
         #region Private Methods
 
-        // Position[0],[1], and [3] correspond to x, y, and z,
-        // so you might expect Orientation[0], [1], and [2] to
-        // correspond to rotation around the x, y, and z axes.  However,
-        // InterSense appears to prefer the order implied by the traditional
-        // order of "yaw,pitch,roll".  Orientation[2] is actually "yaw"
-        // (rotation around z-axis), Orientation[1] is "pitch" (rotation around
-        // y-axis) and Orientation[0] is actually "roll" (rotation around x-axis).
-        private void CreateDXTransformationMatrix()
+        /// <summary>
+        /// Updates the WorldViewMatrix of the tracker to reflect the following coordinate frame 
+        /// (right handed coordinates):        
+        /// 
+        /// //  ---Ceiling in Lab---
+        ///
+        ///     +Y
+        ///      ^  ^ +Z (Back Wall)    
+        ///  +X  | /       
+        ///  ----         
+        ///
+        ///  ---Floor in Lab ----
+        ///
+        /// The code in this class is a specic to the coordinate frame listed above
+        ///            
+        /// </summary>
+        private void CreateWorldMatrix()
 		{
-			//Trace.WriteLine(string.Format("ISENSE xrot:{0,4:F}, yrot:{1,4:F}, zrot:{2,4:F}",
-			//	aryOrientation[2], aryOrientation[1], aryOrientation[0]));
+            // InterSense is a right-hand coordinate system.
+            // In a ceiling mounted array, the coordinate systems is natively oriented like this:
+            //
+            // InterSense:    
+            //
+            //  ---Ceiling in Lab---
+            //
+            //        ^       
+            //   X   / y      
+            //  <---/         
+            //      |         
+            //    z v
+            //
+            //  ---Floor in Lab ----            
+            //
+            // The following code has been tested to perform the coordinate frame transform required to produce an
+            // XNA-friendly (Y Up) world.  Note: the default intersense coordinate frame is also right-handed, so the
+            // operations below are strictly coordinate frame transforms.  This cannot be done with simple rotations, because
+            // the axis angles in XNA don't coincide with intersense.
+            //
+            Vector3 posV = this.positionVector;
+            Vector3 orientV = this.orientationVector;
 
-			// Convert InterSense position and orientation into a transformation
-			// matrix appropriate for DirectX.  InterSense is a right-hand coordinate
-			// system, DirectX is a left-hand coordinate system.
-			//
-			// InterSense:    DirectX:		Translation:  Rotation:
-			//        ^         y^  ^ z     dx = -ix      
-			//   X   / y         | /        dy = -iz
-			//  <---/            |---->     dz =  iy
-			//      |               x
-			//    z v
+            float xnaPitch, xnaYaw, xnaRoll;
+            float xnaPitchDeg, xnaYawDeg, xnaRollDeg;
+            xnaPitchDeg = orientV.Y;
+            xnaYawDeg = -1 * (orientV.X + 90.0f);
+            xnaRollDeg = orientV.Z;
 
-			mat = 
-				Matrix.CreateRotationX(MathHelper.ToRadians(-state.Orientation[2])) *
-                Matrix.CreateRotationX(MathHelper.ToRadians(-state.Orientation[1])) *
-                Matrix.CreateRotationY(MathHelper.ToRadians(-90 + state.Orientation[0])) *
-				Matrix.CreateTranslation(-state.Position[0], -state.Position[2], state.Position[1]) *
-				matTRANSFORM_TRACKER2EYE;
+            xnaRoll = MathHelper.ToRadians(xnaRollDeg);
+            xnaPitch = MathHelper.ToRadians(xnaPitchDeg);
+            xnaYaw = MathHelper.ToRadians(xnaYawDeg);
 
-			//Trace.Write(SceneGraph.Matrix2String(mat, "mat"));
+            xnaRoll = -1 * MathHelper.WrapAngle(xnaRoll);
+            xnaYaw = MathHelper.WrapAngle(xnaYaw);
+            xnaPitch = MathHelper.WrapAngle(xnaPitch);
+
+            float x, y, z;
+
+            z = posV.Y;
+            x = posV.X;
+            y = -1 * posV.Z;
+
+            mat = Matrix.CreateRotationZ(xnaRoll) * Matrix.CreateRotationX(xnaPitch) * 
+                Matrix.CreateRotationY(xnaYaw) * Matrix.CreateTranslation(x, y, z);
         }
 
         #endregion

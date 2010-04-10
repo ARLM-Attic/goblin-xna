@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,22 @@ using GoblinXNA.Graphics;
 namespace GoblinXNA
 {
     /// <summary>
+    /// Options for enabling threading for certain processes.
+    /// </summary>
+    public enum ThreadOptions
+    {
+        /// <summary>
+        /// Thread the marker tracking process. This includes the video capturing process
+        /// as well.
+        /// </summary>
+        MarkerTracking = (ushort)0x0001,
+        /// <summary>
+        /// Thread the physics simulation.
+        /// </summary>
+        PhysicsSimulation = (ushort)0x0002,
+    }
+
+    /// <summary>
     /// The main class of the Goblin XNA framework. 
     /// </summary>
     public sealed class State
@@ -83,7 +99,7 @@ namespace GoblinXNA
         private static bool showNotifications;
         private static Color debugTextColor;
 
-        private static bool isMultiCore;
+        private static ushort threadOption;
 
         // Remember scene render target. This is very important because for our post screen shaders we have to render our whole scene
         // to this render target. But in the process we will use many other shaders and they might set their own render targets and then
@@ -239,19 +255,20 @@ namespace GoblinXNA
         }
 
         /// <summary>
-        /// Gets or sets whether the processor (CPU) is multi-core CPU. If true, then threading is used
-        /// in some parts of the scene graph to speed up the rendering. The default value is true.
+        /// Gets or sets the threading options by oring the ThreadOptions enum. This property is
+        /// used to control what operations to be threaded. If your CPU is single-core, then there is
+        /// no point to thread any operations.
         /// </summary>
-        public static bool IsMultiCore
+        public static ushort ThreadOption
         {
-            get { return isMultiCore; }
-            set { isMultiCore = value; }
+            get { return threadOption; }
+            set { threadOption = value; }
         }
 
         /// <summary>
         /// Gets the shader used to perform shadow mapping
         /// </summary>
-        internal static ShadowMapShader ShadowShader
+        public static ShadowMapShader ShadowShader
         {
             get { return shadowShader; }
             set { shadowShader = value; }
@@ -450,7 +467,7 @@ namespace GoblinXNA
 
             cameraTransform = Matrix.Identity;
 
-            isMultiCore = true;
+            threadOption = 0;
         }
 
         /// <summary>
@@ -556,6 +573,12 @@ namespace GoblinXNA
         {
             nextNodeID++;
             return nextNodeID;
+        }
+
+        internal static void Restore3DSettings()
+        {
+            State.Device.SamplerStates[0].AddressU = TextureAddressMode.Wrap;
+            State.Device.SamplerStates[0].AddressV = TextureAddressMode.Wrap;
         }
 
         #region Render targets

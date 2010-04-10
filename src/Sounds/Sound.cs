@@ -64,15 +64,15 @@ namespace GoblinXNA.Sounds
             try
             {
                 String name = Path.GetFileNameWithoutExtension(xapAssetName);
-                audioEngine = new AudioEngine(Path.Combine(State.Content.RootDirectory + 
+                audioEngine = new AudioEngine(Path.Combine(State.Content.RootDirectory + "/" +
                     State.GetSettingVariable("AudioDirectory"), name + ".xgs"));
                 waveBank = new WaveBank(audioEngine, Path.Combine(State.Content.RootDirectory + 
-                    State.GetSettingVariable("AudioDirectory"), "Wave Bank.xwb"));
+                    "/" + State.GetSettingVariable("AudioDirectory"), "Wave Bank.xwb"));
 
                 if (waveBank != null)
                 {
                     soundBank = new SoundBank(audioEngine,
-                        Path.Combine(State.Content.RootDirectory + 
+                        Path.Combine(State.Content.RootDirectory + "/" +
                         State.GetSettingVariable("AudioDirectory"), "Sound Bank.xsb"));
                 }
 

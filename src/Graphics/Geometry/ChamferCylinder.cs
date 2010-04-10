@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
  *************************************************************************************/ 
 
 using System;
+using System.Xml;
 using System.Collections.Generic;
 
 using Microsoft.Xna.Framework;
@@ -45,6 +46,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class ChamferCylinder : Model
     {
+        #region Constructors
+
         /// <summary>
         /// Creates a chamfer cylinder (a cylinder with spherical side) oriented along the Y axis. 
         /// </summary>
@@ -55,7 +58,19 @@ namespace GoblinXNA.Graphics.Geometry
         public ChamferCylinder(float radius, float height, int slices) :
             base(CreateChamferCylinder(radius, height, slices))
         {
+            primitiveShapeParameters = radius + ", " + height + ", " + slices;
         }
+
+        public ChamferCylinder(params String[] xmlParams)
+            : base(CreateChamferCylinder(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]),
+                int.Parse(xmlParams[2])))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
+        }
+
+        #endregion
+
+        #region Private Static Methods
 
         private static PrimitiveMesh CreateChamferCylinder(float radius, float height, int slices)
         {
@@ -161,5 +176,7 @@ namespace GoblinXNA.Graphics.Geometry
 
             return mesh;
         }
+
+        #endregion
     }
 }

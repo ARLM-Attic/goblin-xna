@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
+using System.ComponentModel;
 
 using Microsoft.Xna.Framework;
 
@@ -67,6 +69,8 @@ namespace GoblinXNA.SceneGraph
         protected bool predict;
         protected float predictionTime;
 
+        protected Object[] markerConfigs;
+
         #endregion
 
         #region Constructors
@@ -82,7 +86,11 @@ namespace GoblinXNA.SceneGraph
             : base(name)
         {
             this.tracker = tracker;
-            markerID = tracker.AssociateMarker(markerConfigs);
+            if (tracker != null)
+            {
+                markerID = tracker.AssociateMarker(markerConfigs);
+                this.markerConfigs = markerConfigs;
+            }
             found = false;
             maxDropouts = 5;
             prevMatrix = Matrix.Identity;
@@ -106,6 +114,8 @@ namespace GoblinXNA.SceneGraph
         public MarkerNode(IMarkerTracker tracker, params Object[] markerConfigs)
             :
             this("", tracker, markerConfigs) { }
+
+        public MarkerNode() : this(null) { }
 
         #endregion
 
@@ -197,6 +207,7 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Override Methods
+
         /// <summary>
         /// Marker node does not allow cloning a node.
         /// </summary>
@@ -207,6 +218,51 @@ namespace GoblinXNA.SceneGraph
             throw new GoblinException("You should not clone a Marker node since you should only have one " 
                 + "Marker node associated with one marker array");
         }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("optimize", optimize.ToString());
+            xmlNode.SetAttribute("maxDropouts", maxDropouts.ToString());
+            if (smooth)
+                xmlNode.AppendChild(smoother.Save(xmlDoc));
+            if (predict)
+                xmlNode.AppendChild(predictor.Save(xmlDoc));
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("optimize"))
+                optimize = bool.Parse(xmlNode.GetAttribute("optimize"));
+            if (xmlNode.HasAttribute("maxDropouts"))
+                maxDropouts = int.Parse(xmlNode.GetAttribute("maxDropouts"));
+            foreach (XmlElement xmlChild in xmlNode.ChildNodes)
+            {
+                Type classType = Type.GetType(xmlChild.Name);
+                try
+                {
+                    Smoother = (ISmoother)Activator.CreateInstance(classType);
+                    smoother.Load(xmlChild);
+                }
+                catch (Exception)
+                {
+                    try
+                    {
+                        Predictor = (IPredictor)Activator.CreateInstance(classType);
+                        predictor.Load(xmlChild);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region Update
@@ -217,7 +273,13 @@ namespace GoblinXNA.SceneGraph
         /// <param name="elapsedTime">Elapsed time from last update in milliseconds</param>
         internal void Update(float elapsedTime)
         {
-            if (tracker.FindMarker(markerID))
+            if (tracker == null && scene.MarkerTracker != null)
+            {
+                tracker = scene.MarkerTracker;
+                markerID = tracker.AssociateMarker(markerConfigs);
+            }
+
+            if (tracker != null && tracker.FindMarker(markerID))
             {
                 Vector3 p = new Vector3();
                 Quaternion q = Quaternion.Identity;

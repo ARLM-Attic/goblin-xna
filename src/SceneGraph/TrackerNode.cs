@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
 using GoblinXNA.Device;
+using GoblinXNA.Device.Generic;
 using GoblinXNA.Device.Util;
 
 namespace GoblinXNA.SceneGraph
@@ -85,6 +87,8 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="deviceIdentifier">The 6DOF device identifier (see InputMapper class)</param>
         public TrackerNode(String deviceIdentifier) : this("", deviceIdentifier) { }
+
+        public TrackerNode() : this(GenericInput.Instance.Identifier) { }
 
         #endregion
 
@@ -161,6 +165,56 @@ namespace GoblinXNA.SceneGraph
                 return worldTransform;
             }
         }
+        #endregion
+
+        #region Override Methods
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("deviceIdentifier", deviceIdentifier);
+            if (smooth)
+                xmlNode.AppendChild(smoother.Save(xmlDoc));
+            if (predict)
+                xmlNode.AppendChild(predictor.Save(xmlDoc));
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("deviceIdentifier"))
+                deviceIdentifier = xmlNode.GetAttribute("deviceIdentifier");
+
+            if (!InputMapper.Instance.Contains6DOFInputDevice(deviceIdentifier))
+                throw new GoblinException(deviceIdentifier + " is not recognized. Only 6DOF devices " +
+                    "are allowed to be used with TrackerNode.");
+
+            foreach (XmlElement xmlChild in xmlNode.ChildNodes)
+            {
+                Type classType = Type.GetType(xmlChild.Name);
+                try
+                {
+                    Smoother = (ISmoother)Activator.CreateInstance(classType);
+                    smoother.Load(xmlChild);
+                }
+                catch (Exception)
+                {
+                    try
+                    {
+                        Predictor = (IPredictor)Activator.CreateInstance(classType);
+                        predictor.Load(xmlChild);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
+        }
+
         #endregion
     }
 }

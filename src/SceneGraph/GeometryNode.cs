@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
+using System.IO;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -52,7 +54,6 @@ namespace GoblinXNA.SceneGraph
         #region Field Members
 
         protected IModel model;
-        protected NewtonVehicle vehicle;
         protected bool isRendered;
         private bool shouldRender;
         protected Material material;
@@ -120,6 +121,17 @@ namespace GoblinXNA.SceneGraph
                 networkProperties.Identifier = value;
             }
         }
+
+        public override bool Enabled
+        {
+            get { return base.Enabled; }
+            set
+            {
+                base.Enabled = value;
+                physicsStateChanged = true;
+            }
+        }
+
         /// <summary>
         /// Gets or sets the actual model used for rendering and physics simulation.
         /// </summary>
@@ -129,7 +141,9 @@ namespace GoblinXNA.SceneGraph
             set 
             { 
                 model = value;
-                physicsProperties.Model = value;
+                physicsProperties.Model = model;
+                if (model is IPhysicsMeshProvider)
+                    physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
                 boundingVolume.Radius = model.MinimumBoundingSphere.Radius;
             }
         }
@@ -187,6 +201,8 @@ namespace GoblinXNA.SceneGraph
             { 
                 physicsProperties = value;
                 physicsProperties.Model = model;
+                if (model is IPhysicsMeshProvider)
+                    physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
             }
         }
 
@@ -212,7 +228,7 @@ namespace GoblinXNA.SceneGraph
                 }
                 return worldTransform; 
             }
-            internal set 
+            set 
             { 
                 worldTransform = value;
                 networkProperties.WorldTransform = value;
@@ -235,7 +251,11 @@ namespace GoblinXNA.SceneGraph
         internal bool IsRendered
         {
             get { return isRendered; }
-            set { isRendered = value; }
+            set 
+            { 
+                isRendered = value;
+                physicsStateChanged = true;
+            }
         }
 
         /// <summary>
@@ -301,6 +321,82 @@ namespace GoblinXNA.SceneGraph
         public override Node CloneNode()
         {
             throw new GoblinException("You should not clone Geometry node");
+        }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("occluder", isOccluder.ToString());
+            xmlNode.SetAttribute("addToPhysicsEngine", addToPhysicsEngine.ToString());
+
+            if (model != null)
+            {
+                xmlNode.AppendChild(model.SaveModelCreationInfo(xmlDoc));
+                xmlNode.AppendChild(model.Save(xmlDoc));
+            }
+
+            xmlNode.AppendChild(material.Save(xmlDoc));
+            xmlNode.AppendChild(physicsProperties.Save(xmlDoc));
+            xmlNode.AppendChild(networkProperties.Save(xmlDoc));
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("occluder"))
+                isOccluder = bool.Parse(xmlNode.GetAttribute("occluder"));
+            if (xmlNode.HasAttribute("addToPhysicsEngine"))
+                AddToPhysicsEngine = bool.Parse(xmlNode.GetAttribute("addToPhysicsEngine"));
+
+            int i = 0;
+            if (xmlNode.ChildNodes[i].Name.Equals("ModelCreationInfo"))
+            {
+                XmlElement modelInfo = (XmlElement)xmlNode.ChildNodes[i];
+                if (modelInfo.HasAttribute("resourceName"))
+                {
+                    if (!modelInfo.HasAttribute("modelLoaderName"))
+                        throw new GoblinException("modelLoaderName attribute is required if " +
+                            "resourceName attribute is specified");
+
+                    String assetName = Path.ChangeExtension(modelInfo.GetAttribute("resourceName"), null);
+                    IModelLoader loader = (IModelLoader)Activator.CreateInstance(Type.GetType(
+                        modelInfo.GetAttribute("modelLoaderName")));
+                    model = (IModel)loader.Load("", assetName);
+                }
+                else
+                {
+                    if (!modelInfo.HasAttribute("primitiveShapeParameters"))
+                        throw new GoblinException("primitiveShapeParameters attribute must be " +
+                            "specified if resourceName is not specified");
+
+                    String[] primShapeParams = modelInfo.GetAttribute("primitiveShapeParameters").Split(',');
+                    model = (IModel)Activator.CreateInstance(Type.GetType(xmlNode.ChildNodes[i + 1].Name),
+                        primShapeParams);
+                }
+
+                model.Load((XmlElement)xmlNode.ChildNodes[i + 1]);
+                i += 2;
+            }
+
+            material = (Material)Activator.CreateInstance(Type.GetType(xmlNode.ChildNodes[i].Name));
+            material.Load((XmlElement)xmlNode.ChildNodes[i]);
+
+            physicsProperties = (IPhysicsObject)Activator.CreateInstance(Type.GetType(
+                xmlNode.ChildNodes[i + 1].Name));
+            physicsProperties.Load((XmlElement)xmlNode.ChildNodes[i + 1]);
+            physicsProperties.Container = this;
+            if(model is IPhysicsMeshProvider)
+                physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
+            physicsProperties.Model = model;
+
+            networkProperties = (NetworkObject)Activator.CreateInstance(Type.GetType(
+                xmlNode.ChildNodes[i + 2].Name));
+            networkProperties.Load((XmlElement)xmlNode.ChildNodes[i + 2]);
+            networkProperties.Identifier = name;
         }
 
         public override void Dispose()

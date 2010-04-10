@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
 using GoblinXNA.Graphics;
+using GoblinXNA.Helpers;
 
 namespace GoblinXNA.SceneGraph
 {
@@ -128,6 +130,37 @@ namespace GoblinXNA.SceneGraph
                 clone.LightSources.Add(new LightSource(light));
 
             return clone;
+        }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("global", global.ToString());
+            xmlNode.SetAttribute("ambientLightColor", ambientLightColor.ToString());
+
+            foreach (LightSource lightSource in lightSources)
+                xmlNode.AppendChild(lightSource.Save(xmlDoc));
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("global"))
+                global = bool.Parse(xmlNode.GetAttribute("global"));
+            if (xmlNode.HasAttribute("ambientLightColor"))
+                ambientLightColor = Vector4Helper.FromString(xmlNode.GetAttribute("ambientLightColor"));
+
+            foreach (XmlElement lightSourceXml in xmlNode.ChildNodes)
+            {
+                LightSource lightSource = (LightSource)Activator.CreateInstance(
+                    Type.GetType(lightSourceXml.Name));
+                lightSource.Load(lightSourceXml);
+                lightSources.Add(lightSource);
+            }
         }
 
         #endregion

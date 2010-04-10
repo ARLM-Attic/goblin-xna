@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,10 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -48,6 +50,7 @@ namespace GoblinXNA.Physics
     public class PhysicsObject : IPhysicsObject
     {
         #region Member Fields
+
         protected Object container;
         protected int collisionGroupID;
         protected String materialName;
@@ -61,9 +64,9 @@ namespace GoblinXNA.Physics
         protected bool interactable;
         protected bool applyGravity;
         protected bool manipulatable;
-        protected bool isVehicle;
         protected bool neverDeactivate;
         protected bool modified;
+        protected bool shapeModified;
         protected Matrix physicsWorldTransform;
         protected Matrix initialWorldTransform;
         protected Matrix compoundInitialWorldTransform;
@@ -71,11 +74,13 @@ namespace GoblinXNA.Physics
         protected Vector3 initialAngularVelocity;
         protected float linearDamping;
         protected Vector3 angularDamping;
-
+        protected IPhysicsMeshProvider meshProvider;
         protected IModel model;
+
         #endregion
 
         #region Constructors
+
         /// <summary>
         /// Creates a physics object with a container that uses the physical properties specified
         /// in this class. The 'container' is usually an instance of GeometryNode.
@@ -98,6 +103,7 @@ namespace GoblinXNA.Physics
             applyGravity = true;
             neverDeactivate = false;
             modified = false;
+            shapeModified = false;
 
             physicsWorldTransform = Matrix.Identity;
             initialWorldTransform = Matrix.Identity;
@@ -108,7 +114,13 @@ namespace GoblinXNA.Physics
 
             linearDamping = 0.0f;
             angularDamping = -Vector3.One;
+
+            model = null;
+            meshProvider = null;
         }
+
+        public PhysicsObject() : this(null) { }
+
         #endregion
 
         #region Properties
@@ -116,12 +128,29 @@ namespace GoblinXNA.Physics
         public IModel Model
         {
             get { return model; }
-            set { model = value; }
+            set
+            {
+                model = value;
+                modified = true;
+                shapeModified = true;
+            }
+        }
+
+        public IPhysicsMeshProvider MeshProvider
+        {
+            get { return meshProvider; }
+            set 
+            { 
+                meshProvider = value;
+                modified = true;
+                shapeModified = true;
+            }
         }
 
         public Object Container
         {
             get { return container; }
+            set { container = value; }
         }
 
         public int CollisionGroupID
@@ -141,8 +170,11 @@ namespace GoblinXNA.Physics
             get { return mass; }
             set
             {
-                mass = value;
-                modified = true;
+                if (mass != value)
+                {
+                    mass = value;
+                    modified = true;
+                }
             }
         }
 
@@ -159,13 +191,26 @@ namespace GoblinXNA.Physics
         public ShapeType Shape
         {
             get { return shape; }
-            set { shape = value; }
+            set 
+            {
+                if (shape != value)
+                {
+                    shape = value;
+                    modified = true;
+                    shapeModified = true;
+                }
+            }
         }
 
         public List<float> ShapeData
         {
             get { return shapeData; }
-            set { shapeData = value; }
+            set 
+            { 
+                shapeData = value;
+                modified = true;
+                shapeModified = true;
+            }
         }
 
         public Vector3 MomentOfInertia
@@ -175,17 +220,6 @@ namespace GoblinXNA.Physics
             {
                 momentOfInertia = value;
                 modified = true;
-            }
-        }
-
-        public List<Vector3> Vertices
-        {
-            get
-            {
-                if (model != null)
-                    return model.Vertices;
-                else
-                    return new List<Vector3>();
             }
         }
 
@@ -245,6 +279,12 @@ namespace GoblinXNA.Physics
         {
             get { return modified; }
             set { modified = value; }
+        }
+
+        public bool ShapeModified
+        {
+            get { return shapeModified; }
+            set { shapeModified = value; }
         }
 
         public Matrix PhysicsWorldTransform
@@ -307,6 +347,95 @@ namespace GoblinXNA.Physics
                 angularDamping = value;
                 modified = true;
             }
+        }
+
+        #endregion
+
+        #region Public Methods
+
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("pickable", pickable.ToString());
+            xmlNode.SetAttribute("collidable", collidable.ToString());
+            xmlNode.SetAttribute("interactable", interactable.ToString());
+            xmlNode.SetAttribute("applyGravity", applyGravity.ToString());
+            xmlNode.SetAttribute("manipulatable", manipulatable.ToString());
+            xmlNode.SetAttribute("neverDeactivate", neverDeactivate.ToString());
+
+            if(collisionGroupID != 0)
+                xmlNode.SetAttribute("collisionGroupID", collisionGroupID.ToString());
+            if (materialName.Length > 0)
+                xmlNode.SetAttribute("materialName", materialName);
+            xmlNode.SetAttribute("mass", mass.ToString());
+            xmlNode.SetAttribute("shapeType", shape.ToString());
+            if (shapeData.Count > 0)
+            {
+                String shapeDataStr = "" + shapeData[0];
+                for (int i = 1; i < shapeData.Count; ++i)
+                    shapeDataStr += ", " + shapeData[i];
+                xmlNode.SetAttribute("shapeData", shapeDataStr);
+            }
+
+            if (!momentOfInertia.Equals(Vector3.Zero))
+                xmlNode.SetAttribute("momentOfInertia", momentOfInertia.ToString());
+            if (!centerOfMass.Equals(Vector3.Zero))
+                xmlNode.SetAttribute("centerOfMass", centerOfMass.ToString());
+            if (!initialLinearVelocity.Equals(Vector3.Zero))
+                xmlNode.SetAttribute("initialLinearVelocity", initialLinearVelocity.ToString());
+            if (!initialAngularVelocity.Equals(Vector3.Zero))
+                xmlNode.SetAttribute("initialAngularVelocity", initialAngularVelocity.ToString());
+            if (linearDamping != 0)
+                xmlNode.SetAttribute("linearDamping", linearDamping.ToString());
+            if (!angularDamping.Equals(-Vector3.One))
+                xmlNode.SetAttribute("angularDamping", angularDamping.ToString());
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("pickable"))
+                pickable = bool.Parse(xmlNode.GetAttribute("pickable"));
+            if (xmlNode.HasAttribute("collidable"))
+                collidable = bool.Parse(xmlNode.GetAttribute("collidable"));
+            if (xmlNode.HasAttribute("interactable"))
+                interactable = bool.Parse(xmlNode.GetAttribute("interactable"));
+            if (xmlNode.HasAttribute("applyGravity"))
+                applyGravity = bool.Parse(xmlNode.GetAttribute("applyGravity"));
+            if (xmlNode.HasAttribute("manipulatable"))
+                manipulatable = bool.Parse(xmlNode.GetAttribute("manipulatable"));
+            if (xmlNode.HasAttribute("neverDeactivate"))
+                neverDeactivate = bool.Parse(xmlNode.GetAttribute("neverDeactivate"));
+
+            if (xmlNode.HasAttribute("collisionGroupID"))
+                collisionGroupID = int.Parse(xmlNode.GetAttribute("collisionGroupID"));
+            if (xmlNode.HasAttribute("materialName"))
+                materialName = xmlNode.GetAttribute("materialName");
+            if (xmlNode.HasAttribute("mass"))
+                mass = float.Parse(xmlNode.GetAttribute("mass"));
+            if(xmlNode.HasAttribute("shapeType"))
+                shape = (ShapeType)Enum.Parse(typeof(ShapeType), xmlNode.GetAttribute("shapeType"));
+            if (xmlNode.HasAttribute("shapeData"))
+            {
+                String[] shapeDataStrs = xmlNode.GetAttribute("shapeData").Split(',');
+                foreach (String data in shapeDataStrs)
+                    shapeData.Add(float.Parse(data));
+            }
+
+            if (xmlNode.HasAttribute("momentOfInertia"))
+                momentOfInertia = Vector3Helper.FromString(xmlNode.GetAttribute("momentOfInertia"));
+            if (xmlNode.HasAttribute("centerOfMass"))
+                centerOfMass = Vector3Helper.FromString(xmlNode.GetAttribute("centerOfMass"));
+            if (xmlNode.HasAttribute("initialLinearVelocity"))
+                initialLinearVelocity = Vector3Helper.FromString(xmlNode.GetAttribute("initialLinearVelocity"));
+            if (xmlNode.HasAttribute("initialAngularVelocity"))
+                initialAngularVelocity = Vector3Helper.FromString(xmlNode.GetAttribute("initialAngularVelocity"));
+            if(xmlNode.HasAttribute("linearDamping"))
+                linearDamping = float.Parse(xmlNode.GetAttribute("linearDamping"));
+            if (xmlNode.HasAttribute("angularDamping"))
+                angularDamping = Vector3Helper.FromString(xmlNode.GetAttribute("angularDamping"));
         }
 
         #endregion

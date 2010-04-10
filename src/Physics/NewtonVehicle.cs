@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,10 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
@@ -71,6 +73,7 @@ namespace GoblinXNA.Physics
         protected bool manipulatable;
         protected bool neverDeactivate;
         protected bool modified;
+        protected bool shapeModified;
         protected Matrix physicsWorldTransform;
         protected Matrix initialWorldTransform;
         protected Matrix compoundInitialWorldTransform;
@@ -81,7 +84,9 @@ namespace GoblinXNA.Physics
 
         protected NewtonTire[] tires;
         protected Dictionary<IntPtr, TireID> tireTable;
-        protected IModel bodyModel;
+
+        protected IModel model;
+        protected IPhysicsMeshProvider meshProvider;
 
         protected IntPtr joint;
         protected Newton.NewtonSetTransform transformCallback;
@@ -109,6 +114,7 @@ namespace GoblinXNA.Physics
             applyGravity = true;
             neverDeactivate = false;
             modified = false;
+            shapeModified = false;
 
             physicsWorldTransform = Matrix.Identity;
             initialWorldTransform = Matrix.Identity;
@@ -123,7 +129,6 @@ namespace GoblinXNA.Physics
             tires = new NewtonTire[4];
             for(int i = 0; i < tires.Length; i++)
                 tires[i] = null;
-            bodyModel = null;
             tireTable = new Dictionary<IntPtr, TireID>();
 
             joint = IntPtr.Zero;
@@ -132,19 +137,38 @@ namespace GoblinXNA.Physics
             tireUpdate = null;
         }
 
+        public NewtonVehicle() : this(null) { }
+
         #endregion
 
         #region Properties
 
         public IModel Model
         {
-            get { return bodyModel; }
-            set { bodyModel = value; }
+            get { return model; }
+            set
+            {
+                model = value;
+                modified = true;
+                shapeModified = true;
+            }
+        }
+
+        public IPhysicsMeshProvider MeshProvider
+        {
+            get { return meshProvider; }
+            set 
+            {
+                meshProvider = value;
+                modified = true;
+                shapeModified = true;
+            }
         }
 
         public Object Container
         {
             get { return container; }
+            set { container = value; }
         }
 
         public int CollisionGroupID
@@ -198,17 +222,6 @@ namespace GoblinXNA.Physics
             {
                 momentOfInertia = value;
                 modified = true;
-            }
-        }
-
-        public List<Vector3> Vertices
-        {
-            get
-            {
-                if (bodyModel != null)
-                    return bodyModel.Vertices;
-                else
-                    return new List<Vector3>();
             }
         }
 
@@ -268,6 +281,12 @@ namespace GoblinXNA.Physics
         {
             get { return modified; }
             set { modified = value; }
+        }
+
+        public bool ShapeModified
+        {
+            get { return shapeModified; }
+            set { shapeModified = value; }
         }
 
         public Matrix PhysicsWorldTransform
@@ -429,7 +448,24 @@ namespace GoblinXNA.Physics
             tireTable.Add(newtonTireID, (TireID)Enum.ToObject(typeof(TireID), index));
         }
 
-        #endregion
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
+            xmlNode.SetAttribute("pickable", pickable.ToString());
+            xmlNode.SetAttribute("collidable", collidable.ToString());
+            xmlNode.SetAttribute("interactable", interactable.ToString());
+            xmlNode.SetAttribute("applyGravity", applyGravity.ToString());
+            xmlNode.SetAttribute("manipulatable", manipulatable.ToString());
+            xmlNode.SetAttribute("neverDeactivate", neverDeactivate.ToString());
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+        }
+
+        #endregion
     }
 }

@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,17 +62,10 @@ namespace GoblinXNA.Device.Vision.Marker
         private List<String> multiMarkerIDs;
         private int multiMarkerID;
 
-        private int img_width;
-        private int img_height;
-        private float camera_fx;
-        private float camera_fy;
-
         private Matrix lastMarkerMatrix;
         private double max_marker_error;
         private double max_track_error;
 
-        private int[] imageData;
-        private IntPtr cam_image;
         private Matrix camProjMat;
 
         private double cameraFovX;
@@ -81,8 +74,6 @@ namespace GoblinXNA.Device.Vision.Marker
         private bool initialized;
 
         private String configFilename;
-        private String imageFilename;
-        private bool staticImageProcessed;
 
         private float zNearPlane;
         private float zFarPlane;
@@ -109,6 +100,8 @@ namespace GoblinXNA.Device.Vision.Marker
         private IntPtr multiHideTexturePtr;
         private IntPtr multiErrorPtr;
 
+        private bool detectAdditional;
+
         #endregion
 
         #region Constructors
@@ -118,13 +111,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// </summary>
         public ALVARMarkerTracker()
         {
-            img_width = 0;
-            img_height = 0;
-            camera_fx = 0;
-            camera_fy = 0;
             configFilename = "";
-            imageFilename = "";
-            staticImageProcessed = false;
 
             lastMarkerMatrix = Matrix.Identity;
             max_marker_error = 0.08;
@@ -133,9 +120,7 @@ namespace GoblinXNA.Device.Vision.Marker
             cameraFovX = 0;
             cameraFovY = 0;
 
-            cam_image = IntPtr.Zero;
             camProjMat = Matrix.Identity;
-            imageData = null;
             initialized = false;
 
             zNearPlane = 10;
@@ -170,21 +155,13 @@ namespace GoblinXNA.Device.Vision.Marker
             multiPosePtr = IntPtr.Zero;
             multiHideTexturePtr = IntPtr.Zero;
             multiErrorPtr = IntPtr.Zero;
+
+            detectAdditional = false;
         }
 
         #endregion
 
         #region Properties
-
-        public float CameraFx
-        {
-            get { return camera_fx; }
-        }
-
-        public float CameraFy
-        {
-            get { return camera_fy; }
-        }
 
         /// <summary>
         /// Gets the camera's horizontal field of view in radians.
@@ -200,16 +177,6 @@ namespace GoblinXNA.Device.Vision.Marker
         public double CameraFovY
         {
             get { return cameraFovY; }
-        }
-
-        public int ImageWidth
-        {
-            get { return img_width; }
-        }
-
-        public int ImageHeight
-        {
-            get { return img_height; }
         }
 
         /// <summary>
@@ -230,76 +197,22 @@ namespace GoblinXNA.Device.Vision.Marker
             set { max_track_error = value; }
         }
 
-        public bool Initialized
-        {
-            get { return initialized; }
-        }
-
         /// <summary>
-        /// Gets or sets the static image used for tracking. JPEG, GIF, and BMP formats are
-        /// supported.
+        /// Default value is false.
         /// </summary>
-        /// <remarks>
-        /// You need to set this value if you want to perform marker tracking using a
-        /// static image instead of a live video stream. 
-        /// </remarks>
-        /// <exception cref="GoblinException">Either if tracker is not initialized, or if the
-        /// image format is not supported.</exception>
-        public String StaticImageFile
+        public bool DetectAdditional
         {
-            get { return imageFilename; }
+            get { return detectAdditional; }
             set
             {
-                if (!value.Equals(imageFilename))
-                {
-                    imageFilename = value;
-
-                    // make sure we are initialized
-                    if (!initialized)
-                        throw new MarkerException("ALVARTracker is not initialized. Call InitTracker(...)");
-
-                    String fileType = Path.GetExtension(imageFilename);
-
-                    int bpp = 0;
-                    int w = 0, h = 0;
-
-                    if (fileType.Equals(".jpg") || fileType.Equals(".jpeg") ||
-                        fileType.Equals(".gif") || fileType.Equals(".bmp"))
-                    {
-                        Bitmap image = new Bitmap(imageFilename);
-
-                        w = image.Width;
-                        h = image.Height;
-
-                        BitmapData data = image.LockBits(
-                            new System.Drawing.Rectangle(0, 0, w, h),
-                            ImageLockMode.ReadOnly, image.PixelFormat);
-
-                        imageData = new int[w * h];
-                        int imageSize = w * h * 3;
-                        cam_image = Marshal.AllocHGlobal(imageSize);
-
-                        ReadBmpData(data, cam_image, imageData, w, h);
-
-                        image.UnlockBits(data);
-                    }
-                    else
-                        throw new MarkerException("We currently do not support reading images other " +
-                            "than .jpg, .jpeg, .gif, and .bmp format");
-
-                    // if the image size is different from the previously configured size, then we
-                    // need to re-initialize the ARTag tracker. 
-                    if ((w != img_width) || (h != img_height))
-                        ALVARDllBridge.alvar_init_camera(configFilename, w, h);
-
-                    staticImageProcessed = false;
-                }
+                detectAdditional = value;
+                ALVARDllBridge.alvar_set_detect_additional(detectAdditional);
             }
         }
 
-        public int[] StaticImage
+        public bool Initialized
         {
-            get { return imageData; }
+            get { return initialized; }
         }
 
         public Matrix CameraProjection
@@ -411,6 +324,8 @@ namespace GoblinXNA.Device.Vision.Marker
 
             int markerRes = 5;
             double markerSize = 1, margin = 2;
+            int img_width = 0;
+            int img_height = 0;
             if (configs.Length == 4)
             {
                 try
@@ -498,7 +413,22 @@ namespace GoblinXNA.Device.Vision.Marker
                 if (!(markerConfigs[0] is int))
                     throw new MarkerException(GetAssocMarkerUsage());
                 else
+                {
                     id = markerConfigs[0];
+                    int markerID = (int)markerConfigs[0];
+                    singleMarkerIDs.Add(markerID);
+                    if (hideMarkers && hideMarkerConfigured)
+                        if ((hideList == null) || (hideList != null && hideList.Contains(markerConfigs[0])))
+                            hideTextureMap.Add(markerID, new int[textureSize]);
+
+                    singleMarkerIDsPtr = Marshal.AllocHGlobal(singleMarkerIDs.Count * sizeof(int));
+                    unsafe
+                    {
+                        int* dest = (int*)singleMarkerIDsPtr;
+                        for (int i = 0; i < singleMarkerIDs.Count; i++)
+                            *(dest + i) = singleMarkerIDs[i];
+                    }
+                }
             }
             else
             {
@@ -560,34 +490,10 @@ namespace GoblinXNA.Device.Vision.Marker
         }
 
         /// <summary>
-        /// Processes a static image set in the property.
-        /// </summary>
-        public void ProcessImage()
-        {
-            if (!staticImageProcessed)
-            {
-                if (cam_image == IntPtr.Zero)
-                    throw new MarkerException("You either forgot to add your video capture " +
-                        "device or didn't set the static image file");
-
-                int interestedMarkerNums = singleMarkerIDs.Count;
-                int foundMarkerNums = 0;
-
-                ALVARDllBridge.alvar_detect_marker(3, "RGB", "RGB", cam_image, 
-                    singleMarkerIDsPtr, ref foundMarkerNums, ref interestedMarkerNums,
-                    max_marker_error, max_track_error);
-
-                Process(interestedMarkerNums, foundMarkerNums);
-
-                staticImageProcessed = true;
-            }
-        }
-
-        /// <summary>
         /// Processes the video image captured from an initialized video capture device. 
         /// </summary>
         /// <param name="captureDevice">An initialized video capture device</param>
-        public void ProcessImage(IVideoCapture captureDevice)
+        public void ProcessImage(IVideoCapture captureDevice, IntPtr imagePtr)
         {
             String channelSeq = "";
             switch(captureDevice.Format)
@@ -614,7 +520,7 @@ namespace GoblinXNA.Device.Vision.Marker
             int foundMarkerNums = 0;
 
             ALVARDllBridge.alvar_detect_marker((captureDevice.GrayScale) ? 1 : 3, "RGB", channelSeq, 
-                captureDevice.ImagePtr, singleMarkerIDsPtr, ref foundMarkerNums, ref interestedMarkerNums,
+                imagePtr, singleMarkerIDsPtr, ref foundMarkerNums, ref interestedMarkerNums,
                 max_marker_error, max_track_error);
 
             Process(interestedMarkerNums, foundMarkerNums);
@@ -639,19 +545,7 @@ namespace GoblinXNA.Device.Vision.Marker
                 found = detectedMarkers.ContainsKey(id);
                 if (found)
                 {
-                    if (State.IsMultiCore)
-                    {
-                        try
-                        {
-                            lastMarkerMatrix = detectedMarkers[id];
-                        }
-                        catch (Exception)
-                        {
-                            found = false;
-                        }
-                    }
-                    else
-                        lastMarkerMatrix = detectedMarkers[id];
+                    lastMarkerMatrix = detectedMarkers[id];
                 }
             }
             else
@@ -663,19 +557,7 @@ namespace GoblinXNA.Device.Vision.Marker
                 found = detectedMultiMarkers.ContainsKey(id);
                 if (found)
                 {
-                    if (State.IsMultiCore)
-                    {
-                        try
-                        {
-                            lastMarkerMatrix = detectedMultiMarkers[id];
-                        }
-                        catch (Exception)
-                        {
-                            found = false;
-                        }
-                    }
-                    else
-                        lastMarkerMatrix = detectedMultiMarkers[id];
+                    lastMarkerMatrix = detectedMultiMarkers[id];
                 }
             }
 
@@ -718,40 +600,6 @@ namespace GoblinXNA.Device.Vision.Marker
         {
             return "Usage: AssociateMarker(int markerID) or AssociateMarker(int markerID, " +
                 "double markerSize) or AssociateMarker(String multiMarkerConfig, int[] ids)";
-        }
-
-        /// <summary>
-        /// A helper function that extracts the image pixels stored in Bitmap instance to an array
-        /// of integers as well as copy them to the memory location pointed by 'cam_image'.
-        /// </summary>
-        /// <param name="bmpDataSource"></param>
-        /// <param name="cam_image"></param>
-        /// <param name="imageData"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        private void ReadBmpData(BitmapData bmpDataSource, IntPtr cam_image, int[] imageData, int width,
-            int height)
-        {
-            unsafe
-            {
-                byte* src = (byte*)bmpDataSource.Scan0;
-                byte* dst = (byte*)cam_image;
-                for (int i = 0; i < height; i++)
-                {
-                    for (int j = 0; j < width * 3; j += 3)
-                    {
-                        *(dst + j) = *(src + j);
-                        *(dst + j + 1) = *(src + j + 1);
-                        *(dst + j + 2) = *(src + j + 2);
-
-                        imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                            (*(src + j + 1) << 8) | *(src + j);
-                    }
-
-                    src += bmpDataSource.Stride;
-                    dst += (width * 3);
-                }
-            }
         }
 
         private void Process(int interestedMarkerNums, int foundMarkerNums)

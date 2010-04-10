@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,8 @@ using System.Drawing;
 using System.Text;
 using System.Runtime.InteropServices;
 
+using Microsoft.Xna.Framework.Graphics;
+
 using GoblinXNA.Helpers;
 using GoblinXNA.Device.Capture.PointGrey;
 
@@ -61,14 +63,12 @@ namespace GoblinXNA.Device.Capture
 
         private int cameraWidth;
         private int cameraHeight;
-        private int imageSize;
-        private IntPtr cameraImage;
         private bool grayscale;
         private bool cameraInitialized;
         private Resolution resolution;
         private FrameRate frameRate;
         private ImageFormat format;
-        private int[] imageData;
+        private IResizer resizer;
 
         /// <summary>
         /// Used to count the number of times it failed to capture an image
@@ -94,7 +94,6 @@ namespace GoblinXNA.Device.Capture
 
             cameraWidth = 0;
             cameraHeight = 0;
-            cameraImage = IntPtr.Zero;
             grayscale = false;
 
             failureCount = 0;
@@ -135,14 +134,20 @@ namespace GoblinXNA.Device.Capture
             get { return cameraInitialized; }
         }
 
-        public IntPtr ImagePtr
-        {
-            get { return cameraImage; }
-        }
-
         public ImageFormat Format
         {
             get { return format; }
+        }
+
+        public IResizer MarkerTrackingImageResizer
+        {
+            get { return resizer; }
+            set { resizer = value; }
+        }
+
+        public SpriteEffects RenderFormat
+        {
+            get { return SpriteEffects.None; }
         }
 
         /// <summary>
@@ -217,23 +222,6 @@ namespace GoblinXNA.Device.Capture
                     break;
             }
 
-            imageData = new int[cameraWidth * cameraHeight];
-            imageSize = cameraWidth * cameraHeight;
-            if (!grayscale)
-            {
-                switch (format)
-                {
-                    case ImageFormat.GRAYSCALE_8: break;
-                    case ImageFormat.R5G6B5_16: imageSize *= 2; break;
-                    case ImageFormat.B8G8R8_24:
-                    case ImageFormat.R8G8B8_24: imageSize *= 3; break;
-                    case ImageFormat.R8G8B8A8_32:
-                    case ImageFormat.B8G8R8A8_32:
-                    case ImageFormat.A8B8G8R8_32: imageSize *= 4; break;
-                }
-            }
-            cameraImage = Marshal.AllocHGlobal(imageSize);
-
             flyCapture = new PGRFlyCapture();
 
             PGRFlyModule.FlyCaptureFrameRate flyFrameRate =
@@ -288,17 +276,17 @@ namespace GoblinXNA.Device.Capture
                     break;
             }
 
-            if (!this.flyVideoMode.Equals(PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_ANY))
-                flyVideoMode = this.flyVideoMode;
+            //if (!this.flyVideoMode.Equals(PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_ANY))
+            //    flyVideoMode = this.flyVideoMode;
 
             flyCapture.Initialize(videoDeviceID, flyFrameRate, flyVideoMode, grayscale);
 
             cameraInitialized = true;
         }
 
-        public int[] GetImageTexture(bool returnImage, bool copyToImagePtr)
+        public void GetImageTexture(int[] returnImage, ref IntPtr imagePtr)
         {
-            PGRFlyModule.FlyCaptureImage flyImage = GetPGRFlyImage(cameraImage);
+            PGRFlyModule.FlyCaptureImage flyImage = GetPGRFlyImage(imagePtr);
 
             int B = 0, G = 1, R = 2;
             if (PGRCameraModel == PGRFlyModule.FlyCaptureCameraModel.FLYCAPTURE_DRAGONFLY2)
@@ -312,31 +300,33 @@ namespace GoblinXNA.Device.Capture
                 if (flyImage.pData != null)
                 {
                     failureCount = 0;
-                    if (copyToImagePtr)
+                    if (imagePtr != IntPtr.Zero)
                     {
                         switch (format)
                         {
                             case ImageFormat.R5G6B5_16:
+                                throw new GoblinException(format.ToString() + " is not supported");
                                 break;
                             case ImageFormat.B8G8R8_24:
                             case ImageFormat.R8G8B8_24:
-                                cameraImage = (IntPtr)flyImage.pData;
+                                imagePtr = (IntPtr)flyImage.pData;
                                 break;
                             case ImageFormat.A8B8G8R8_32:
                             case ImageFormat.B8G8R8A8_32:
                             case ImageFormat.R8G8B8A8_32:
+                                throw new GoblinException(format.ToString() + " is not supported");
                                 break;
                         }
                     }
 
-                    if (returnImage)
+                    if (returnImage != null)
                     {
                         int index = 0;
                         for (int i = 0; i < flyImage.iRows; i++)
                         {
                             for (int j = 0; j < flyImage.iRowInc; j += 3)
                             {
-                                imageData[i * flyImage.iCols + j / 3] =
+                                returnImage[i * flyImage.iCols + j / 3] =
                                     (*(flyImage.pData + index + j + R) << 16) |
                                     (*(flyImage.pData + index + j + G) << 8) |
                                     *(flyImage.pData + index + j + B);
@@ -357,8 +347,6 @@ namespace GoblinXNA.Device.Capture
                     }
                 }
             }
-
-            return imageData;
         }
 
         /// <summary>

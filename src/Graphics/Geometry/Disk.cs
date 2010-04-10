@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -46,6 +47,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class Disk : Model
     {
+        #region Constructors
+
         /// <summary>
         /// Creates a disk or annulus on the y = 0 plane. The disk has a radius of outer, and 
         /// contains a concentric circular hole with a radius of inner. If inner is 0, 
@@ -61,12 +64,29 @@ namespace GoblinXNA.Graphics.Geometry
         public Disk(float inner, float outer, int slices, bool twoSided)
             : base(CreateDisk(inner, outer, slices, 0, Math.PI * 2, twoSided))
         {
+            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + twoSided;
         }
 
         internal Disk(float inner, float outer, int slices, double start, double sweep, bool twoSided)
             : base(CreateDisk(inner, outer, slices, start, sweep, twoSided))
         {
+            // these are encoded in PartialDisk class
+            /*resourceName = "Disk";
+            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + start + ", " +
+                sweep + ", " + twoSided;*/
         }
+
+        public Disk(params String[] xmlParams)
+            : base(CreateDisk(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]), 0, Math.PI * 2,
+                int.Parse(xmlParams[2]), bool.Parse(xmlParams[3])))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2]
+                + ", " + xmlParams[3];
+        }
+
+        #endregion
+
+        #region Private Static Methods
 
         private static PrimitiveMesh CreateDisk(float inner, float outer, int slices, 
             double start, double sweep, bool twoSided)
@@ -202,5 +222,7 @@ namespace GoblinXNA.Graphics.Geometry
 
             return mesh;
         }
+
+        #endregion
     }
 }

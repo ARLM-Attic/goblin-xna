@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -46,6 +47,8 @@ namespace GoblinXNA.Graphics.Geometry
     /// </summary>
     public class Box : Model
     {
+        #region Constructors
+
         /// <summary>
         /// Create a box with the given dimensions.
         /// </summary>
@@ -55,6 +58,7 @@ namespace GoblinXNA.Graphics.Geometry
         public Box(float xdim, float ydim, float zdim)
             : base(CreateBox(xdim, ydim, zdim))
         {
+            primitiveShapeParameters = xdim + ", " + ydim + ", " + zdim;
         }
 
         /// <summary>
@@ -64,6 +68,7 @@ namespace GoblinXNA.Graphics.Geometry
         public Box(float length)
             : base(CreateBox(length, length, length))
         {
+            primitiveShapeParameters = length + ", " + length + ", " + length;
         }
 
         /// <summary>
@@ -73,7 +78,23 @@ namespace GoblinXNA.Graphics.Geometry
         public Box(Vector3 dimension)
             : base(CreateBox(dimension.X, dimension.Y, dimension.Z))
         {
+            primitiveShapeParameters = dimension.X + ", " + dimension.Y + ", " + dimension.Z;
         }
+
+        /// <summary>
+        /// Create a box from an XML input.
+        /// </summary>
+        /// <param name="xmlParams"></param>
+        public Box(params String[] xmlParams)
+            : base(CreateBox(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]),
+                float.Parse(xmlParams[2])))
+        {
+            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
+        }
+
+        #endregion
+
+        #region Private Static Method
 
         private static PrimitiveMesh CreateBox(float xdim, float ydim, float zdim)
         {
@@ -165,5 +186,7 @@ namespace GoblinXNA.Graphics.Geometry
 
             return mesh;
         }
+
+        #endregion
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 using Microsoft.Xna.Framework;
@@ -18,6 +17,9 @@ namespace GoblinXNA.Helpers
 
         public int Compare(GeometryNode x, GeometryNode y)
         {
+            if ((x == null) || (y == null))
+                return 0;
+
             double thisDist = Vector3.Distance(x.BoundingVolume.Center,
                 State.CameraTransform.Translation);
             double otherDist = Vector3.Distance(y.BoundingVolume.Center,

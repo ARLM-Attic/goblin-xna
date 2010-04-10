@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,42 +34,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-using Microsoft.Xna.Framework;
-
 namespace GoblinXNA.Physics
 {
-    /// <summary>
-    /// A delegate/callback function that defines what to do when two physics objects 
-    /// begin to contact.
-    /// </summary>
-    /// <param name="physObj1">One of the collided pair</param>
-    /// <param name="physObj2">The other of the collided pair</param>
-    public delegate void ContactBegin(IPhysicsObject physObj1, IPhysicsObject physObj2);
-
-    /// <summary>
-    /// A delegate/callback function that defines what to do when the contact proceeds 
-    /// between the two physics objects.
-    /// </summary>
-    /// <param name="contactPosition">The position of the contact between the two objects</param>
-    /// <param name="contactNormal">The normal of the contact</param>
-    /// <param name="contactSpeed">The speed of the contact</param>
-    /// <param name="colObj1ContactTangentSpeed">One of the collided pair's (physObj1 returned
-    /// from ContactBegin callback function) contact tangent speed.</param>
-    /// <param name="colObj2ContactTangentSpeed">The other of the collided pair's (physObj2 returned
-    /// from ContactBegin callback function) contact tangent speed.</param>
-    /// <param name="colObj1ContactTangentDirection">One of the collided pair's (physObj1 returned
-    /// from ContactBegin callback function) contact tangent direction.</param>
-    /// <param name="colObj2ContactTangentDirection">The other of the collided pair's (physObj1 returned
-    /// from ContactBegin callback function) contact tangent direction.</param>
-    public delegate void ContactProcess(Vector3 contactPosition, Vector3 contactNormal, float contactSpeed,
-        float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-        Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection);
-
-    /// <summary>
-    /// A delegate/callback function that defines what to do when the contact process ends.
-    /// </summary>
-    public delegate void ContactEnd();
-
     /// <summary>
     /// This class defines the physical material properties between two materials.
     /// </summary>
@@ -113,23 +79,5 @@ namespace GoblinXNA.Physics
         /// they no longer interpenetrate.
         /// </summary>
         float Softness { get; set; }
-
-        /// <summary>
-        /// Gets or sets the delegate/callback function called when contact begins 
-        /// between two materials.
-        /// </summary>
-        ContactBegin ContactBeginCallback { get; set; }
-
-        /// <summary>
-        /// Gets or sets the delegate/callback function called when contact proceeds 
-        /// between two materials.
-        /// </summary>
-        ContactProcess ContactProcessCallback { get; set; }
-
-        /// <summary>
-        /// Gets or sets the delegate/callback function called when contact ends 
-        /// between two materials.
-        /// </summary>
-        ContactEnd ContactEndCallback { get; set; }
     }
 }

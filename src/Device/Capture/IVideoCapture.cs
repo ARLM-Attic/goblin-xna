@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+
+using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA;
 
@@ -145,19 +147,23 @@ namespace GoblinXNA.Device.Capture
         ImageFormat Format { get; }
 
         /// <summary>
+        /// Gets or sets the image resizer for the image pointer passed to the marker tracking. You can pass
+        /// a different resolution to the marker tracking process from the resolution of the rendered video image
+        /// by setting this resizer. If not set, which is by default, then the same resolution from the rendered image
+        /// is used for the marker tracking. 
+        /// </summary>
+        IResizer MarkerTrackingImageResizer { get; set; }
+
+        /// <summary>
+        /// Gets the information whether certain image operation needs to be applied to the rendered
+        /// video image on the background.
+        /// </summary>
+        SpriteEffects RenderFormat { get; }
+
+        /// <summary>
         /// Gets whether the device is initialized.
         /// </summary>
         bool Initialized { get; }
-
-        /// <summary>
-        /// Gets the image pointer to the camera image. 
-        /// </summary>
-        /// <remarks>
-        /// This pointer is valid only if 'copyToImagePtr' parameter is set to true when
-        /// GetImageTexture(..) function is called. 
-        /// </remarks>
-        /// <see cref="GetImageTexture"/>
-        IntPtr ImagePtr { get; }
 
         /// <summary>
         /// Initializes the video capture device with the specific video and audio device ID,
@@ -187,17 +193,13 @@ namespace GoblinXNA.Device.Capture
         /// Gets an array of video image pixels in Microsoft.Xna.Framework.Graphics.SurfaceFormat.Bgr32 
         /// format. The size is CameraWidth * CameraHeight.
         /// </summary>
-        /// <param name="copyToImagePtr">Whether to copy the video image to the ImagePtr as well so that the
-        /// marker tracker library can use it to process the image and detect marker transformations</param>
-        /// <param name="returnImage">Whether to return the image in int[] format.</param>
-        /// <remarks>
-        /// Both 'returnImage' and 'copyToImagePtr' parameters are used for optimization. For example,
-        /// if there is no need to return the texture image for drawing background, then there is no
-        /// need to perform the conversion from the original format to int[] format (this can be 
-        /// computationally expensive). Same for the image pointer copy.
-        /// </remarks>
+        /// <param name="copyToImagePtr">The pointer where to copy the video image so that the
+        /// marker tracker library can use it to process the image and detect marker transformations.
+        /// Pass IntPtr.Zero if you don't need to get back the pointer.</param>
+        /// <param name="returnImage">An array of int in which the video pixels are copied to. Pass null
+        /// if you don't need the int[] image.</param>
         /// <returns></returns>
-        int[] GetImageTexture(bool returnImage, bool copyToImagePtr);
+        void GetImageTexture(int[] returnImage, ref IntPtr imagePtr);
 
         /// <summary>
         /// Disposes the video capture device.

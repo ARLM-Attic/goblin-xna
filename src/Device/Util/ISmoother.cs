@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
@@ -51,5 +51,18 @@ namespace GoblinXNA.Device.Util
         /// <param name="q">The original rotation</param>
         /// <param name="result">A smoothed/filterd matrix</param>
         void FilterMatrix(ref Vector3 p, ref Quaternion q, out Matrix result);
+
+        /// <summary>
+        /// Saves the information of this smoother to an XML element.
+        /// </summary>
+        /// <param name="xmlDoc">The XML document to be saved.</param>
+        /// <returns></returns>
+        XmlElement Save(XmlDocument xmlDoc);
+
+        /// <summary>
+        /// Loads the information of this smoother from an XML element.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        void Load(XmlElement xmlNode);
     }
 }

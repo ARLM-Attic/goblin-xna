@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ namespace GoblinXNA
     /// A time performance measure will be either printed on the console or to a file for the
     /// code block enclosed between Start() and Stop(string) method.
     /// </summary>
-    internal sealed class PerformanceChecker
+    public sealed class PerformanceChecker
     {
         private static double startTime;
         /// <summary>
@@ -61,7 +61,7 @@ namespace GoblinXNA
         /// <summary>
         /// Starts the performance measurement.
         /// </summary>
-        internal static void Start()
+        public static void Start()
         {
             startTime = DateTime.Now.TimeOfDay.TotalMilliseconds;
         }
@@ -70,7 +70,7 @@ namespace GoblinXNA
         /// Stops the performance measurement.
         /// </summary>
         /// <param name="identifier">A prefix id string added at the beginning of the printed message</param>
-        internal static void Stop(String identifier)
+        public static void Stop(String identifier)
         {
             double stopTime = DateTime.Now.TimeOfDay.TotalMilliseconds;
             if (Print)
@@ -79,7 +79,7 @@ namespace GoblinXNA
                 Log.Write(identifier + " - Timespan: " + (stopTime - startTime), Log.LogLevel.Log);
         }
 
-        internal static double Stop()
+        public static double Stop()
         {
             return DateTime.Now.TimeOfDay.TotalMilliseconds - startTime;
         }

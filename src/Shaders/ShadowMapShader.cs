@@ -22,7 +22,7 @@ namespace GoblinXNA.Shaders
     /// <summary>
     /// Shadow map shader
     /// </summary>
-    internal class ShadowMapShader : Shader
+    public class ShadowMapShader : Shader
     {
         #region Variables
         /// <summary>
@@ -348,7 +348,7 @@ namespace GoblinXNA.Shaders
         /// WorldMatrix and WorldViewProjMatrix up to date.
         /// </summary>
         /// <param name="setWorldMatrix">World matrix</param>
-        internal void UpdateGenerateShadowWorldMatrix(Matrix setWorldMatrix)
+        public void UpdateGenerateShadowWorldMatrix(Matrix setWorldMatrix)
         {
             world.SetValue(setWorldMatrix);
             WorldViewProjMatrix =
@@ -418,7 +418,7 @@ namespace GoblinXNA.Shaders
         /// we want to render in CalcShadows.
         /// </summary>
         /// <param name="setWorldMatrix">Set world matrix</param>
-        internal void UpdateCalcShadowWorldMatrix(Matrix setWorldMatrix)
+        public void UpdateCalcShadowWorldMatrix(Matrix setWorldMatrix)
         {
             world.SetValue(setWorldMatrix);
             this.WorldViewProjMatrix =

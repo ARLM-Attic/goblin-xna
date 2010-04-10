@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -67,10 +68,12 @@ namespace GoblinXNA.Physics
     /// </summary>
     public interface IPhysicsObject
     {
+        #region Properties
+
         /// <summary>
         /// Gets or sets the container that holds this IPhysicsObject.
         /// </summary>
-        Object Container { get; }
+        Object Container { get; set; }
 
         /// <summary>
         /// Gets or sets the collision group ID.
@@ -127,14 +130,14 @@ namespace GoblinXNA.Physics
         List<float> ShapeData { get; set; }
 
         /// <summary>
-        /// Gets all of the vertices included in the mesh for ConvexHull creation if necessarry.
-        /// </summary>
-        List<Vector3> Vertices { get; }
-
-        /// <summary>
         /// Gets or sets the actual geometry model associated with this physics object.
         /// </summary>
         IModel Model { get; set; }
+
+        /// <summary>
+        /// Gets or sets the mesh provider for physics simulation.
+        /// </summary>
+        IPhysicsMeshProvider MeshProvider { get; set; }
 
         /// <summary>
         /// Gets or sets whether this object can be picked.
@@ -176,6 +179,11 @@ namespace GoblinXNA.Physics
         bool Modified { get; set; }
 
         /// <summary>
+        /// Indicates whether the model shape has been changed.
+        /// </summary>
+        bool ShapeModified { get; set; }
+
+        /// <summary>
         /// Gets or sets the world transform retrieved from the physics engine after simulation.
         /// </summary>
         Matrix PhysicsWorldTransform { get; set; }
@@ -210,5 +218,24 @@ namespace GoblinXNA.Physics
         /// Gets or sets the angular damping coefficient.
         /// </summary>
         Vector3 AngularDamping { get; set; }
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Saves the information of this physics object to an XML element.
+        /// </summary>
+        /// <param name="xmlDoc">The XML document to be saved.</param>
+        /// <returns></returns>
+        XmlElement Save(XmlDocument xmlDoc);
+
+        /// <summary>
+        /// Loads the information of this physics object from an XML element.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        void Load(XmlElement xmlNode);
+
+        #endregion
     }
 }

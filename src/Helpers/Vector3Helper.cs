@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,101 +73,6 @@ namespace GoblinXNA.Helpers
             }
 
             return Vector3Helper.Get(x, y, z);
-        }
-
-        /// <summary>
-        /// Gets all of the transformed vertices that consist of the specified model mesh. 
-        /// 
-        /// The transformations, scale, and offset applied to the model mesh are applied to the raw vertex 
-        /// data extracted from the ModelMeshCollection class in order to provide the correctly 
-        /// transformed vertex positions.
-        /// </summary>
-        /// <param name="modelMesh">A collection of model mesh</param>
-        /// <param name="transforms">An array of transformations applied to each model mesh part</param>
-        /// <param name="scale">A scale applied to the entire model mesh</param>
-        /// <param name="offset">An offset applied to the entire model mesh</param>
-        /// <returns>A list of transformed vertices stored in Vector3 class</returns>
-        public static List<Vector3> GetVertexClouds(ModelMeshCollection modelMesh, Matrix[] transforms, 
-            Vector3 scale, Vector3 offset)
-        {
-            List<Vector3> points = new List<Vector3>();
-            bool needTransform = false;
-
-            Vector3 offsetTrans = offset* scale;
-
-            foreach (ModelMesh mesh in modelMesh)
-            {
-                // we don't want to apply redundant transformation if either of the matrix is an
-                // identity matrix or scale is 1 for all three dimensions
-                needTransform = !transforms[mesh.ParentBone.Index].Equals(Matrix.Identity);
-                needTransform = !scale.Equals(Vector3.One);
-                foreach (ModelMeshPart part in mesh.MeshParts)
-                {
-                    int stride = part.VertexStride;
-                    int numberv = part.NumVertices;
-                    byte[] data = new byte[stride * numberv];
-
-                    mesh.VertexBuffer.GetData<byte>(data);
-
-                    for (int ndx = 0; ndx < data.Length; ndx += stride)
-                    {
-                        float x = BitConverter.ToSingle(data, ndx);
-                        float y = BitConverter.ToSingle(data, ndx + 4);
-                        float z = BitConverter.ToSingle(data, ndx + 8);
-                        if (needTransform)
-                        {
-                            Vector3 point = Matrix.Multiply(Matrix.CreateTranslation(Vector3Helper.Get(x, y, z)),
-                                transforms[mesh.ParentBone.Index] * Matrix.CreateScale(scale)).Translation;
-
-                            x = point.X;
-                            y = point.Y;
-                            z = point.Z;
-                        }
-
-                        points.Add(Vector3Helper.Get(x + offsetTrans.X, y + offsetTrans.Y, z + offsetTrans.Z));
-                    }
-                }
-            }
-
-            return points;
-        }
-
-        /// <summary>
-        /// Gets all of the transformed vertices that consist of a primitive mesh.
-        /// </summary>
-        /// <param name="mesh">A primitive mesh</param>
-        /// <param name="scale">A scale applied to this primitive mesh</param>
-        /// <returns>A list of transformed vertices stored in Vector3 class</returns>
-        public static List<Vector3> GetVertexClouds(PrimitiveMesh mesh, Vector3 scale)
-        {
-            List<Vector3> points = new List<Vector3>();
-
-            int stride = mesh.VertexDeclaration.GetVertexStrideSize(0);
-            int numberv = mesh.NumberOfVertices;
-            byte[] data = new byte[stride * numberv];
-
-            mesh.VertexBuffer.GetData<byte>(data);
-
-            bool needTransform = !scale.Equals(Vector3.One);
-            for (int ndx = 0; ndx < data.Length; ndx += stride)
-            {
-                float x = BitConverter.ToSingle(data, ndx);
-                float y = BitConverter.ToSingle(data, ndx + 4);
-                float z = BitConverter.ToSingle(data, ndx + 8);
-                if (needTransform)
-                {
-                    Vector3 point = Matrix.Multiply(Matrix.CreateTranslation(Vector3Helper.Get(x, y, z)),
-                        Matrix.CreateScale(scale)).Translation;
-
-                    x = point.X;
-                    y = point.Y;
-                    z = point.Z;
-                }
-
-                points.Add(Vector3Helper.Get(x, y, z));
-            }
-
-            return points;
         }
 
         /// <summary>
@@ -262,6 +167,18 @@ namespace GoblinXNA.Helpers
         {
             float[] floats = { v3.X, v3.Y, v3.Z };
             return floats;
+        }
+
+        public static Vector3 FromString(String strVal)
+        {
+            Vector3 vec3 = Vector3.Zero;
+
+            String[] vals = strVal.Split(':', ' ', '}');
+            vec3.X = float.Parse(vals[1]);
+            vec3.Y = float.Parse(vals[3]);
+            vec3.Z = float.Parse(vals[5]);
+
+            return vec3;
         }
 
         /// <summary>

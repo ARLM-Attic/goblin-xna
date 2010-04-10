@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,10 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
@@ -45,7 +47,8 @@ namespace GoblinXNA.Network
     /// </summary>
     public class NetworkObject : INetworkObject
     {
-        #region Network Parameters
+        #region Member Fields
+
         protected bool readyToSend;
         protected bool hold;
         protected int sendFrequencyInHertz;
@@ -57,9 +60,11 @@ namespace GoblinXNA.Network
         protected bool hasChange;
         protected String name;
         protected int id;
+
         #endregion
 
         #region Constructors
+
         /// <summary>
         /// Creates a network object.
         /// </summary>
@@ -78,9 +83,13 @@ namespace GoblinXNA.Network
             ordered = true;
             reliable = true;
         }
+
+        public NetworkObject() : this("", -1) { }
+
         #endregion
 
         #region Properties
+
         public String Identifier
         {
             get { return (name.Equals("") ? "Node " + id : name); }
@@ -128,9 +137,11 @@ namespace GoblinXNA.Network
             get { return worldTransform; }
             set { worldTransform = value; }
         }
+
         #endregion
 
         #region Public Methods
+
         public byte[] GetMessage()
         {
             return MatrixHelper.ConvertToBytes(worldTransform);
@@ -141,6 +152,40 @@ namespace GoblinXNA.Network
             worldTransform = MatrixHelper.ConvertFromBytes(msg);
             hasChange = true;
         }
+
+        /// <summary>
+        /// Saves the information of this physics object to an XML element.
+        /// </summary>
+        /// <param name="xmlDoc">The XML document to be saved.</param>
+        /// <returns></returns>
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("reliable", reliable.ToString());
+            xmlNode.SetAttribute("ordered", ordered.ToString());
+            xmlNode.SetAttribute("hold", hold.ToString());
+            xmlNode.SetAttribute("sendFrequencyInHertz", sendFrequencyInHertz.ToString());
+
+            return xmlNode;
+        }
+
+        /// <summary>
+        /// Loads the information of this physics object from an XML element.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("reliable"))
+                reliable = bool.Parse(xmlNode.GetAttribute("reliable"));
+            if (xmlNode.HasAttribute("ordered"))
+                ordered = bool.Parse(xmlNode.GetAttribute("ordered"));
+            if (xmlNode.HasAttribute("hold"))
+                hold = bool.Parse(xmlNode.GetAttribute("hold"));
+            if (xmlNode.HasAttribute("sendFrequencyInHertz"))
+                sendFrequencyInHertz = int.Parse(xmlNode.GetAttribute("sendFrequencyInHertz"));
+        }
+
         #endregion
     }
 }

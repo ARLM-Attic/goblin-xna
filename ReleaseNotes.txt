@@ -1,45 +1,155 @@
-Version 3.3 (10/15/09) 
+Goblin XNA Release Notes
+
+Version 3.4 (4/7/10)
 
 
 Updates:
 
-1. Upgraded the underlining XNA framework from 3.0 to 3.1. 
+1. Inlcuded DShowNET.dll and Lidgren.Network.dll with the distribution, so you only need to download Netwon and
+   ALVAR or ARTag library now.
 
-2. Added support for ALVAR optical marker tracking library. Tutorial 8 now includes an example of using ALVAR.
+2. Added the GetScale(..) method to NewtonPhysics for getting the scale of a physics object.
 
-3. Added automatic marker array image and configuration generation tool (MarkerLayout) under tools directory.
+3. Added the NetConfig property to LidgrenServer and LidgrenClient classes, so that the user can manually configure
+   the networking settings (e.g., max number of connections allowed, max delay).
 
-4. Added State.DebugTextColor to specify the color of the debug texts such as FPS and triangle count.
+4. Added support for sensor data acquisition from Vuzix iWear Wrap 920 eyewear. See the updated iWearTracker class for 
+   details.
 
-5. Added DoneEvent event member to GoblinXNA.Helpers.Interpolator class so that the user can assign functions to be 
-   triggered when the interpolation finishes. (Has restriction on the usage. Please check API doc)
+5. Added ALVARWrapper1.3 under the wrappers directory to support the VTT ALVAR 1.3.0 release.
 
-6. Added support for implementing custom comparer for sorting the drawing order of transparent geometries. You can
-   now set Scene.TransparencyDrawOrderComparer to your custom comparer.
+6. Added the NullCapture class under the Device.Capture directory to support static images.
 
-7. Added 3D text drawing capability using Nuclex.Fonts library (http://nuclexframework.codeplex.com)
-   Now you can draw a 3D text using GoblinXNA.UI.UI3D.UI3DRenderer's Write3DText(...) functions. An
-   example is provided in Tutorial 9.  
+7. Added support to automatically detect whether Vuzix iWear VR920 or Wrap 920 eyewear is plugged in,
+   and to enable side-by-side stereo graphics format on the VGA adapter automatically.
 
-8. Added UI2DRenderer.FillPolygon(...) method for polygon drawing (concave polygon doesn't work yet).
+8. Added the DetectAdditional property to the ALVARMarkerTracker class.
 
-9. Finished G2DSpinner and G2DList implementation.
+9. Added Tutorial 14 to demonstrate skinned model animation.
 
-10. Added G2DSuggestField which is a text field that is capable of showing a suggestion list under the text field.
-    This new class is added to GoblinXNA.UI.UI2D.Fancy package.
+10. Partially finished scene loading and saving functionality. This is a work in progress: It handles simple scenes, 
+    but is not yet complete.
+
+11. Added the ability to save an ALVAR multimarker configuration in XML format by using the
+    MarkerLayout too: Specify an "xml" file extension when outputting the config file.
+
+12. Added PreTranslation and PostTranslation properties to the TransformNode class. Please see the API documentation 
+    for details.
 
 
 Bug Fixes:
 
-1. The lag of marker transformations relative to the displayed video image has been removed when 
+1. Fixed a problem with the physics engine add/removal process for geometry nodes when a SwitchNode is used to switch 
+   between different branches.  
+
+2. Fixed a Newton Game Dynamics joint re-addition problem.
+
+3. Fixed a bug in the DefaultTransparencyComparer class.
+
+4. Fixed a bug in single marker detection using the AssociateMarker(int) signature. Now the
+   MarkerNode(IMarkerTracker, int) signature will work as expected.
+
+5. Fixed texture mapping and transparent rendering problems for 3D models defined in .fbx and .x files.
+
+6. Fixed the minimum bounding box computation in Model.cs and triangle mesh calculation in
+   NewtonPhysics.cs for models with multiple model meshes and parts.
+
+7. Fixed a bug in the MarkerLayout tool. The lines that indicate the marker size are supposed to be status indicator
+   in the generated configuration .txt file. 
+
+8. Fixed a problem in assigning WorldTransformation directly to a TransformNode. 
+
+9. Fixed a bug in the TransformNode class for its multiplication ordering. Prior to v3.4, scale and rotation were 
+   performed in the wrong order. (This would have caused incorrect behavior only if the x, y, and z scale factors 
+   were not identical.) Starting in v3.4, the PreTranslation property was added, and PostTranslation was added as 
+   an alias for Translation.
+
+
+Changes:
+
+1. Modified Tutorial 12 to be able to handle scaling of the vehicle model.
+
+2. Modified Tutorial 13 to support side-by-side stereo for Vuzix iWear Wrap 920 eyewear. 
+
+3. Modified Tutorial 10 in accordance with the network handling code migration (see below).
+
+4. Moved all network handling code in the Scene class to the INetworkHandler implementation. This
+   makes it possible for a programmer who does not like how network messages are handled
+   in Goblin, to implement their own NetworkHandler to replace the default implementation. 
+
+5. Changed State.IsMultiCore to State.ThreadOption to allow a programmer to specify exactly what operations to 
+   multi-thread. 
+
+6. Modified the IVideoCapture interface and its implementations slightly.
+
+7. Removed the StaticImageFile property of the IMarkerTracker interface.
+
+8. Modified Tutorial 8 to include an example of performing tracking on a static image.
+
+9. Removed the MarkerBase class, and migrated all necessary functionality to the Scene class.
+
+10. Renamed PhysicsMaterial to NewtonMaterial, since the material properties apply
+    only to the NewtonPhysics implementation.
+
+11. Moved Newton-specific delegates and properties in IPhysicsMaterial to NewtonMaterial.
+
+12. Modified Tutorial 9 to account for the above changes.
+
+13. Removed the Vertices, Mesh, and Transforms properties from IModel interface, and replaced them
+    with IPhysicsMeshProvider to provide necessary mesh information for 
+    the physics engine to generate triangle meshes. As a result, the Model class now implements IPhysicsMeshProvider,
+    and NewtonPhysics uses the properties in this interface to create the triangle mesh. 
+    IPhysicsObject now has the new MeshProvider property.
+
+14. Removed the Vector3Helper.GetVertexClouds(...) methods.
+
+15. Modified the DirectShowCapture class, which handles video acquisition, increasing performance by removing
+    its middle-layer process. Note: There is still a problem with modifying camera resolution from the default. 
+    Use this class with caution!
+
+
+Version 3.3 (10/15/09)
+
+
+Updates:
+
+1. Upgraded the underlying XNA framework from 3.0 to 3.1. 
+
+2. Added support for the VTT ALVAR optical marker tracking library. Tutorial 8 now includes an example of using ALVAR.
+
+3. Added an automatic marker array image and configuration generation tool (MarkerLayout) under the tools directory.
+
+4. Added State.DebugTextColor to specify the color of debug text, such as FPS and triangle count.
+
+5. Added the DoneEvent event member to GoblinXNA.Helpers.Interpolator class so that the user can assign functions to be 
+   triggered when interpolation finishes. (Note the restriction on usage described in the API doc.)
+
+6. Added support for implementing a custom comparer for sorting the drawing order of transparent geometry. 
+   Scene.TransparencyDrawOrderComparer can now be set to a programmer-specified custom comparer.
+
+7. Added 3D text drawing capability using the Nuclex.Fonts library (http://nuclexframework.codeplex.com).
+   3D text can now be specified with the GoblinXNA.UI.UI3D.UI3DRenderer Write3DText(...) functions. An
+   example is provided in Tutorial 9.  
+
+8. Added the UI2DRenderer.FillPolygon(...) method for polygon drawing. (Note: Concave polygon does not work yet.)
+
+9. Finished the G2DSpinner and G2DList implementations.
+
+10. Added G2DSuggestField, a text field that is capable of showing a suggestion list under the text field.
+    This new class is added to the GoblinXNA.UI.UI2D.Fancy package.
+
+
+Bug Fixes:
+
+1. Fixed the problem that introduced extra lag for marker transformations relative to the displayed video image when 
    State.IsMultiCore is set to true.
 
-2. Fixed bounding volume computation of models that are not centered at the origin. This problem caused some models
-   to be clipped (not rendered) even though they are in the view frustum.
+2. Fixed the bounding volume computation of models that are not centered at the origin. This problem caused some models
+   to be clipped (not rendered) even when they were in the view frustum.
 
-3. Fixed G2DSlider not to function when it is not visible. 
+3. Fixed G2DSlider so that is does not function when it is not visible.
 
-4. Fixed bounds problem for cascaded G2DPanel component.
+4. Fixed the bounds problem for cascaded G2DPanel components.
 
 5. Added focus highlight and null character caret blinking for G2DTextField. Also, fixed the caret position display
    when HorizontalAlignment is set to other than Left.
@@ -49,89 +159,91 @@ Improvements:
 
 1. Improved transparency handling.
 
-2. Converted Vector3 calculations to inline in order to increase the computation speed on either Update and Draw path
-   and methods called frequently.
+2. Converted Vector3 calculations to inline in order to increase the computation speed on Update and Draw path
+   and methods that are called frequently.
 
-3. Optimized 2D shape & text drawing by deferring the actual drawing until UI2DRenderer.Flush() is called. Now you can
-   call UI2DRenderer's drawing functions either before or after base.Draw(..) function (It used to be that you have to
-   call the 2D drawing functions after base.Draw(..)). Now, if you call the 2D drawing functions after base.Draw(..),
-   then you will need to call UI2DRenderer.Flush() after all of your 2D drawing calls in order to display them on the
-   current frame. Otherwise, it will be deferred till the following frame. However, if you want to draw 2D shapes or
-   texts on top of the 2D UI widgets created using G2D objects, then you have to call your 2D drawing functions after
-   base.Draw(..). Otherwise, your 2D drawings will appear beneath the G2D objects.
+3. Optimized 2D shape and text drawing by deferring the actual drawing until UI2DRenderer.Flush() is called. Programmers
+   can now call the UI2DRenderer drawing functions either before or after the base.Draw(..) function.
+   (2D drawing functions formerly needed to be called after base.Draw(..)). Now, if 2D drawing functions
+   are called after base.Draw(..),
+   it will be necessary to call UI2DRenderer.Flush() after all 2D drawing calls to display them on the
+   current frame. Otherwise, 2D drawing functions will be deferred until the following frame. However, to draw 2D shapes or
+   text on top of 2D UI widgets created using G2D objects, 2D drawing functions must be called after
+   base.Draw(..). Otherwise, the 2D drawing primitives will appear beneath the G2D objects.
 
 
 Changes:
 
-1. When a Node is added to a BranchNode subclasses through AddChild, it used to override the Enabled property of the
-   added Node to be the same as its parent's Enabled property value, but this is changed so that it won't override.
+1. Changed the behavior of adding a Node to a BranchNode subclass through AddChild, so that it no longer overrides the Enabled property of the
+   added Node to be the same as its parent's Enabled property value.
 
-2. Removed the GoblinXNA.UI.Events package, and converted all of the listener based event triggering implementations
-   to C# 'event' based implementation. This change removes the neccessity of creating multiple internal classes to
-   handle events and needs to create static member variables. Also, this is more intuitive in C# environment to use
-   event properties instead of Java-like listener implementation.
+2. Removed the GoblinXNA.UI.Events package, and converted all listener-based event triggering implementations
+   to C# 'event'-based implementations. This change eliminates the neccessity of creating multiple internal classes to
+   handle events and the need to create static member variables. Also, it is more intuitive in C# to use
+   event properties instead of Java-like listener implementations.
 
 3. Modified the GenericInput class for easier and more intuitive navigation using mouse-dragging.
 
-4. The constant strings in InputMapper and DeviceEnumerator are removed. Please use the Identifier property
+4. Removed the constant strings in InputMapper and DeviceEnumerator. Please use the Identifier property
    of each InputDevice or InputDevice_6DOF classes to specify the device name (e.g., use 
-   MouseInput.Instance.Identifier instead of InputMapper.Mouse to get the mouse device name)
+   MouseInput.Instance.Identifier instead of InputMapper.Mouse to get the mouse device name).
 
 
 Version 3.2 (4/24/09)
 
 
-1. Added ImageFormat enum in IVideoCapture class that specifies the format of ImagePtr property, which
-   will be passed to the marker tracker library. ImageFormat parameter is added to the InitVideoCapture(...)
-   function. Prior to this change, the format of ImagePtr was always R8G8B8_24 format which works for
+1. Added the ImageFormat enum in the IVideoCapture class that specifies the format of the ImagePtr property, which
+   will be passed to the marker tracker library. Added the ImageFormat parameter to the InitVideoCapture(...)
+   function. Prior to this change, the format of ImagePtr was always the R8G8B8_24 format, which works for
    ARTag.
 
-2. Removed audioDeviceID parameter from IVideoCapture's InitVideoCapture(...) function since it's unlikely
-   that anyone will use the audio input that comes with the webcam. Also, if you see the discussion post,
-   it puts weird restriction on the resolution of the video device when audio device is used, so it's more
+2. Removed the audioDeviceID parameter from the IVideoCapture InitVideoCapture(...) function, since it is unlikely
+   that anyone will use the audio input that comes with the webcam. Also, as mentioned in the discussion post,
+   this put a weird restriction on the resolution of the video device when audio device was used, so it was more
    harmful than useful to have the audioDeviceID parameter.
 
-3. Changed MarkerNode constructors' last parameter's type from "params String[]" to "params Object[]".
+3. Changed the MarkerNode constructor last parameter type from "params String[]" to "params Object[]".
 
-4. GenericInput, KeyboardInput, MouseInput, GPS, InterSense, and InputMapper classes are now singleton 
-   classes, so you should use the Instance property to access their instantiations. 
+4. Modified the GenericInput, KeyboardInput, MouseInput, GPS, InterSense, and InputMapper classes so that they are now singleton 
+   Classes. The Instance property should now be used to access their instantiations. 
 
-5. Fixed tutorial 11 problem, and modified tutorial 8 to match the changes listed in 1 and 2.
+5. Fixed a problem with Tutorial 11, and modified Tutorial 8 to match changes 1 and 2 listed above.
 
-6. Added a "tools" folder, and the visual debugging tool (SceneGraphDisplay) is included. 
+6. Added a "tools" folder, and included in it the SceneGraphDisplay visual debugging tool. 
 
-7. GPS and InterSense classes are not automatically initialized by the InputMapper class anymore, so you
-   need to create their instance and initialize them yourself, and add them to InputMapper class through 
-   InputMapper.AddInputDevice(...) or InputMapper.Add6DOFInputDevice(...) functions if you want to use either 
-   InterSense or GPS device. After you add them, make sure to call InputMapper.Reenumerate() function. 
+7. Modified the InputMapper class so that it no longer automatically initializes the GPS and InterSense classes.
+   Programmers that want to use either the GPS or InterSense classes will need to create instances of
+   these classes, initialize them, and add them to the InputMapper class through the 
+   InputMapper.AddInputDevice(...) or InputMapper.Add6DOFInputDevice(...) functions. After adding them,
+   it is necessary to call the InputMapper.Reenumerate() function. 
 
-8. Due to the changes in 7, you don't need the InterSenseEnable, InterSenseHost, or InterSensePort setting
-   variables in the setting file to use InterSense anymore. Instead, you should directly pass those parameters
-   (host name and port number) to InterSense constructor if you want to connect to it through network server.
+8. Due to the changes listed above (#7), it will no longer be necessary to have the
+   InterSenseEnable, InterSenseHost, or InterSensePort setting
+   variables in the setting file to use an InterSense tracker. Instead,  these parameters host name and port number)
+   Should be passed to the InterSense constructor to connect to it through the network server.
 
-9. Added VUZIX's iWear VR920 (which is a stereoscopic display with orientation tracking) support, and the 
-   classes can be found in GoblinXNA.Device.iWear package.
+9. Added support for Vuzix iWear VR920 eyewear (a stereoscopic head-worn display with built-in orientation tracking). 
+   The classes are in the GoblinXNA.Device.iWear package.
 
-10. Removed InputDeviceDriver class since it's not used anymore.
+10. Removed the InputDeviceDriver class, since it is no longer used.
 
-11. Fixed undeterministic behavior when adding nodes. If a node is added to the scene graph while the scene
-    graph is being traversed, it can cause undeterministic behavior. This problem has been fixed.
+11. Fixed nondeterministic behavior caused when adding nodes to the scene graph while the scene
+    graph is being traversed.
 
-12. Added GetClosestPoint(..) method in NewtonPhysics.
+12. Added the GetClosestPoint(..) method to NewtonPhysics.
 
-13. Added additional placement options for Notifier class. Now it allows custom starting location and
-    transition direction. 
+13. Added additional placement options for the Notifier class to support a custom starting location and transition direction. 
    
-14. IMarkerTracker interface now requires ZNearPlane and ZFarPlane property.
+14. Modified the IMarkerTracker interface to require the ZNearPlane and ZFarPlane properties.
 
-15. Added tutorial 13 for iWear VR920 stereo demo.
+15. Added tutorial 13 to demonstrate the Vuzix iWear VR920 eyewear stereo mode.
 
 16. Added LeftEyeVideoID, RightEyeVideoID, LeftEyeVideoImageShift, and RightEyeVideoImageShift properties 
-    to Scene class in order to support stereo video overlay.
+    to the Scene class to support stereo video overlay.
 
-17. Added VideoVisibleArea property to Scene class so that the visible area of the video image rendered on the
-    background can be modified. Be default, it rendres the entire video image when ShowCameraImage is set to
-    true.
+17. Added the VideoVisibleArea property to the Scene class to support modifying the visible area of the
+    video image rendered on the background. By default, it renders the entire video image when
+    ShowCameraImage is set to true.
 
 18. Fixed re-addition of Newton joints when RestartSimulation() is called in NewtonPhysics. 
 
@@ -140,87 +252,83 @@ Version 3.2 (4/24/09)
 Version 3.1 (2/18/09)
 
 
-1. Addition of Tutorial 12 that demonstrates advanced physics functionalities including joint
+1. Added Tutorial 12 to demonstrate advanced physics functionality, including joint
    physics and vehicle physics simulation.
 
 
-2. Significant structural and design changes for video capturing and marker tracking for better
+2. Made significant structural and design changes for video capturing and marker tracking for better
    flexibility and extensibility.
 
-   a) Point Grey (PGRFly) related classes are moved under GoblinXNA.Device.Capture.PointGrey package.
+   a) Moved Point Grey (PGRFly)-related classes under the GoblinXNA.Device.Capture.PointGrey package.
 
-   b) Marker tracking related utility classes are moved from GoblinXNA.Device.Vision.Util to
+   b) Moved marker tracking-related utility classes from GoblinXNA.Device.Vision.Util to
       GoblinXNA.Device.Util.
 
-   c) VideoCapture class is now gone. Instead, IVideoCapture interface is added and each different
-      video streaming classes are implemented in its own class that extend this IVideoCapture interface
-      (e.g., DirectShowCapture, PointGreyCapture). Now if you want to create your own video streaming
-      class that uses other video streaming library, you simply implement IVideoCapture interface. 
-      You can then add it to Scene class to use it for either marker tracking or simply displaying 
-      the video image on the background. Prior to this change, you had to modify the VideoCapture class
-      inside the Goblin XNA and recompile the library if you want to create your own streaming class. 
-      Now, you can implement the class outside of Goblin XNA, and you don't need to modify and recompile 
+   c) Removed the VideoCapture class. Instead, added the IVideoCapture interface so that each 
+      video streaming class is implemented in its own class that extends the new IVideoCapture interface
+      (e.g., DirectShowCapture and PointGreyCapture). Now, a programmer can create their own video streaming
+      class that uses another video streaming library, simply by implementing the IVideoCapture interface. 
+      It would then be added to the Scene class to be used either for marker tracking or for displaying 
+      the video image on the background. Prior to this change, it was necessary to modify the VideoCapture class
+      inside Goblin XNA and recompile the library to create a new streaming class. 
+      Now, a new streaming class can be implemented outside of Goblin XNA, eliminating the need to modify and recompile 
       Goblin XNA. 
 
-   d) MarkerTracker class is now gone. Instead, IMarkerTracker interface is added. ARTagTracker class
-      implements this interface using ARTag library. If you want to implement your own marker tracking
-      class using another tracker library and use it with Goblin XNA, you simply need to implement this
-      interface and assign your tracker implementation to Scene.MarkerTracker. 
+   d) Removed the MarkerTracker class and added the IMarkerTracker interface. The ARTagTracker class
+      implements this interface using the ARTag library. To support a different marker tracking
+      class using another tracker library, implement this interface and assign the tracker implementation
+      to Scene.MarkerTracker. 
 
 
-3. Modifications and additions in the Scene class due to the redesign.
+3. Made signification modifications to the Scene class due to the redesign:
 
-   a) Scene.InitMarkerModules(...) function is removed.
+   a) Removed the Scene.InitMarkerModules(...) function.
 
-   b) Scene.InitVideoCapture(...) function is replaced with Scene.AddVideoCapture(...) function. The
-      signature of the function changed, so please see the API documentation as well as the tutorial 8
-      for modification details. Before you can add a video capture device, you need to initialize the
-      device by calling InitVideoCapture(...) function with appropriate parameters.
+   b) Replaced the Scene.InitVideoCapture(...) function with the Scene.AddVideoCapture(...) function. The
+      signature of the function has changed, so please see the API documentation, as well as Tutorial 8,
+      for details. Before adding a video capture device, it will be necessary to initialize the
+      device by calling the InitVideoCapture(...) function with appropriate parameters.
 
-   c) Scene.InitMarkerTracker(...) function is replaced with Scene.MarkerTracker property. Now you can
-      directly set the IMarkerTracker implementation you want to use to Scene.MarkerTracker. Before you
-      can set the marker tracker, you need to initialize it.
+   c) Replaced the Scene.InitMarkerTracker(...) function with the Scene.MarkerTracker property. It is now possible to
+      directly set the desired IMarkerTracker implementation to Scene.MarkerTracker. The
+      marker tracker must be initialized before being set.
 
-   d) Added Scene.TrackerVideoID property which is used to specifiy which capture device to use for
-      performing the tracking when there are more than one video capture devices. Prior to this, the
-      Scene.OverlayVideoID was used to specify which capture device to use, but now, they are separated.
-      This means that you can show a different video overlay image on the background from the video image
-      you use for performing the tracking. This is useful when you have a camera that is used only for 
-      tracking hand gestures that use attached markers on the fingers or hand, and a separate camera to
-      visualize the physical world. 
+   d) Added the Scene.TrackerVideoID property, which is used to specify which capture device to use for
+      performing tracking when there is more than one video capture device. Previously,
+      Scene.OverlayVideoID was used to specify which capture device to use, but now they are separated.
+      As a result, a different video overlay image can be shown on the background than the video image
+      used for tracking. For example, this is useful when one camera is used only for 
+      tracking hand gestures (with markers attached to the fingers or hand), and a separate camera is used
+      to visualize the physical world. 
 
-   e) Added Scene.FreezeVideo property which can be used to freeze the video streaming. (Note that the
-      video image is frozen, but the virtual world is not frozen).
+   e) Added the Scene.FreezeVideo property, which can be used to freeze video streaming. (Note that when the
+      video image is frozen, the virtual world is not frozen.)
 
 
-4. MarkerNode's constructor signature is modified, and new properties are added.
+4. Modified the MarkerNode constructor signature, and added new properties:
 
-   a) Due to the changes to MarkerTracker class, we removed the arTagArrayName parameter since the
-      marker tracking library may not necessary be ARTag. Instead, we added markerConfigs parameter
-      which is an array of String that can specify the marker configurations for any type of marker
+   a) Removed the arTagArrayName parameter due to changes to the MarkerTracker class, since the
+      marker tracking library may not be ARTag. Replaced this with the markerConfigs parameter,
+      which is an array of String that can specify the marker configuration for any marker
       tracker library. 
 
-   b) We removed the smoothingAlpha parameter, but instead, we added Smoother property which can be set to
-      any implementation of ISmoother interface. This way, the programmer has the choice of what smoothing
-      algorithm to apply instead of forced to use our DES (double-exponential-smoothing) implementation.
+   b) Removed the smoothingAlpha parameter and replaced it with the Smoother property, which can be set to
+      any implementation of the ISmoother interface. This way, the programmer has the choice of what smoothing
+      algorithm to apply instead of being forced to use the DES (double-exponential-smoothing) implementation.
 
-   c) We added Predictor property which can be set to any implementation of IPredictor interface. This 
-      predictor is used to predict the marker transform when the marker can not be found in the image
+   c) Added the Predictor property, which can be set to any implementation of the IPredictor interface. This 
+      predictor is used to predict the marker transform when the marker is not found in the image
       for a few frames.
 
 
-5. UserData property is added to the Node class which is the ancestor of all Node types. Since it's an Object
-   type, you can associate any type of information to a Node by using this UserData property. 
+5. Added the UserData property to the Node class (the ancestor of all Node types). Since UserData is an Object
+   type, it makes it possible for any type of information to be associated with a Node. 
 
 
 6. Added Smoother and Predictor properties to TrackerNode.
 
 
-7. Added AddInputDevice(..), Add6DOFInputDevice(..), and Reenumerate() functions to InputMapper class, so now
-   you can add your own implemented InputDevice or InputDevice_6DOF class to the InputMapper, and use it with
-   the TrackerNode. After you add a new device to InputMapper, make sure to call Reenumerate() so that the
-   newly added device is recognized.
-
-   
-      
-   
+7. Added AddInputDevice(..), Add6DOFInputDevice(..), and Reenumerate() functions to the InputMapper class.
+   This makes it possible to add a new implemented InputDevice or InputDevice_6DOF class to the
+   InputMapper, and use it with the TrackerNode. After adding a new device to InputMapper,
+   it will be necessary to call Reenumerate() so that the newly added device is recognized.

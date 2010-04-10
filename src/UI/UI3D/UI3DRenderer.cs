@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -214,7 +214,7 @@ namespace GoblinXNA.UI.UI3D
         /// <summary>
         /// Performs batch drawing of the queued 3D texts and lines.
         /// </summary>
-        public static void Flush()
+        public static void Flush(bool clear)
         {
             if (queued3DTexts == null)
                 return;
@@ -248,7 +248,8 @@ namespace GoblinXNA.UI.UI3D
                 if (numIndices != 0)
                     textBatch.End();
 
-                queued3DTexts.Clear();
+                if(clear)
+                    queued3DTexts.Clear();
             }
         }
 

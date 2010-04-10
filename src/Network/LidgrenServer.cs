@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -115,6 +115,19 @@ namespace GoblinXNA.Network
             set { enableEncryption = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the net configuration for a Lidgren server.
+        /// </summary>
+        /// <remarks>
+        /// For detailed information about each of the properties of NetConfiguration,
+        /// please see the documentation included in the Lidgren's distribution package.
+        /// </remarks>
+        public NetConfiguration NetConfig
+        {
+            get { return netConfig; }
+            set { netConfig = value; }
+        }
+
         #endregion 
 
         #region Constructors
@@ -135,6 +148,11 @@ namespace GoblinXNA.Network
             approveList = new Dictionary<string, string>();
             prevSender = null;
             clients = new Dictionary<string, NetConnection>();
+
+            // Create a net configuration
+            netConfig = new NetConfiguration(appName);
+            netConfig.MaxConnections = 32;
+            netConfig.Port = portNumber;
         }
 
         #endregion
@@ -143,11 +161,6 @@ namespace GoblinXNA.Network
 
         public void Initialize()
         {
-            // Create a net configuration
-            netConfig = new NetConfiguration(appName);
-            netConfig.MaxConnections = 32;
-            netConfig.Port = portNumber;
-
             // enable encryption; this key was generated using the 'GenerateEncryptionKeys' application
             if (enableEncryption)
             {

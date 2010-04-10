@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
+
+using GoblinXNA.Helpers;
 
 namespace GoblinXNA.SceneGraph
 {
@@ -45,9 +48,10 @@ namespace GoblinXNA.SceneGraph
     {
         #region Member Fields
 
-        protected Vector3 translation;
+        protected Vector3 postTranslation;
         protected Quaternion rotation;
         protected Vector3 scaling;
+        protected Vector3 preTranslation;
         protected Matrix worldTransformation;
         protected Matrix composedTransform;
         protected bool isWorldTransformationDirty;
@@ -62,13 +66,18 @@ namespace GoblinXNA.SceneGraph
         /// Creates a scene graph node that defines the transformation of its children.
         /// </summary>
         /// <param name="name">The name of this transform node</param>
-        /// <param name="translation">Translation component of this transform</param>
+        /// <param name="preTranslation">Pre-translation component of this transform that will be applied
+        /// before scaling and rotation</param>
+        /// <param name="postTranslation">Post-translation component of this transform that will be applied
+        /// after scaling and rotation</param>
         /// <param name="rotation">Rotation component of this transform in quaternion</param>
         /// <param name="scaling">Scaling component of this transform</param>
-        public TransformNode(String name, Vector3 translation, Quaternion rotation, Vector3 scaling)
+        public TransformNode(String name, Vector3 preTranslation, Vector3 postTranslation, 
+            Quaternion rotation, Vector3 scaling)
             : base(name)
         {
-            this.translation = translation;
+            this.preTranslation = preTranslation;
+            this.postTranslation = postTranslation;
             this.rotation = rotation;
             this.scaling = scaling;
             worldTransformation = Matrix.Identity;
@@ -79,30 +88,45 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Creates a scene graph node that defines the transform of its children with scaling of 1
-        /// in each dimension.
+        /// Creates a scene graph node that defines the transform of its children with no pre-translation.
         /// </summary>
         /// <param name="name">The name of this transform node</param>
-        /// <param name="translation">Translation component of this transform</param>
+        /// <param name="postTranslation">Post-translation component of this transform that will be applied
+        /// after scaling and rotation</param>
         /// <param name="rotation">Rotation component of this transform in quaternion</param>
-        public TransformNode(String name, Vector3 translation, Quaternion rotation)
+        /// <param name="scaling">Scaling component of this transform</param>
+        public TransformNode(String name, Vector3 postTranslation, Quaternion rotation, Vector3 scaling)
             :
-            this(name, translation, rotation, Vector3.One) { }
+            this(name, Vector3.Zero, postTranslation, rotation, scaling) { }
 
         /// <summary>
         /// Creates a scene graph node that defines the transform of its children with scaling of 1
-        /// in each dimension.
+        /// in each dimension and no pre-translation.
         /// </summary>
-        /// <param name="translation">Translation component of this transform</param>
+        /// <param name="name">The name of this transform node</param>
+        /// <param name="postTranslation">Post-translation component of this transform that will be applied
+        /// after scaling and rotation</param>
         /// <param name="rotation">Rotation component of this transform in quaternion</param>
-        public TransformNode(Vector3 translation, Quaternion rotation) : this("", translation, rotation) { }
+        public TransformNode(String name, Vector3 postTranslation, Quaternion rotation)
+            :
+            this(name, postTranslation, rotation, Vector3.One) { }
+
+        /// <summary>
+        /// Creates a scene graph node that defines the transform of its children with scaling of 1
+        /// in each dimension and no pre-translation.
+        /// </summary>
+        /// <param name="postTranslation">Post-translation component of this transform that will be applied
+        /// after scaling and rotation</param>
+        /// <param name="rotation">Rotation component of this transform in quaternion</param>
+        public TransformNode(Vector3 postTranslation, Quaternion rotation) : this("", postTranslation, rotation) { }
 
         /// <summary>
         /// Creates a scene graph node that defines the transform of its children with scaling of 1
         /// in each dimension, no rotation, and empty name.
         /// </summary>
-        /// <param name="translation">Translation component of this transform</param>
-        public TransformNode(Vector3 translation) : this(translation, Quaternion.Identity) { }
+        /// <param name="postTranslation">Post-translation component of this transform that will be applied
+        /// after scaling and rotation</param>
+        public TransformNode(Vector3 postTranslation) : this(postTranslation, Quaternion.Identity) { }
 
         /// <summary>
         /// Creates a scene graph node that defines the transform of its children with scaling of 1
@@ -122,13 +146,13 @@ namespace GoblinXNA.SceneGraph
         #region Properties
 
         /// <summary>
-        /// Gets or sets the translation component.
+        /// Gets or sets the post-translation component that will be applied after rotation and scaling.
         /// 
         /// If WorldTransformation matrix is set directly after setting this property, then
         /// the value set for this property will not affect the transformation of this node.
         /// </summary>
         /// <remarks>
-        /// If ReadOnly is set to true, then you can't set this property.
+        /// If ReadOnly is set to true, then you can't set this property. Synonym of PostTranslation property.
         /// </remarks>
         /// <seealso cref="ReadOnly"/>
         /// <seealso cref="WorldTransformation"/>
@@ -137,7 +161,7 @@ namespace GoblinXNA.SceneGraph
         {
             get
             {
-                return translation;
+                return postTranslation;
             }
             set
             {
@@ -145,9 +169,46 @@ namespace GoblinXNA.SceneGraph
                     throw new GoblinException("This TransformNode is read only, " + 
                         "setting Translation is not allowed");
 
-                if (!translation.Equals(value))
+                if (!postTranslation.Equals(value))
                     isWorldTransformationDirty = true;
-                translation = value;
+                postTranslation = value;
+                useUserDefinedTransform = false;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the post-translation component that will be applied after rotation and scaling.
+        /// </summary>
+        /// <remarks>
+        /// Synonym of Translation property.
+        /// </remarks>
+        public Vector3 PostTranslation
+        {
+            get { return Translation; }
+            set { Translation = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the pre-translation component that will be applied before rotation and scaling.
+        /// 
+        /// If WorldTransformation matrix is set directly after setting this property, then
+        /// the value set for this property will not affect the transformation of this node.
+        /// </summary>
+        /// <remarks>
+        /// If ReadOnly is set to true, then you can't set this property.
+        /// </remarks>
+        public Vector3 PreTranslation
+        {
+            get{return preTranslation;}
+            set
+            {
+                if (isReadOnly)
+                    throw new GoblinException("This TransformNode is read only, " +
+                        "setting PreTranslation is not allowed");
+
+                if (!preTranslation.Equals(value))
+                    isWorldTransformationDirty = true;
+                preTranslation = value;
                 useUserDefinedTransform = false;
             }
         }
@@ -242,6 +303,7 @@ namespace GoblinXNA.SceneGraph
                 useUserDefinedTransform = true;
                 worldTransformation = value;
                 userDefinedTransformChanged = true;
+                isWorldTransformationDirty = true;
             }
         }
 
@@ -319,7 +381,8 @@ namespace GoblinXNA.SceneGraph
         public override Node CloneNode()
         {
             TransformNode clone = (TransformNode)base.CloneNode();
-            clone.Translation = translation;
+            clone.PostTranslation = postTranslation;
+            clone.PreTranslation = preTranslation;
             clone.Rotation = rotation;
             clone.Scale = scaling;
             clone.WorldTransformation = WorldTransformation;
@@ -329,6 +392,58 @@ namespace GoblinXNA.SceneGraph
             clone.IsReadOnly = isReadOnly;
 
             return clone;
+        }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("readonly", isReadOnly.ToString());
+            xmlNode.SetAttribute("useUserDefinedTransform", useUserDefinedTransform.ToString());
+
+            if (useUserDefinedTransform)
+            {
+                xmlNode.SetAttribute("worldTransform", worldTransformation.ToString());
+            }
+            else
+            {
+                xmlNode.SetAttribute("preTranslation", preTranslation.ToString());
+                xmlNode.SetAttribute("scale", scaling.ToString());
+                xmlNode.SetAttribute("postTranslation", postTranslation.ToString());
+                xmlNode.SetAttribute("rotation", rotation.ToString());
+            }
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("readonly"))
+                isReadOnly = bool.Parse(xmlNode.GetAttribute("readonly"));
+            if (xmlNode.HasAttribute("useUserDefinedTransform"))
+                useUserDefinedTransform = bool.Parse(xmlNode.GetAttribute("useUserDefinedTransform"));
+
+            if (useUserDefinedTransform)
+            {
+                if (xmlNode.HasAttribute("worldTransform"))
+                    worldTransformation = MatrixHelper.FromString(xmlNode.GetAttribute("worldTransform"));
+            }
+            else
+            {
+                if(xmlNode.HasAttribute("preTranslation"))
+                    preTranslation = Vector3Helper.FromString(xmlNode.GetAttribute("preTranslation"));
+                if (xmlNode.HasAttribute("scale"))
+                    scaling = Vector3Helper.FromString(xmlNode.GetAttribute("scale"));
+                if (xmlNode.HasAttribute("postTranslation"))
+                    postTranslation = Vector3Helper.FromString(xmlNode.GetAttribute("postTranslation"));
+                if (xmlNode.HasAttribute("rotation"))
+                {
+                    Vector4 vec4 = Vector4Helper.FromString(xmlNode.GetAttribute("rotation"));
+                    rotation = new Quaternion(vec4.X, vec4.Y, vec4.Z, vec4.W);
+                }
+            }
         }
 
         #endregion

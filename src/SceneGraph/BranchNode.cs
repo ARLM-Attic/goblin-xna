@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using GoblinXNA.Helpers;
 
@@ -225,6 +226,24 @@ namespace GoblinXNA.SceneGraph
             numBytesDecoded = bytesDecoded;
 
             return parentID;
+        }
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            if (prune)
+                xmlNode.SetAttribute("prune", prune.ToString());
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("prune"))
+                prune = bool.Parse(xmlNode.GetAttribute("prune"));
         }
 
         public override void Dispose()

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,11 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
+
 using Microsoft.Xna.Framework;
 
 using GoblinXNA.Helpers;
@@ -80,11 +83,21 @@ namespace GoblinXNA.SceneGraph
             rotation = Quaternion.Identity;
             view = Matrix.Identity;
             projection = Matrix.Identity;
+
+            Vector3 location = translation;
+            Vector3 target = -Vector3.UnitZ;
+            Vector3.Transform(ref target, ref cameraTransformation, out target);
+            Vector3 up = Vector3.UnitY;
+            Vector3.Transform(ref up, ref cameraTransformation, out up);
+            Vector3.Subtract(ref up, ref location, out up);
+            Matrix.CreateLookAt(ref location, ref target, ref up, out view);
             
             fieldOfView = (float)Math.PI / 4;
             aspectRatio = State.Width / (float)State.Height;
             zNearPlane = 1.0f;
             zFarPlane = 1000.0f;
+
+            Matrix.CreatePerspectiveFieldOfView(fieldOfView, aspectRatio, zNearPlane, zFarPlane, out projection);
 
             modifyView = false;
             modifyProjection = false;
@@ -260,6 +273,49 @@ namespace GoblinXNA.SceneGraph
                 zFarPlane = value;
                 modifyProjection = true;
             }
+        }
+
+        #endregion
+
+        #region Public Method
+
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("translation", translation.ToString());
+            xmlNode.SetAttribute("rotation", rotation.ToString());
+            xmlNode.SetAttribute("fieldOfViewY", "" + fieldOfView);
+            xmlNode.SetAttribute("aspectRatio", "" + aspectRatio);
+            xmlNode.SetAttribute("zNearPlane", "" + zNearPlane);
+            xmlNode.SetAttribute("zFarPlane", "" + zFarPlane);
+            xmlNode.SetAttribute("viewMatrix", "" + view.ToString());
+            xmlNode.SetAttribute("projectionMatrix", "" + projection.ToString());
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("translation"))
+                translation = Vector3Helper.FromString(xmlNode.GetAttribute("translation"));
+            if (xmlNode.HasAttribute("rotation"))
+            {
+                Vector4 vec4 = Vector4Helper.FromString(xmlNode.GetAttribute("rotation"));
+                rotation = new Quaternion(vec4.X, vec4.Y, vec4.Z, vec4.W);
+            }
+            if (xmlNode.HasAttribute("fieldOfViewY"))
+                fieldOfView = float.Parse(xmlNode.GetAttribute("fieldOfViewY"));
+            if (xmlNode.HasAttribute("aspectRatio"))
+                aspectRatio = float.Parse(xmlNode.GetAttribute("aspectRatio"));
+            if (xmlNode.HasAttribute("zNearPlane"))
+                zNearPlane = float.Parse(xmlNode.GetAttribute("zNearPlane"));
+            if (xmlNode.HasAttribute("zFarPlane"))
+                zFarPlane = float.Parse(xmlNode.GetAttribute("zFarPlane"));
+            if (xmlNode.HasAttribute("viewMatrix"))
+                view = MatrixHelper.FromString(xmlNode.GetAttribute("viewMatrix"));
+            if (xmlNode.HasAttribute("projectionMatrix"))
+                projection = MatrixHelper.FromString(xmlNode.GetAttribute("projectionMatrix"));
         }
 
         #endregion

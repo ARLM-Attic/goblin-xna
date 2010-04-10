@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
+using System.ComponentModel;
+
 using Microsoft.Xna.Framework;
 
 namespace GoblinXNA.Device.Util
@@ -82,6 +85,8 @@ namespace GoblinXNA.Device.Util
         #endregion
 
         #region Constructors
+
+        public DESSmoother() : this(1, 1) { }
 
         /// <summary>
         /// Creates a DES smoother with alpha and gamma values ([0.0f - 1.0f] excluding 0) 
@@ -261,6 +266,45 @@ namespace GoblinXNA.Device.Util
                 // return unfiltered matrix since can not smooth yet
                 Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
             }
+        }
+
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("transAlpha", transAlpha.ToString());
+            xmlNode.SetAttribute("transGamma", transGamma.ToString());
+            xmlNode.SetAttribute("rotAlpha", rotAlpha.ToString());
+            xmlNode.SetAttribute("rotGamma", rotGamma.ToString());
+
+            if (transThreshold != -1)
+                xmlNode.SetAttribute("transThreshold", transThreshold.ToString());
+            if (rotThreshold != -1)
+                xmlNode.SetAttribute("rotThreshold", rotThreshold.ToString());
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("transAlpha"))
+                transAlpha = float.Parse(xmlNode.GetAttribute("transAlpha"));
+            if (xmlNode.HasAttribute("transGamma"))
+                transGamma = float.Parse(xmlNode.GetAttribute("transGamma"));
+            if (xmlNode.HasAttribute("rotAlpha"))
+                rotAlpha = float.Parse(xmlNode.GetAttribute("rotAlpha"));
+            if (xmlNode.HasAttribute("transAlpha"))
+                rotGamma = float.Parse(xmlNode.GetAttribute("rotGamma"));
+
+            if (transAlpha <= 0 || transAlpha > 1 || rotAlpha <= 0 || rotAlpha > 1)
+                throw new GoblinException("alpha value has to be between 0.0f and 1.0f excluding 0");
+            if (transGamma < 0 || transGamma > 1 || rotGamma < 0 || rotGamma > 1)
+                throw new GoblinException("gamma value has to be between 0.0f and 1.0f");
+
+            if (xmlNode.HasAttribute("transThreshold"))
+                transThreshold = float.Parse(xmlNode.GetAttribute("transThreshold"));
+            if (xmlNode.HasAttribute("rotThreshold"))
+                rotThreshold = float.Parse(xmlNode.GetAttribute("rotThreshold"));
         }
 
         #endregion

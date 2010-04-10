@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ namespace GoblinXNA.Graphics
     /// <summary>
     /// A mesh defined using XNA's geometry primitives
     /// </summary>
-    public class PrimitiveMesh
+    public class PrimitiveMesh : IDisposable
     {
         #region Member Fields
         protected VertexBuffer vb;
@@ -123,6 +123,22 @@ namespace GoblinXNA.Graphics
             get { return numPrimitives; }
             set { numPrimitives = value; }
         }
+        #endregion
+
+        #region IDisposable Members
+
+        public void Dispose()
+        {
+            if (vb != null)
+                vb.Dispose();
+
+            if (ib != null)
+                ib.Dispose();
+
+            if (decl != null)
+                decl.Dispose();
+        }
+
         #endregion
     }
 }

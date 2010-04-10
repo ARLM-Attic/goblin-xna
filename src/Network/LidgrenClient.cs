@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,7 @@ namespace GoblinXNA.Network
         protected bool waitForServer;
         protected int connectionTrialTimeout;
         protected int elapsedTime;
+        protected bool shutDownForced;
 
         protected NetClient netClient;
         protected NetBuffer buffer;
@@ -91,6 +92,7 @@ namespace GoblinXNA.Network
             this.portNumber = portNumber;
             isConnected = false;
             isServerDiscovered = false;
+            shutDownForced = false;
             enableEncryption = false;
             waitForServer = false;
             connectionTrialTimeout = -1;
@@ -102,6 +104,9 @@ namespace GoblinXNA.Network
             IPHostEntry hostEntry = Dns.GetHostEntry(hostName);
             IPAddress hostAddr = hostEntry.AddressList[0];
             hostPoint = new IPEndPoint(hostAddr, portNumber);
+
+            // Create a configuration for the client
+            netConfig = new NetConfiguration(appName);
         }
 
         /// <summary>
@@ -118,6 +123,7 @@ namespace GoblinXNA.Network
             isConnected = false;
             isServerDiscovered = false;
             enableEncryption = false;
+            shutDownForced = false;
             waitForServer = false;
             connectionTrialTimeout = -1;
             elapsedTime = 0;
@@ -127,6 +133,9 @@ namespace GoblinXNA.Network
 
             IPAddress hostAddr = new IPAddress(hostIPAddress);
             hostPoint = new IPEndPoint(hostAddr, portNumber);
+
+            // Create a configuration for the client
+            netConfig = new NetConfiguration(appName);
         }
         #endregion
 
@@ -168,6 +177,19 @@ namespace GoblinXNA.Network
             set { connectionTrialTimeout = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the net configuration for a Lidgren client.
+        /// </summary>
+        /// <remarks>
+        /// For detailed information about each of the properties of NetConfiguration,
+        /// please see the documentation included in the Lidgren's distribution package.
+        /// </remarks>
+        public NetConfiguration NetConfig
+        {
+            get { return netConfig; }
+            set { netConfig = value; }
+        }
+
         #endregion
 
         #region Public Methods
@@ -179,14 +201,12 @@ namespace GoblinXNA.Network
 
             isConnected = false;
 
-            // Create a configuration for the client
-            netConfig = new NetConfiguration(appName);
-
             // enable encryption; this key was generated using the 'GenerateEncryptionKeys' application
             if (enableEncryption)
             {
                 // No encryption mechanism in Lidgren anymore
             }
+
             // Create a client
             netClient = new NetClient(netConfig);
             netClient.Start();
@@ -216,7 +236,7 @@ namespace GoblinXNA.Network
 
         private void TryConnect()
         {
-            while (!isServerDiscovered)
+            while (!isServerDiscovered && !shutDownForced)
             {
                 if (myAddr.Equals(hostPoint.Address))
                     netClient.DiscoverLocalServers(portNumber);
@@ -311,6 +331,7 @@ namespace GoblinXNA.Network
 
         public void Shutdown()
         {
+            shutDownForced = true;
             netClient.Disconnect("Disconnecting....");
             netClient.Shutdown("Client exitting");
         }

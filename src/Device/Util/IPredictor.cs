@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 
@@ -55,5 +56,18 @@ namespace GoblinXNA.Device.Util
         /// <param name="t">The amount of time from now into the future in milliseconds</param>
         /// <param name="result">The predicted transformation</param>
         void GetPrediction(float t, out Matrix result);
+
+        /// <summary>
+        /// Saves the information of this predictor to an XML element.
+        /// </summary>
+        /// <param name="xmlDoc">The XML document to be saved.</param>
+        /// <returns></returns>
+        XmlElement Save(XmlDocument xmlDoc);
+
+        /// <summary>
+        /// Loads the information of this predictor from an XML element.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        void Load(XmlElement xmlNode);
     }
 }

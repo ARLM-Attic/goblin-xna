@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@ namespace GoblinXNA.UI
     /// An UI component needs to be added to this renderer through Scene.UIRender before it
     /// can be rendered in 3D scene.
     /// </summary>
-    public class UIRenderer : DrawableGameComponent
+    public class UIRenderer
     {
         #region Member Fields
         public static G2DComponent GlobalFocus2DComp = null;
@@ -60,9 +60,7 @@ namespace GoblinXNA.UI
         protected List<G2DComponent> comp2Ds;
         private List<G3DComponent> comp3Ds;
         protected SpriteFont debugFont;
-        #region Triangle Count
         protected int triangleCount;
-        #endregion
 
         #region FPS
         protected int counter;
@@ -85,10 +83,8 @@ namespace GoblinXNA.UI
         /// GoblinXNA.SceneGraph.Scene class.
         /// </remarks>
         /// <param name="game">The main Game class</param>
-        public UIRenderer(Game game) : base(game)
+        public UIRenderer()
         {
-            game.Components.Add(this);
-            this.DrawOrder = 102;
             try
             {
                 debugFont = State.Content.Load<SpriteFont>(@"" + Path.Combine(
@@ -184,15 +180,13 @@ namespace GoblinXNA.UI
         {
             comp3Ds.Remove(comp3d);
         }
-        #endregion
 
-        #region Override Methods
         /// <summary>
         /// Draws all of the user interface components.
         /// </summary>
         /// <remarks>Do not call this method. This method will be called automatically</remarks>
         /// <param name="gameTime"></param>
-        public override void Draw(GameTime gameTime)
+        public void Draw(float elapsedTime, bool clear)
         {
             State.DepthBufferEnabled = false;
 
@@ -204,14 +198,14 @@ namespace GoblinXNA.UI
                     throw new GoblinException("You need to add 'DebugFont.spritefont' file to your " +
                         "content directory before you can display debug information");
 
-                passedTime += gameTime.ElapsedGameTime.TotalMilliseconds;
+                passedTime += elapsedTime;
                 if (passedTime >= 1000)
                 {
                     passedTime = 0;
                     prevCounter = counter;
                     counter = 1;
                 }
-                else
+                else if (elapsedTime != 0)
                     counter++;
                 UI2DRenderer.WriteText(new Vector2(x, y), prevCounter + " FPS", State.DebugTextColor, debugFont);
                 y += 20;
@@ -379,14 +373,14 @@ namespace GoblinXNA.UI
             foreach (G2DComponent comp2d in comp2Ds)
                 comp2d.RenderWidget();
 
-            UI2DRenderer.Flush();
+            UI2DRenderer.Flush(clear);
 
             State.DepthBufferEnabled = true;
 
-            UI3DRenderer.Flush();
+            UI3DRenderer.Flush(clear);
         }
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
             comp2Ds.Clear();
             comp3Ds.Clear();

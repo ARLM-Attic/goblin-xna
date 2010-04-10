@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 namespace GoblinXNA.Network
 {
@@ -42,6 +43,8 @@ namespace GoblinXNA.Network
     /// </summary>
     public interface INetworkObject
     {
+        #region Properties
+
         /// <summary>
         /// Gets an identifier of this network object (has to be unique).
         /// </summary>
@@ -86,5 +89,7 @@ namespace GoblinXNA.Network
         /// </summary>
         /// <param name="msg"></param>
         void InterpretMessage(byte[] msg);
+
+        #endregion
     }
 }

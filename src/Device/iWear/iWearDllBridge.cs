@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,9 +42,151 @@ namespace GoblinXNA.Device.iWear
     /// </summary>
     public class iWearDllBridge
     {
+        #region Structs
+
+        /// <summary>
+        /// A struct that contains the magnetic sensor information from Wrap 920 tracker.
+        /// 
+        /// magx_msb,magx_lsb – can be combined into a single 16-bit 2’ compliment number with a range 
+        /// of -2048 – 2047 for the magnetic sensor in the x-direction.
+        /// magy_msb,magy_lsb – can be combined into a single 16-bit 2’ compliment number with a range 
+        /// of -2048 – 2047 for the magnetic sensor in the y-direction.
+        /// magz_msb,magz_lsb – can be combined into a single 16-bit 2’ compliment number with a range 
+        /// of -2048 – 2047 for the magnetic sensor in the z-direction.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct IWRMagSensor
+        {
+            [MarshalAs(UnmanagedType.U1)]
+            public byte magx_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte magx_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte magy_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte magy_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte magz_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte magz_msb;
+        }
+
+        /// <summary>
+        /// A struct that contains the accelerometer sensor information from Wrap 920 tracker.
+        /// 
+        /// accx_msb,accx_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the accelerometer sensor in the x-direction.
+        /// accy_msb,accy_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the accelerometer sensor in the y-direction.
+        /// accz_msb,accz_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the accelerometer sensor in the z-direction.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct IWRAccelSensor
+        {
+            [MarshalAs(UnmanagedType.U1)]
+            public byte accx_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte accx_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte accy_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte accy_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte accz_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte accz_msb;
+        }
+
+        /// <summary>
+        /// A struct that contains the gyro sensor information from Wrap 920 tracker.
+        /// This struct contains high bandwidth gyros with 2000 degress per second.
+        /// 
+        /// gyx_msb,gyx_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the gyroscope sensor in the x-direction. 
+        /// gyy_msb,gyy_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the gyroscope sensor in the y-direction.
+        /// gyz_msb,gyz_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the gyroscope sensor in the z-direction.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct IWRGyroSensor
+        {
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyx_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyx_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyy_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyy_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyz_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyz_msb;
+        }
+
+        /// <summary>
+        /// A struct that contains the gyro sensor information from Wrap 920 tracker.
+        /// This struct contains low bandwidth gyros with 500 degress per second.
+        /// 
+        /// gyx_msb,gyx_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the gyroscope sensor in the x-direction. 
+        /// gyy_msb,gyy_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the gyroscope sensor in the y-direction.
+        /// gyz_msb,gyz_lsb – can be combined into a single 16-bit 2’ compliment number with a 
+        /// range of -2048 – 2047 for the gyroscope sensor in the z-direction.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct IWRLBGyroSensor
+        {
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyx_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyx_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyy_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyy_msb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyz_lsb;
+            [MarshalAs(UnmanagedType.U1)]
+            public byte gyz_msb;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct IWRSensorData
+        {
+            public IWRMagSensor mag_sensor;
+            public IWRAccelSensor acc_sensor;
+            public IWRGyroSensor gyro_sensor;
+            public IWRLBGyroSensor lbgyro_sensor;
+        }
+
+        #endregion
+
         #region Enums
 
-        public enum Eyes : int { LEFT_EYE = 0, RIGHT_EYE = 1 }
+        public enum Eyes : int { LEFT_EYE = 0, RIGHT_EYE = 1, MONO_EYES = 2 }
+        public enum IWRError : int { IWR_OK = 0 }
+        /// <summary>
+        /// iWear tracker product IDs
+        /// </summary>
+        public enum IWRProductID : int 
+        { 
+            /// <summary>
+            /// Indicates an unsupported product
+            /// </summary>
+            IWR_PROD_NONE = 0,
+            /// <summary>
+            /// iWear VR920
+            /// </summary>
+            IWR_PROD_VR920 = 227, 
+            /// <summary>
+            /// Wrap920AR
+            /// </summary>
+            IWR_PROD_WRAP920 = 329 
+        }
 
         #endregion
 
@@ -60,8 +202,14 @@ namespace GoblinXNA.Device.iWear
         [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRGetTracking")]
         public static extern long IWRGetTracking(ref int yaw, ref int pitch, ref int roll);
 
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRGetSensorData")]
+        public static extern long IWRGetSensorData(ref IWRSensorData sensorData);
+
         [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRSetFilterState")]
         public static extern void IWRSetFilterState(Boolean on);
+
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRGetProductID")]
+        public static extern int IWRGetProductID();
 
         // iWear Stereoscopy.
         [DllImport("iWrstDrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_Open")]

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -432,6 +432,16 @@ namespace GoblinXNA.Shaders
                     return "SpotLight";
             }
             return null;
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            lightSources.Clear();
+            dirLightSources.Clear();
+            pointLightSources.Clear();
+            spotLightSources.Clear();
         }
     }
 }

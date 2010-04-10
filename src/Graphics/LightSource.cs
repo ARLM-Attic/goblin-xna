@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,11 +31,15 @@
  *************************************************************************************/ 
 
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+
+using GoblinXNA.Helpers;
 
 namespace GoblinXNA.Graphics
 {
@@ -248,6 +252,99 @@ namespace GoblinXNA.Graphics
         {
             get { return range; }
             set { range = value; }
+        }
+
+        #endregion
+
+        #region Public Methods
+
+        public virtual XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
+
+            xmlNode.SetAttribute("lightType", lightType.ToString());
+            xmlNode.SetAttribute("enabled", enabled.ToString());
+            xmlNode.SetAttribute("diffuse", diffuse.ToString());
+            xmlNode.SetAttribute("specular", specular.ToString());
+
+            if (lightType == LightType.Point)
+            {
+                xmlNode.SetAttribute("position", position.ToString());
+                xmlNode.SetAttribute("attenuation0", attenuation0.ToString());
+                xmlNode.SetAttribute("attenuation1", attenuation1.ToString());
+                xmlNode.SetAttribute("attenuation2", attenuation2.ToString());
+                xmlNode.SetAttribute("range", range.ToString());
+            }
+            else if (lightType == LightType.Directional)
+            {
+                xmlNode.SetAttribute("direction", direction.ToString());
+            }
+            else
+            {
+                xmlNode.SetAttribute("position", position.ToString());
+                xmlNode.SetAttribute("direction", direction.ToString());
+                xmlNode.SetAttribute("attenuation0", attenuation0.ToString());
+                xmlNode.SetAttribute("attenuation1", attenuation1.ToString());
+                xmlNode.SetAttribute("attenuation2", attenuation2.ToString());
+                xmlNode.SetAttribute("range", range.ToString());
+                xmlNode.SetAttribute("falloff", falloff.ToString());
+                xmlNode.SetAttribute("innerConeAngle", innerConeAngle.ToString());
+                xmlNode.SetAttribute("outerConeAngle", outerConeAngle.ToString());
+            }
+
+            return xmlNode;
+        }
+
+        public virtual void Load(XmlElement xmlNode)
+        {
+            if (xmlNode.HasAttribute("lightType"))
+                lightType = (LightType)Enum.Parse(typeof(LightType), xmlNode.GetAttribute("lightType"));
+            if (xmlNode.HasAttribute("enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
+            if (xmlNode.HasAttribute("diffuse"))
+                diffuse = Vector4Helper.FromString(xmlNode.GetAttribute("diffuse"));
+            if (xmlNode.HasAttribute("specular"))
+                specular = Vector4Helper.FromString(xmlNode.GetAttribute("specular"));
+
+            if (lightType == LightType.Point)
+            {
+                if (xmlNode.HasAttribute("position"))
+                    position = Vector3Helper.FromString(xmlNode.GetAttribute("position"));
+                if (xmlNode.HasAttribute("attenuation0"))
+                    attenuation0 = float.Parse(xmlNode.GetAttribute("attenuation0"));
+                if (xmlNode.HasAttribute("attenuation1"))
+                    attenuation1 = float.Parse(xmlNode.GetAttribute("attenuation1"));
+                if (xmlNode.HasAttribute("attenuation2"))
+                    attenuation2 = float.Parse(xmlNode.GetAttribute("attenuation2"));
+                if (xmlNode.HasAttribute("range"))
+                    range = float.Parse(xmlNode.GetAttribute("range"));
+            }
+            else if (lightType == LightType.Directional)
+            {
+                if (xmlNode.HasAttribute("direction"))
+                    direction = Vector3Helper.FromString(xmlNode.GetAttribute("direction"));
+            }
+            else
+            {
+                if (xmlNode.HasAttribute("position"))
+                    position = Vector3Helper.FromString(xmlNode.GetAttribute("position"));
+                if (xmlNode.HasAttribute("direction"))
+                    direction = Vector3Helper.FromString(xmlNode.GetAttribute("direction"));
+                if (xmlNode.HasAttribute("attenuation0"))
+                    attenuation0 = float.Parse(xmlNode.GetAttribute("attenuation0"));
+                if (xmlNode.HasAttribute("attenuation1"))
+                    attenuation1 = float.Parse(xmlNode.GetAttribute("attenuation1"));
+                if (xmlNode.HasAttribute("attenuation2"))
+                    attenuation2 = float.Parse(xmlNode.GetAttribute("attenuation2"));
+                if (xmlNode.HasAttribute("range"))
+                    range = float.Parse(xmlNode.GetAttribute("range"));
+                if (xmlNode.HasAttribute("falloff"))
+                    falloff = float.Parse(xmlNode.GetAttribute("falloff"));
+                if (xmlNode.HasAttribute("innerConeAngle"))
+                    innerConeAngle = float.Parse(xmlNode.GetAttribute("innerConeAngle"));
+                if (xmlNode.HasAttribute("outerConeAngle"))
+                    outerConeAngle = float.Parse(xmlNode.GetAttribute("outerConeAngle"));
+            }
         }
 
         #endregion

@@ -7,6 +7,9 @@ Augmented reality related:
 3. DESSmoother has problem smoothing out rotation, so you may want to use it only for smoothing out 
    translation until it is fixed. 
 
+4. DirectShowCapture can't change the camera resolution from its default one under x86 compilation
+   environment. There is something wrong with DirectShow for modifying the resolution under x86.
+
 
 Physics engine related:
 
@@ -16,6 +19,12 @@ Physics engine related:
 2. If a physics object is set to be ShapeType.TriangleMesh, it can be penetrated from time to time even
    if the object is 'thick' enough. This is probably due to Newton 1.5.3 bug, and maybe fixed in their 
    2.0 releases. 
+
+3. Changing Enabled property of a geometry node does not add/remove the geometry node to/from physics 
+   simulation, so you need to add/remove the geometry node to/from physics engine in your code when you
+   modify the Enabled property of a geometry node. We cannot automate this process because if Enabled is
+   set to false, then the node or its children are not traversed, so we cannot automatically figure out
+   when to add/remove.
 
 
 Miscellaneous:
