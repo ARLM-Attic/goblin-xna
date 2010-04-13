@@ -17,7 +17,7 @@ using GoblinXNA.Device;
 
 namespace GoblinXNA.Device.Capture
 {
-    public class DirectShowCapture2 : ISampleGrabberCB, IVideoCapture
+    public class DirectShowCapture : ISampleGrabberCB, IVideoCapture
     {
         private enum PlaybackState
         {
@@ -94,7 +94,7 @@ namespace GoblinXNA.Device.Capture
         /// <summary>
         /// Creates a video capture using the DirectShow library.
         /// </summary>
-        public DirectShowCapture2()
+        public DirectShowCapture()
         {
             cameraInitialized = false;
             videoDeviceID = -1;
