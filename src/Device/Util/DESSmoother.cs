@@ -334,12 +334,8 @@ namespace GoblinXNA.Device.Util
                 rotSt = q;
             else
             {
-                // Compute the rotational smoothing (for rotation, the difference between
-                // the two rotation is q1(inverse) * q2
-                rotSt = Quaternion.Multiply(q, rotAlpha) +
-                    Quaternion.Multiply(rotPrevSt + rotPrevBt, 1 - rotAlpha);
-                rotBt = Quaternion.Multiply(rotSt - rotPrevSt, rotGamma) +
-                    Quaternion.Multiply(rotPrevBt, 1 - rotGamma);
+                rotSt = Quaternion.Slerp(rotPrevBt, q, rotAlpha);
+                rotBt = Quaternion.Slerp(rotPrevBt, rotSt, rotGamma);
 
                 rotSt.Normalize();
                 rotBt.Normalize();
