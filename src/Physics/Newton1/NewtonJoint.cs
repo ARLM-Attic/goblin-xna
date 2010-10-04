@@ -38,7 +38,7 @@ using Microsoft.Xna.Framework;
 
 using NewtonDynamics;
 
-namespace GoblinXNA.Physics
+namespace GoblinXNA.Physics.Newton1
 {
     /// <summary>
     /// General joint information that applies to all of the joint types implemented in

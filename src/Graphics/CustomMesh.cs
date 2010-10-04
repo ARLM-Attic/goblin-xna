@@ -42,7 +42,7 @@ namespace GoblinXNA.Graphics
     /// <summary>
     /// A mesh defined using XNA's geometry primitives
     /// </summary>
-    public class PrimitiveMesh : IDisposable
+    public class CustomMesh : IDisposable
     {
         #region Member Fields
         protected VertexBuffer vb;
@@ -58,7 +58,7 @@ namespace GoblinXNA.Graphics
         /// <summary>
         /// Creates a mesh defined using XNA's geometry primitives
         /// </summary>
-        public PrimitiveMesh()
+        public CustomMesh()
         {
             type = PrimitiveType.TriangleList;
         }

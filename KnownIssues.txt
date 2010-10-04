@@ -2,12 +2,7 @@ Augmented reality related:
 
 1. Video image flickers occasionally for some reason. 
 
-2. Stereo video image mode freezes some time.
-
-3. DESSmoother has problem smoothing out rotation, so you may want to use it only for smoothing out 
-   translation until it is fixed. 
-
-4. DirectShowCapture can't change the camera resolution from its default one under x86 compilation
+2. DirectShowCapture can't change the camera resolution from its default one under x86 compilation
    environment. There is something wrong with DirectShow for modifying the resolution under x86.
 
 

@@ -1,5 +1,149 @@
 Goblin XNA Release Notes
 
+Version 3.5 (10/01/10)
+
+
+Updates:
+
+1. Added a wrapper for ALVAR 1.4.0.
+
+2. Added a wrapper for Havok physics engine (version 710r1), and added HavokPhysics which is an implementation of
+   IPhysics in GoblinXNA.Physics.Havok. We only wrapped functionalities that we needed, so if you need additional
+   functionalities, you need to wrap yourself.
+
+3. Added CameraCalibration program under /tools directory so that you can calibrate your camera in Goblin XNA now.
+   This will remove the need to build ALVAR for calibrating your camera.
+
+4. Added DirectShowCapture2 class which uses another implementation of DirectShowNET. For some reason, DirectShowCapture
+   class won't work under 64-bit version since recent Windows update (only tested with Windows 7), so if you're running
+   64-bit version and DirectShowCapture won't work, then try to use DirectShowCapture2 class instead.
+
+5. Added VideoBackgroundColor property to Scene class so you can mix a color or change transparency of the
+   BackgroundTexture or video image when ShowCameraImage is set to true.
+
+6. Added an easy way to draw a 3D line in the scene by calling State.LineManager.AddLine method. Make sure
+   to initialize State.LineManager.LineShader, for example, as follows:
+
+   State.LineManager.LineShader = new Line3DShader("LineRendering.fx");
+   State.LineManager.ShaderTechnique = "LineRendering3D";
+
+7. Added EffectHelper class in GoblinXNA.Helpers. 
+
+8. Added support for 2D UI shifting for stereo rendering. Set Scene.GlobalUIShift value, and this shift will be 
+   applied to all 2D UI drawings including the text when right eye view is rendered in stereo mode.
+
+9. Added AfterEffectsShader to IModel interface, and now you can added any shaders that renders special effect 
+   such as GlowShader. 
+
+10. Added GlowShader under Shaders directory, and also the associated Glow.fx file in data/Shaders folder.
+
+11. Added MarkerBundleNode that extends MarkerNode class and can track dynamically reconfigurable multiple marker arrays.
+   (NOTE: This is similar to ALVAR's multiMarkerBundle functionality, but it's not using ALVAR implementation)
+
+12. Added NormalMapShader, NormalMapMaterial, and NormalMap.fx (fx file is under data/Shaders/) for normal map or
+    bump map shading.
+
+13. Added GeometryNode.IgnoreDepth property. Please see it's API documentation for details.
+
+
+Bug Fixes:
+
+1. Fixed the rotational smoothing for DESSmoother (Thanks to Mengu!!)
+
+2. Fixed a problem in SwitchNode when it is processed with no children nodes. 
+
+3. Fixed a bug for toggling GeometryNode.IsOccluder property. The change didn't take effect before. 
+
+4. Fixed a bug for 3D audio in AR, so now 3D audio in AR environment works.
+
+5. IShader's SetParameters(ICamera camera) interface was not called from the Scene class before, but not it's being
+   called.
+
+6. Fixed synchronization problem for adding and removing nodes during scene graph traversal. Now it shouldn't throw
+   any exceptions no matter when you add or remove a node from the scene. 
+
+7. If you were using MatrixHelper.ConverToBytes(..) from ConvertFromBytes(..) methods, then if the matrix was
+   non-orthographic matrix, it didn't convert correctly because it was decomposing the matrix into scale, translation,
+   and rotation for optimization purpose. Now it's been changed to different methods to take care of non-orthographic
+   matrices as well (See Changes 13). 
+
+8. Fixed a bug when GeometryNode.Model is unassigned or set to null.
+
+9. Fixed a bug when LightNode is attached to a SwitchNode. It wasn't processed before.
+
+10. Scene.EnableLighting now takes effect (affect the entire scene). It was ignored by mistake before.
+
+11. DefaultTransparencyComparer had wrong sorting order, and it's fixed. Now transparent objects should appear correctly.
+
+12. Fixed a bug in InputMapper class so now it won't throw an exception even if you try to Reenumerate the devices
+    while your application is running. 
+
+13. Fixed a bug for displaying the 2nd video image when Scene.MarkerTracker is not set in stereo AR mode.
+
+
+Changes:
+
+1. Changed the referencing structure. All of the referenced dlls are moved from /bin directory to /dlls direction.
+   Managed dlls are in /dlls/managed, and unmanaged dlls are in /dlls/unmanaged. This fixes the problem of Visual
+   Studio erasing the necessary dlls from /bin directory when you perform Rebuild or Clean operation.
+
+2. Updated Lidgren.Network to the latest version (gen3 2010-8-27). Updated LidgrenServer and LidgrenClient for this
+   update.
+
+3. Removed IPhysicsMaterial interface class since this is specific to Newton based implementations.
+
+4. Moved Newton 1.53 implementations (NewtonPhysics, NewtonMaterial, NewtonJoint, NewtonVehicle, NewtonTire) to
+   GoblinXNA.Physics.Newton1 subdirectory from GoblinXNA.Physics.  
+
+5. Removed Scene.ClientPerformSelfPhysicsSimulation property. Now, if the Scene.PhysicsEngine is set in the client
+   side, physics simulation will be performed on the client side when networking is used. If you want to synchronize
+   the simulation on all networked machines, then do not set Scene.PhysicsEngine property on the client codes. 
+
+6. Moved the networking properties of GeometryNode to SynchronizedGeometryNode class so that the user can
+   specify which geometry nodes are synchronized between server and clients in case networking is used. See
+   the updated Tutorial 10 for details.
+
+7. Removed NetworkObject class in GoblinXNA.Network directory since these codes are moved to SynchronizedGeometryNode
+   class. 
+
+8. Unnecessary bounding box computation is removed, so the application should start faster now if you had huge model.
+
+9. A LightNode only has one LightSource now. There was no point of having multiple LightSources from the beginning, 
+   and it was necessary to have only one LightSource for optimizing the code. 
+
+10. PrimitiveMesh class is renamed to CustomeMesh since it makes more sense.
+
+11. Model class has been divided into two classes now, one with mesh loaded from a file (Model.cs), and another with 
+   just user defined mesh using CustomMesh class (PrimitiveModel.cs). This change was necessary for optimization 
+   and simplification.
+
+12. Line drawings (e.g., bounding box, aabb, collision mesh) are all done by Line3DShader now. When you want to draw 
+    a 3D line, make sure to initialize State.LineManager.LineShader as follows: (NOTE: LineRendering.fx is added in 
+    data/Shaders)
+
+    State.LineManager.LineShader = new Line3DShader("LineRendering.fx");
+    State.LineManager.ShaderTechnique = "LineRendering3D";
+
+13. Due to some internal changes for optimization, you should assign a fresh copy of shader to every model (if it's 
+    OK to leave the shader as SimpleEffectShader, then you don't need to do this since it's automatically assigned
+    to a fresh copy of SimpleEffectShader for each model by default) if they have different material settings. 
+
+14. IShader's SetParameters(ICamera camera) interface has been changed to SetParameters(CameraNode camera) so that 
+    you can get the camera position and direction in the shader as well. 
+
+15. Renamed MatrixHelper.ConverToBytes to MatrixHelper.ConvertToOptimizedBytes, and added 
+    MatrixHelper.ConvertToUnoptimizedBytes that actually converts each matrix element into bytes. For the same reason, 
+    renamed MatrixHelper.ConvertFromBytes to MatrixHelper.ConvertFromOptimizedBytes, and added 
+    MatrixHelper.ConvertFromUnoptimizedBytes.
+
+16: Changed Resolution._1280x960 for IVideoCapture to Resolution._1280x1024 since it is more common. For PointGreyCapture, 
+    it is left as 1280x960 even though the enum is 1280x1024.
+
+17. SwitchNode now automatically gets SwitchID assigned to 0 if not assigned when at least one node is added to it.
+
+18. Modified particle systems (ParticleShader.fx) to follow the tracking of the marker if attached to a MarkerNode.
+
+
 Version 3.4 (4/7/10)
 
 

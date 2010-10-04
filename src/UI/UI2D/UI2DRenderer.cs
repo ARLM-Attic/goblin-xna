@@ -629,13 +629,16 @@ namespace GoblinXNA.UI.UI2D
         /// Flushes all of the accumulated 2D drawings including texts and shapes. The texts and shapes are not
         /// drawn until this function is called.
         /// </summary>
-        public static void Flush(bool clear)
+        public static void Flush(bool clear, int shiftAmount)
         {
             if (spriteBatch == null)
                 spriteBatch = new SpriteBatch(State.Device);
 
             // Start rendering with alpha blending mode, and render back to front
             spriteBatch.Begin(SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None);
+
+            Vector2 actualPos = Vector2.Zero;
+            Rectangle actualRect = Rectangle.Empty;
 
             // First draw all of the transparent ones
             foreach (Drawable2DObject obj2d in queuedObjects)
@@ -646,7 +649,11 @@ namespace GoblinXNA.UI.UI2D
                         opaqueObjects.Add(obj2d);
                     else
                     {
-                        spriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, obj2d.textInfo.pos,
+                        actualPos = obj2d.textInfo.pos;
+                        if (shiftAmount != 0)
+                            actualPos.X += shiftAmount;
+
+                        spriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, actualPos,
                             obj2d.textInfo.color, obj2d.textInfo.rotation, obj2d.textInfo.origin,
                             obj2d.textInfo.scale, obj2d.textInfo.effect, obj2d.textInfo.depth);
                     }
@@ -657,10 +664,14 @@ namespace GoblinXNA.UI.UI2D
                         opaqueObjects.Add(obj2d);
                     else
                     {
+                        actualRect = obj2d.shapeInfo.rect;
+                        if (shiftAmount != 0)
+                            actualRect.X += shiftAmount;
+
                         if (obj2d.shapeInfo.angle == 0)
-                            spriteBatch.Draw(obj2d.shapeInfo.texture, obj2d.shapeInfo.rect, obj2d.shapeInfo.color);
+                            spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, obj2d.shapeInfo.color);
                         else
-                            spriteBatch.Draw(obj2d.shapeInfo.texture, obj2d.shapeInfo.rect, null, obj2d.shapeInfo.color,
+                            spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, null, obj2d.shapeInfo.color,
                                 obj2d.shapeInfo.angle, Vector2.Zero, SpriteEffects.None, 0);
                     }
                 }
@@ -671,16 +682,24 @@ namespace GoblinXNA.UI.UI2D
             {
                 if (obj2d.isText)
                 {
-                    spriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, obj2d.textInfo.pos,
+                    actualPos = obj2d.textInfo.pos;
+                    if (shiftAmount != 0)
+                        actualPos.X += shiftAmount;
+
+                    spriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, actualPos,
                         obj2d.textInfo.color, obj2d.textInfo.rotation, obj2d.textInfo.origin,
                         obj2d.textInfo.scale, obj2d.textInfo.effect, obj2d.textInfo.depth);
                 }
                 else
                 {
+                    actualRect = obj2d.shapeInfo.rect;
+                    if (shiftAmount != 0)
+                        actualRect.X += shiftAmount;
+
                     if (obj2d.shapeInfo.angle == 0)
-                        spriteBatch.Draw(obj2d.shapeInfo.texture, obj2d.shapeInfo.rect, obj2d.shapeInfo.color);
+                        spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, obj2d.shapeInfo.color);
                     else
-                        spriteBatch.Draw(obj2d.shapeInfo.texture, obj2d.shapeInfo.rect, null, obj2d.shapeInfo.color,
+                        spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, null, obj2d.shapeInfo.color,
                             obj2d.shapeInfo.angle, Vector2.Zero, SpriteEffects.None, 0);
                 }
             }

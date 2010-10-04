@@ -43,9 +43,9 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A disk geometry primitive constructed with PrimitiveMesh
+    /// A disk geometry primitive constructed with CustomMesh
     /// </summary>
-    public class Disk : Model
+    public class Disk : PrimitiveModel
     {
         #region Constructors
 
@@ -64,7 +64,7 @@ namespace GoblinXNA.Graphics.Geometry
         public Disk(float inner, float outer, int slices, bool twoSided)
             : base(CreateDisk(inner, outer, slices, 0, Math.PI * 2, twoSided))
         {
-            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + twoSided;
+            customShapeParameters = inner + ", " + outer + ", " + slices + ", " + twoSided;
         }
 
         internal Disk(float inner, float outer, int slices, double start, double sweep, bool twoSided)
@@ -80,7 +80,7 @@ namespace GoblinXNA.Graphics.Geometry
             : base(CreateDisk(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]), 0, Math.PI * 2,
                 int.Parse(xmlParams[2]), bool.Parse(xmlParams[3])))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2]
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2]
                 + ", " + xmlParams[3];
         }
 
@@ -88,7 +88,7 @@ namespace GoblinXNA.Graphics.Geometry
 
         #region Private Static Methods
 
-        private static PrimitiveMesh CreateDisk(float inner, float outer, int slices, 
+        private static CustomMesh CreateDisk(float inner, float outer, int slices, 
             double start, double sweep, bool twoSided)
         {
             if (slices < 3)
@@ -100,7 +100,7 @@ namespace GoblinXNA.Graphics.Geometry
             if (inner >= outer)
                 throw new ArgumentException("Inner radius has to be less than outer radius");
 
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 

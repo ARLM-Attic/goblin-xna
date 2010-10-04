@@ -52,6 +52,7 @@ using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Graphics.Geometry;
 using GoblinXNA.Device.Generic;
 using GoblinXNA.Physics;
+using GoblinXNA.Physics.Newton1;
 using GoblinXNA.Sounds;
 using GoblinXNA.Helpers;
 
@@ -79,7 +80,7 @@ namespace ARDominos
         MarkerNode markerNode;
 
         // The geometric model that represents the domino
-        Model dominoModel;
+        PrimitiveModel dominoModel;
 
         // A list of currently selected dominos
         static List<GeometryNode> selectedDominos;
@@ -1245,11 +1246,14 @@ namespace ARDominos
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
             lightNode.AmbientLightColor = new Vector4(0.3f, 0.3f, 0.3f, 1);
-            lightNode.LightSources.Add(lightSource);
-            lightNode.LightSources.Add(lightSource2);
+            lightNode.LightSource = lightSource;
+
+            LightNode lightNode2 = new LightNode();
+            lightNode2.LightSource = lightSource2;
 
             // Add this light node to the root node
             scene.RootNode.AddChild(lightNode);
+            scene.RootNode.AddChild(lightNode2);
         }
 
         private void SetupMarkerTracking()
@@ -1458,8 +1462,8 @@ namespace ARDominos
         /// </summary>
         private void CreateBalls()
         {
-            Model smallSphere = new Sphere(3.5f, 20, 20);
-            Model bigSphere = new Sphere(6.5f, 20, 20);
+            PrimitiveModel smallSphere = new Sphere(3.5f, 20, 20);
+            PrimitiveModel bigSphere = new Sphere(6.5f, 20, 20);
             for (int i = 0; i < BALL_NUM; i++)
             {
                 if (i == BALL_NUM / 2)

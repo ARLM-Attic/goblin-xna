@@ -58,11 +58,14 @@ namespace GoblinXNA.SceneGraph
         private bool shouldRender;
         protected Material material;
         protected List<LightNode> illuminationLights;
+        /// <summary>
+        /// Indicates whether the local lights need to be updated in its shader
+        /// </summary>
+        protected bool needsToUpdateLocalLights; 
         protected Matrix worldTransform;
         protected Matrix markerTransform;
 
         protected IPhysicsObject physicsProperties;
-        protected NetworkObject networkProperties;
 
         protected BoundingSphere boundingVolume;
         protected bool showBoundingVolume;
@@ -71,6 +74,9 @@ namespace GoblinXNA.SceneGraph
         protected bool isOccluder;
 
         protected bool physicsStateChanged;
+        protected bool occlusionStateChanged;
+
+        protected bool ignoreDepth;
 
         #endregion
 
@@ -90,17 +96,19 @@ namespace GoblinXNA.SceneGraph
             markerTransform = Matrix.Identity;
             material = new Material();
             illuminationLights = new List<LightNode>();
+            needsToUpdateLocalLights = false;
             isOccluder = false;
             addToPhysicsEngine = false;
 
             physicsProperties = new PhysicsObject(this);
-            networkProperties = new NetworkObject(name, id);
 
             boundingVolume = new BoundingSphere();
             showBoundingVolume = false;
+            ignoreDepth = false;
 
             shouldRender = false;
             physicsStateChanged = false;
+            occlusionStateChanged = false;
         }
 
         /// <summary>
@@ -112,15 +120,6 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Properties
-        public override string Name
-        {
-            get { return base.Name; }
-            set
-            {
-                base.Name = value;
-                networkProperties.Identifier = value;
-            }
-        }
 
         public override bool Enabled
         {
@@ -141,10 +140,16 @@ namespace GoblinXNA.SceneGraph
             set 
             { 
                 model = value;
-                physicsProperties.Model = model;
-                if (model is IPhysicsMeshProvider)
-                    physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
-                boundingVolume.Radius = model.MinimumBoundingSphere.Radius;
+                if (model != null)
+                {
+                    physicsProperties.Model = model;
+                    if (model is IPhysicsMeshProvider)
+                        physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
+                    boundingVolume.Radius = model.MinimumBoundingSphere.Radius;
+
+                    // needs to update the lighting settings of the shader used for the model
+                    needsToUpdateLocalLights = true;
+                }
             }
         }
 
@@ -164,6 +169,12 @@ namespace GoblinXNA.SceneGraph
         {
             get { return illuminationLights; }
             set { illuminationLights = value; }
+        }
+
+        internal bool NeedsToUpdateLocalLights
+        {
+            get { return needsToUpdateLocalLights; }
+            set { needsToUpdateLocalLights = value; }
         }
 
         /// <summary>
@@ -192,6 +203,15 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Gets or sets whether IsOccluder property is changed. 
+        /// </summary>
+        internal bool OcclusionStateChanged
+        {
+            get { return occlusionStateChanged; }
+            set { occlusionStateChanged = value; }
+        }
+
+        /// <summary>
         /// Gets or sets the physics properties associated with this geometry node.
         /// </summary>
         public virtual IPhysicsObject Physics
@@ -207,32 +227,12 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets the network properties associated with this geometry node.
-        /// </summary>
-        public virtual NetworkObject Network
-        {
-            get { return networkProperties; }
-        }
-
-        /// <summary>
         /// Gets the transformation of the model.
         /// </summary>
         public virtual Matrix WorldTransformation
         {
-            get 
-            {
-                if (networkProperties.HasChange)
-                {
-                    worldTransform = networkProperties.WorldTransform;
-                    physicsProperties.PhysicsWorldTransform = networkProperties.WorldTransform;
-                }
-                return worldTransform; 
-            }
-            set 
-            { 
-                worldTransform = value;
-                networkProperties.WorldTransform = value;
-            }
+            get { return worldTransform; }
+            set { worldTransform = value; }
         }
 
         /// <summary>
@@ -274,7 +274,14 @@ namespace GoblinXNA.SceneGraph
         public virtual bool IsOccluder
         {
             get { return isOccluder; }
-            set { isOccluder = value; }
+            set 
+            {
+                if (isOccluder != value)
+                {
+                    isOccluder = value;
+                    occlusionStateChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -290,33 +297,32 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets or sets if the bounding volume (sphere) should be displayed
+        /// Gets or sets if the bounding volume (sphere) should be displayed.
+        /// (Currently not implemented)
         /// </summary>
         public virtual bool ShowBoundingVolume
         {
             get { return showBoundingVolume; }
             set { showBoundingVolume = value; }
         }
+
+        /// <summary>
+        /// Gets or sets whether to ignore the depth buffer for drawing this geometry.
+        /// Default value is false.
+        /// </summary>
+        /// <remarks>
+        /// Anything other than the drawing (e.g., physics simulation) will still take the 
+        /// depth into consideration even if this is set to true.
+        /// </remarks>
+        public virtual bool IgnoreDepth
+        {
+            get { return ignoreDepth; }
+            set { ignoreDepth = value; }
+        }
+
         #endregion
 
         #region Override Methods
-
-        public override byte[] Encode()
-        {
-            // 1 byte (bool) for needToComputBoundingVolume
-            // 1 (bool) byte for showBoundingVolume
-            // 4 (float) * 4 bytes for bounding volume center (x, y, z) and radius
-            /*data[index++] = BitConverter.GetBytes(showBoundingVolume)[0];
-            List<float> floats = new List<float>();
-            floats.Add(boundingVolume.Center.X);
-            floats.Add(boundingVolume.Center.Y);
-            floats.Add(boundingVolume.Center.Z);
-            floats.Add(boundingVolume.Radius);
-            ByteHelper.FillByteArray(ref data, index, ByteHelper.ConvertFloatArray(floats));
-            index += sizeof(float) * 4;*/
-
-            return base.Encode();
-        }
 
         public override Node CloneNode()
         {
@@ -338,7 +344,6 @@ namespace GoblinXNA.SceneGraph
 
             xmlNode.AppendChild(material.Save(xmlDoc));
             xmlNode.AppendChild(physicsProperties.Save(xmlDoc));
-            xmlNode.AppendChild(networkProperties.Save(xmlDoc));
 
             return xmlNode;
         }
@@ -369,11 +374,11 @@ namespace GoblinXNA.SceneGraph
                 }
                 else
                 {
-                    if (!modelInfo.HasAttribute("primitiveShapeParameters"))
-                        throw new GoblinException("primitiveShapeParameters attribute must be " +
+                    if (!modelInfo.HasAttribute("customShapeParameters"))
+                        throw new GoblinException("customShapeParameters attribute must be " +
                             "specified if resourceName is not specified");
 
-                    String[] primShapeParams = modelInfo.GetAttribute("primitiveShapeParameters").Split(',');
+                    String[] primShapeParams = modelInfo.GetAttribute("customShapeParameters").Split(',');
                     model = (IModel)Activator.CreateInstance(Type.GetType(xmlNode.ChildNodes[i + 1].Name),
                         primShapeParams);
                 }
@@ -392,18 +397,14 @@ namespace GoblinXNA.SceneGraph
             if(model is IPhysicsMeshProvider)
                 physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
             physicsProperties.Model = model;
-
-            networkProperties = (NetworkObject)Activator.CreateInstance(Type.GetType(
-                xmlNode.ChildNodes[i + 2].Name));
-            networkProperties.Load((XmlElement)xmlNode.ChildNodes[i + 2]);
-            networkProperties.Identifier = name;
         }
 
         public override void Dispose()
         {
             base.Dispose();
             material.Dispose();
-            model.Dispose();
+            if(model != null)
+                model.Dispose();
         }
 
         #endregion

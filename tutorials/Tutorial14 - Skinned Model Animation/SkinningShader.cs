@@ -52,34 +52,20 @@ namespace Tutorial14___Skinned_Model_Animation
     /// <summary>
     /// An implementation of the IShader interface that works with the SkinnedModel shader (SkinnedModel.fx)
     /// </summary>
-    public class SkinnedModelShader : IShader
+    public class SkinnedModelShader : Shader
     {
         #region Member Fields
 
-        protected String shaderName;
-        protected Effect effect;
         /// <summary>
         /// Defines some of the commonly used effect parameters in shader files.
         /// </summary>
-        protected EffectParameter world,
+        protected EffectParameter 
             bones,
             view,
-            worldViewProj,
-            viewProj,
-            projection,
             texture,
-            viewInverse,
             ambientLightColor,
             lights,
             numLights;
-
-        protected Matrix lastUsedWorldViewProjMatrix;
-        protected Matrix lastUsedViewProjMatrix;
-        protected Matrix lastUsedProjMatrix;
-        protected Matrix lastUsedViewInverseMatrix;
-        protected Matrix lastUsedViewMatrix;
-        protected Matrix lastUsedWorldMatrix;
-        protected XnaTexture lastUsedTexture;
 
         protected List<LightSource> lightSources;
 
@@ -97,214 +83,31 @@ namespace Tutorial14___Skinned_Model_Animation
         #region Constructors
 
         public SkinnedModelShader(String shaderName)
+            : base(shaderName)
         {
-            if (State.Device == null)
-                throw new GoblinException(
-                    "GoblinXNA device is not initialized, can't create Shader.");
-
             lightSources = new List<LightSource>();
-
-            Reload(shaderName);
         }
 
         #endregion
 
-        #region Properties
-        public virtual int MaxLights
+        #region Overriden Properties
+
+        public override int MaxLights
         {
             get { return 3; }
         }
 
-        /// <summary>
-        /// Gets whether this shader is valid to render.
-        /// </summary>
-        public bool Valid
-        {
-            get { return effect != null; }
-        }
-
-        /// <summary>
-        /// Gets the currently used effect that is loaded from a shader file.
-        /// </summary>
-        public Effect CurrentEffect
-        {
-            get { return effect; }
-        }
-
-        /// <summary>
-        /// Gets the effect technique from the technique name defined in the loaded shader file.
-        /// </summary>
-        /// <param name="techniqueName"></param>
-        public EffectTechnique GetTechnique(String techniqueName)
-        {
-            return effect.Techniques[techniqueName];
-        }
-
-        /// <summary>
-        /// Gets the number of techniques implemented in the loaded shader file.
-        /// </summary>
-        public int NumberOfTechniques
-        {
-            get { return effect.Techniques.Count; }
-        }
-
-        /// <summary>
-        /// Sets an effect parameter for Matrix type.
-        /// </summary>
-        /// <param name="param">An effect parameter that contains Matrix type</param>
-        /// <param name="lastUsedMatrix">Old Matrix value</param>
-        /// <param name="newMatrix">New Matrix value</param>
-        protected void SetValue(EffectParameter param,
-            ref Matrix lastUsedMatrix, Matrix newMatrix)
-        {
-            lastUsedMatrix = newMatrix;
-            param.SetValue(newMatrix);
-        }
-
-        /// <summary>
-        /// Sets an effect parameter for Vector3 type.
-        /// </summary>
-        /// <param name="param">An effect parameter that contains Matrix type</param>
-        /// <param name="lastUsedVector">Last used vector</param>
-        /// <param name="newVector">New vector</param>
-        protected void SetValue(EffectParameter param,
-            ref Vector3 lastUsedVector, Vector3 newVector)
-        {
-            if (param != null &&
-                lastUsedVector != newVector)
-            {
-                lastUsedVector = newVector;
-                param.SetValue(newVector);
-            }
-        }
-
-        /// <summary>
-        /// Sets an effect parameter for Color type.
-        /// </summary>
-        /// <param name="param">An effect parameter that contains Color type</param>
-        /// <param name="lastUsedColor">Last used color</param>
-        /// <param name="newColor">New color</param>
-        protected void SetValue(EffectParameter param,
-            ref Color lastUsedColor, Color newColor)
-        {
-            // Note: This check eats few % of the performance, but the color
-            // often stays the change (around 50%).
-            if (param != null &&
-                //slower: lastUsedColor != newColor)
-                lastUsedColor.PackedValue != newColor.PackedValue)
-            {
-                lastUsedColor = newColor;
-                param.SetValue(newColor.ToVector4());
-            }
-        }
-
-        /// <summary>
-        /// Sets an effect parameter for float type.
-        /// </summary>
-        /// <param name="param">An effect parameter that contains float type</param>
-        /// <param name="lastUsedValue">Last used value</param>
-        /// <param name="newValue">New value</param>
-        protected void SetValue(EffectParameter param,
-            ref float lastUsedValue, float newValue)
-        {
-            if (param != null &&
-                lastUsedValue != newValue)
-            {
-                lastUsedValue = newValue;
-                param.SetValue(newValue);
-            }
-        }
-
-        /// <summary>
-        /// Sets an effect parameter for Xna.Framework.Graphics.Texture type.
-        /// </summary>
-        /// <param name="param">An effect parameter that contains 
-        /// Xna.Framework.Graphics.Texture type</param>
-        /// <param name="lastUsedValue">Last used value</param>
-        /// <param name="newValue">New value</param>
-        protected void SetValue(EffectParameter param,
-            ref XnaTexture lastUsedValue, XnaTexture newValue)
-        {
-            if (param != null &&
-                lastUsedValue != newValue)
-            {
-                lastUsedValue = newValue;
-                param.SetValue(newValue);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets world projection matrix.
-        /// </summary>
-        protected Matrix WorldViewProjMatrix
-        {
-            get { return lastUsedWorldViewProjMatrix; }
-            set { SetValue(worldViewProj, ref lastUsedWorldViewProjMatrix, value); }
-        }
-
-        /// <summary>
-        /// Gets or sets view projection matrix.
-        /// </summary>
-        protected Matrix ViewProjMatrix
-        {
-            get { return lastUsedViewProjMatrix; }
-            set { SetValue(viewProj, ref lastUsedViewProjMatrix, value); }
-        }
-
-        /// <summary>
-        /// Gets or sets inverse view projection matrix.
-        /// </summary>
-        protected Matrix ViewInverseMatrix
-        {
-            get { return lastUsedViewInverseMatrix; }
-            set { SetValue(viewInverse, ref lastUsedViewInverseMatrix, value); }
-        }
-
-        /// <summary>
-        /// Gets or sets projection matrix.
-        /// </summary>
-        protected Matrix ProjectionMatrix
-        {
-            get { return lastUsedProjMatrix; }
-            set { SetValue(projection, ref lastUsedProjMatrix, value); }
-        }
-
         #endregion
 
-        /// <summary>
-        /// Reloads the shader file with the specified path.
-        /// </summary>
-        /// <param name="shaderName">The name of the shader/effect file</param>
-        public void Reload(String shaderName)
-        {
-            this.shaderName = Path.GetFileNameWithoutExtension(shaderName);
-            // Load shader
-
-            effect = State.Content.Load<Effect>(
-                Path.Combine(State.GetSettingVariable("ShaderDirectory"),
-                this.shaderName)).Clone(State.Device);
-
-            // Reset and get all avialable parameters.
-            // This is especially important for derived classes.
-            ResetParameters();
-            GetParameters();
-        }
+        #region Overriden Methods
 
         /// <summary>
         /// Loads the effect parameters from the loaded shader file.
         /// </summary>
-        protected virtual void GetParameters()
+        protected override void GetParameters()
         {
-
-            //Binding the effect parameters in to Effect File;
-
-            /////////////////////////////////////////////////
-            //  THIS IS ESSENTIAL.  EVEN THOUGH ITS A GETTER!
-            /////////////////////////////////////////////////
-            
             // Geometry
             world = effect.Parameters["World"];
-            viewProj = effect.Parameters["viewProjection"];
             view = effect.Parameters["View"];
             projection = effect.Parameters["Projection"];
 
@@ -320,36 +123,26 @@ namespace Tutorial14___Skinned_Model_Animation
         }
 
         /// <summary>
-        /// Resets the values of effect parameters.
-        /// </summary>
-        protected virtual void ResetParameters()
-        {
-            lastUsedViewInverseMatrix = Matrix.Identity;
-            lastUsedProjMatrix = Matrix.Identity;
-            lastUsedViewProjMatrix = Matrix.Identity;
-            lastUsedWorldViewProjMatrix = Matrix.Identity;
-            lastUsedWorldMatrix = Matrix.Identity;
-            lastUsedViewMatrix = Matrix.Identity;
-        }
-
-        /// <summary>
         /// This shader does not support material effect.
         /// </summary>
         /// <param name="material"></param>
-        public virtual void SetParameters(Material material)
+        public override void SetParameters(Material material)
         {
-            effect = material.InternalEffect;
-
-            GetParameters();
-
-            numLights.SetValue(lightSources.Count);
-
-            if (lightSources.Count > 0)
+            if (material.InternalEffect != null)
             {
-                for (int i = 0; i < lightSources.Count; i++)
+                effect = material.InternalEffect;
+
+                GetParameters();
+
+                numLights.SetValue(lightSources.Count);
+
+                if (lightSources.Count > 0)
                 {
-                    lights.Elements[i].StructureMembers["direction"].SetValue(lightSources[i].Direction);
-                    lights.Elements[i].StructureMembers["color"].SetValue(lightSources[i].Diffuse);
+                    for (int i = 0; i < lightSources.Count; i++)
+                    {
+                        lights.Elements[i].StructureMembers["direction"].SetValue(lightSources[i].Direction);
+                        lights.Elements[i].StructureMembers["color"].SetValue(lightSources[i].Diffuse);
+                    }
                 }
             }
         }
@@ -359,7 +152,7 @@ namespace Tutorial14___Skinned_Model_Animation
         /// </summary>
         /// <param name="lightSources"></param>
         /// <param name="ambientLightColor"></param>
-        public virtual void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
+        public override void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
         {
             bool ambientSet = false;
             lightSources.Clear();
@@ -380,30 +173,27 @@ namespace Tutorial14___Skinned_Model_Animation
 
                 if (lightSources.Count < MaxLights)
                 {
-                    foreach (LightSource light in lNode.LightSources)
-                    {
-                        // skip the light source if not enabled or not a directional light
-                        if (!light.Enabled || (light.Type != LightType.Directional))
-                            continue;
+                    // skip the light source if not enabled or not a directional light
+                    if (!lNode.LightSource.Enabled || (lNode.LightSource.Type != LightType.Directional))
+                        continue;
 
-                        LightSource source = new LightSource();
-                        source.Diffuse = light.Diffuse;
+                    LightSource source = new LightSource();
+                    source.Diffuse = lNode.LightSource.Diffuse;
 
-                        tmpVec1 = light.Direction;
-                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                        tmpMat2 = lNode.WorldTransformation;
-                        MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+                    tmpVec1 = lNode.LightSource.Direction;
+                    Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                    tmpMat2 = lNode.WorldTransformation;
+                    MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
 
-                        source.Direction = tmpMat3.Translation;
-                        source.Specular = light.Specular;
+                    source.Direction = tmpMat3.Translation;
+                    source.Specular = lNode.LightSource.Specular;
 
-                        lightSources.Add(source);
+                    lightSources.Add(source);
 
-                        // If there are already 3 lights, then skip other lights
-                        if (lightSources.Count >= MaxLights)
-                            break;
-                    }
+                    // If there are already 3 lights, then skip other lights
+                    if (lightSources.Count >= MaxLights)
+                        break;
                 }
             }
 
@@ -420,30 +210,27 @@ namespace Tutorial14___Skinned_Model_Animation
 
                 if (lightSources.Count < MaxLights)
                 {
-                    foreach (LightSource light in lNode.LightSources)
-                    {
-                        // skip the light source if not enabled or not a directional light
-                        if (!light.Enabled || (light.Type != LightType.Directional))
-                            continue;
+                    // skip the light source if not enabled or not a directional light
+                    if (!lNode.LightSource.Enabled || (lNode.LightSource.Type != LightType.Directional))
+                        continue;
 
-                        LightSource source = new LightSource();
-                        source.Diffuse = light.Diffuse;
+                    LightSource source = new LightSource();
+                    source.Diffuse = lNode.LightSource.Diffuse;
 
-                        tmpVec1 = light.Direction;
-                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                        tmpMat2 = lNode.WorldTransformation;
-                        MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+                    tmpVec1 = lNode.LightSource.Direction;
+                    Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                    tmpMat2 = lNode.WorldTransformation;
+                    MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
 
-                        source.Direction = tmpMat3.Translation;
-                        source.Specular = light.Specular;
+                    source.Direction = tmpMat3.Translation;
+                    source.Specular = lNode.LightSource.Specular;
 
-                        lightSources.Add(source);
+                    lightSources.Add(source);
 
-                        // If there are already 3 lights, then skip other lights
-                        if (lightSources.Count >= MaxLights)
-                            break;
-                    }
+                    // If there are already 3 lights, then skip other lights
+                    if (lightSources.Count >= MaxLights)
+                        break;
                 }
             }
 
@@ -460,46 +247,7 @@ namespace Tutorial14___Skinned_Model_Animation
             }
         }
 
-        /// <summary>
-        /// This shader does not support particle effect.
-        /// </summary>
-        /// <param name="particleEffect"></param>
-        public virtual void SetParameters(ParticleEffect particleEffect)
-        {
-        }
-
-        /// <summary>
-        /// This shader does not support special camera effect.
-        /// </summary>
-        /// <param name="camera"></param>
-        public virtual void SetParameters(Camera camera)
-        {
-        }
-
-        /// <summary>
-        /// This shader does not support environmental effect.
-        /// </summary>
-        /// <param name="environment"></param>
-        public virtual void SetParameters(GoblinXNA.Graphics.Environment environment)
-        {
-        }
-
-
-        public void UpdateBones(Matrix[] updatedBones)
-        {
-            int k = updatedBones.Length;
-            Matrix[] temp = new Matrix[k];
-            for (int i = 0; i < k; i++)
-            {
-                temp[i] = updatedBones[i];
-            }
-            bones.SetValue(temp);
-        }
-
-
-        #region IShader Members
-
-        public virtual void Render(Matrix worldMatrix, String techniqueName,
+        public override void Render(Matrix worldMatrix, String techniqueName,
             RenderHandler renderDelegate)
         {
             if (techniqueName == null)
@@ -507,10 +255,10 @@ namespace Tutorial14___Skinned_Model_Animation
             if (renderDelegate == null)
                 throw new GoblinException("renderDelegate is null");
 
-            this.SetValue(world, ref lastUsedWorldMatrix, worldMatrix);
-            this.SetValue(view, ref lastUsedViewMatrix, State.ViewMatrix);
-            this.SetValue(projection, ref lastUsedProjMatrix, State.ProjectionMatrix);
-            
+            world.SetValue(worldMatrix);
+            view.SetValue(State.ViewMatrix);
+            projection.SetValue(State.ProjectionMatrix);
+
             // Start shader
             effect.CurrentTechnique = effect.Techniques[techniqueName];
             try
@@ -543,7 +291,7 @@ namespace Tutorial14___Skinned_Model_Animation
                     pass.Begin();
                     renderDelegate();
                     pass.End();
-                    
+
                 }
                 State.Device.RenderState.AlphaBlendEnable = true;
                 State.Device.RenderState.DepthBufferWriteEnable = false;
@@ -567,10 +315,19 @@ namespace Tutorial14___Skinned_Model_Animation
             }
         }
 
-        public virtual void Dispose()
+        #endregion
+
+        #region Public Methods
+
+        public void UpdateBones(Matrix[] updatedBones)
         {
-            if (effect != null)
-                effect.Dispose();
+            int k = updatedBones.Length;
+            Matrix[] temp = new Matrix[k];
+            for (int i = 0; i < k; i++)
+            {
+                temp[i] = updatedBones[i];
+            }
+            bones.SetValue(temp);
         }
 
         #endregion

@@ -39,6 +39,8 @@ namespace GoblinXNA.Shaders
         /// fit in our resolution. Usually unused!
         /// </summary>
         DepthStencilBuffer zBufferSurface = null;
+
+        Viewport origViewport;
         /// <summary>
         /// ZBuffer surface
         /// </summary>
@@ -317,6 +319,7 @@ namespace GoblinXNA.Shaders
                 renderTarget == null)
                 return false;
 
+            origViewport = State.Device.Viewport;
             State.SetRenderTarget(renderTarget, false);
             return true;
         }
@@ -349,6 +352,7 @@ namespace GoblinXNA.Shaders
             // fix
             //State.Device.ResolveRenderTarget(0);
             State.Device.SetRenderTarget(0, null);
+            State.Device.Viewport = origViewport;
         }
         #endregion
     } // class RenderToTexture

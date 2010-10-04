@@ -49,10 +49,12 @@ namespace GoblinXNA.SceneGraph
     {
         #region Member Fields
 
-        protected List<LightSource> lightSources;
+        protected LightSource lightSource;
         protected bool global;
         protected Vector4 ambientLightColor;
         protected Matrix worldTransform;
+
+        protected bool hasChanged;
 
         #endregion
 
@@ -64,10 +66,11 @@ namespace GoblinXNA.SceneGraph
         public LightNode(String name)
             : base(name)
         {
-            lightSources = new List<LightSource>();
+            lightSource = new LightSource();
             global = true;
             worldTransform = Matrix.Identity;
             ambientLightColor = new Vector4(0, 0, 0, 1);
+            hasChanged = true;
         }
         /// <summary>
         /// Creates a light node with an empty name
@@ -81,10 +84,14 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Gets or sets a list of light sources associated with this node
         /// </summary>
-        public List<LightSource> LightSources
+        public LightSource LightSource
         {
-            get { return lightSources; }
-            set { lightSources = value; }
+            get { return lightSource; }
+            set 
+            { 
+                lightSource = value;
+                hasChanged = true;
+            }
         }
 
         /// <summary>
@@ -96,7 +103,14 @@ namespace GoblinXNA.SceneGraph
         public bool Global
         {
             get { return global; }
-            set { global = value; }
+            set 
+            {
+                if (global != value)
+                {
+                    global = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -105,7 +119,14 @@ namespace GoblinXNA.SceneGraph
         public Vector4 AmbientLightColor
         {
             get { return ambientLightColor; }
-            set { ambientLightColor = value; }
+            set 
+            {
+                if (!ambientLightColor.Equals(value))
+                {
+                    ambientLightColor = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -114,8 +135,29 @@ namespace GoblinXNA.SceneGraph
         public Matrix WorldTransformation
         {
             get { return worldTransform; }
-            internal set { worldTransform = value; }
+            internal set
+            {
+                if (!worldTransform.Equals(value))
+                {
+                    worldTransform = value;
+                    hasChanged = true;
+                }
+            }
         }
+
+        /// <summary>
+        /// Indicates whether the light source or light node itself has changes to be reflected.
+        /// </summary>
+        internal bool HasChanged
+        {
+            get { return (hasChanged | lightSource.HasChanged); }
+            set
+            {
+                hasChanged = value;
+                lightSource.HasChanged = value;
+            }
+        }
+
         #endregion
 
         #region Overriden Methods
@@ -125,9 +167,7 @@ namespace GoblinXNA.SceneGraph
             LightNode clone = (LightNode)base.CloneNode();
             clone.Global = global;
             clone.AmbientLightColor = ambientLightColor;
-            clone.LightSources = new List<LightSource>();
-            foreach (LightSource light in lightSources)
-                clone.LightSources.Add(new LightSource(light));
+            clone.LightSource = lightSource;
 
             return clone;
         }
@@ -139,8 +179,7 @@ namespace GoblinXNA.SceneGraph
             xmlNode.SetAttribute("global", global.ToString());
             xmlNode.SetAttribute("ambientLightColor", ambientLightColor.ToString());
 
-            foreach (LightSource lightSource in lightSources)
-                xmlNode.AppendChild(lightSource.Save(xmlDoc));
+            xmlNode.AppendChild(lightSource.Save(xmlDoc));
 
             return xmlNode;
         }
@@ -154,13 +193,10 @@ namespace GoblinXNA.SceneGraph
             if (xmlNode.HasAttribute("ambientLightColor"))
                 ambientLightColor = Vector4Helper.FromString(xmlNode.GetAttribute("ambientLightColor"));
 
-            foreach (XmlElement lightSourceXml in xmlNode.ChildNodes)
-            {
-                LightSource lightSource = (LightSource)Activator.CreateInstance(
-                    Type.GetType(lightSourceXml.Name));
-                lightSource.Load(lightSourceXml);
-                lightSources.Add(lightSource);
-            }
+            XmlElement lightSourceXml = (XmlElement)xmlNode.ChildNodes[0];
+            lightSource = (LightSource)Activator.CreateInstance(
+                Type.GetType(lightSourceXml.Name));
+            lightSource.Load(lightSourceXml);
         }
 
         #endregion

@@ -36,6 +36,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using System.IO;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -59,6 +60,14 @@ namespace GoblinXNA.SceneGraph
     /// </summary>
     public class Scene : DrawableGameComponent
     {
+        #region Delegates
+
+        public delegate void RenderBeforeUI(bool leftView);
+
+        public delegate void RenderAfterUI(bool leftView);
+
+        #endregion
+
         #region Member Fields
         protected const int VIDEO_BUFFER_SIZE = 1;
         /// <summary>
@@ -69,15 +78,12 @@ namespace GoblinXNA.SceneGraph
         /// A hash table that stores Node objects with their names as the keys
         /// </summary>
         protected Dictionary<String, Node> nodeTable;
-        /// <summary>
-        /// A list of geometry nodes that need to be rendered organized in its groupID
-        /// </summary>
-        protected Dictionary<int, List<GeometryNode>> nodeRenderGroups;
+
         /// <summary>
         /// A list of geometry nodes that are opaque (same as nodeRenderGroups but in
         /// a 1dimensional list for easy searching)
         /// </summary>
-        protected List<GeometryNode> opaqueGroups;
+        protected List<GeometryNode> opaqueGroup;
         /// <summary>
         /// A list of boolean values indicating whether nodes with certain groupID should
         /// be rendered
@@ -99,6 +105,8 @@ namespace GoblinXNA.SceneGraph
         /// A list of geometry nodes that function as occluders
         /// </summary>
         protected List<GeometryNode> occluderGroup;
+
+        protected List<GeometryNode> ignoreDepthGroup;
         /// <summary>
         /// A list of particle effects that need to be rendered
         /// </summary>
@@ -121,6 +129,11 @@ namespace GoblinXNA.SceneGraph
         protected Stack<LightNode> localLights;
 
         /// <summary>
+        /// Indicates whether we need to pass lighting info to shaders to update them
+        /// </summary>
+        protected bool needsToUpdateGlobalLighting;
+
+        /// <summary>
         /// The marker tracker object
         /// </summary>
         protected IMarkerTracker markerTracker;
@@ -141,9 +154,7 @@ namespace GoblinXNA.SceneGraph
         protected bool markerModuleInited;
         protected List<MarkerNode> markerUpdateList;
 
-        protected IShader aabbShader;
         protected Color aabbColor;
-        protected IShader cmeshShader;
         protected Color cmeshColor;
         protected bool enableShadowMapping;
         protected bool enableLighting;
@@ -163,10 +174,9 @@ namespace GoblinXNA.SceneGraph
 
         protected Texture2D backgroundTexture;
         protected Color backgroundColor;
+        protected Color videoBackgroundColor;
 
         protected List<LightSource> globalLightSources;
-
-        protected bool clientPerformPhysicsSimulation;
 
         protected float physicsElapsedTime;
 
@@ -178,6 +188,13 @@ namespace GoblinXNA.SceneGraph
         protected float uiElapsedTime;
 
         protected ResolveTexture2D screen;
+
+        protected String curCamNodeName; // used only when loading a scene graph from XML file
+
+        protected RenderBeforeUI renderBeforeUI;
+        protected RenderAfterUI renderAfterUI;
+
+        protected bool isStarted;
 
         #region For Threading
 
@@ -225,8 +242,6 @@ namespace GoblinXNA.SceneGraph
         protected uint frameUpdateCount;
 
         protected float prevTrackerTime;
-
-        protected Rectangle videoRect;
 
         #region For Stereo Augmented Reality
         protected int leftEyeVideoID;
@@ -276,13 +291,13 @@ namespace GoblinXNA.SceneGraph
 
             videoCaptures = new List<IVideoCapture>();
             
-            nodeRenderGroups = new Dictionary<int, List<GeometryNode>>();
             renderGroups = new Dictionary<int, bool>();
             transparentGroup = new List<GeometryNode>();
-            opaqueGroups = new List<GeometryNode>();
+            opaqueGroup = new List<GeometryNode>();
             needTransparencySort = false;
             renderedEffects = new List<ParticleNode>();
             occluderGroup = new List<GeometryNode>();
+            ignoreDepthGroup = new List<GeometryNode>();
 
             transparencySortOrder = new DefaultTransparencyComparer();
 
@@ -292,6 +307,7 @@ namespace GoblinXNA.SceneGraph
             globalLights = new List<LightNode>();
             localLights = new Stack<LightNode>();
             globalLightSources = new List<LightSource>();
+            needsToUpdateGlobalLighting = false;
 
             emptyLightList = new List<LightNode>();
             emptyMaterial = new Material();
@@ -306,25 +322,8 @@ namespace GoblinXNA.SceneGraph
 
             enableFrustumCulling = true;
 
-            clientPerformPhysicsSimulation = false;
-
-            aabbColor = Color.YellowGreen;
-            aabbShader = new SimpleEffectShader();
-            Material aabbMat = new Material();
-            aabbMat.Ambient = aabbColor.ToVector4();
-            aabbMat.Diffuse = aabbColor.ToVector4();
-            aabbMat.Emissive = aabbColor.ToVector4();
-            aabbMat.Specular = aabbColor.ToVector4();
-            aabbShader.SetParameters(aabbMat);
-
+            aabbColor = Color.Yellow;
             cmeshColor = Color.Purple;
-            cmeshShader = new SimpleEffectShader();
-            Material cmeshMat = new Material();
-            cmeshMat.Ambient = cmeshColor.ToVector4();
-            cmeshMat.Diffuse = cmeshColor.ToVector4();
-            cmeshMat.Emissive = cmeshColor.ToVector4();
-            cmeshMat.Specular = cmeshColor.ToVector4();
-            cmeshShader.SetParameters(cmeshMat);
 
             markerModuleInited = false;
 
@@ -336,6 +335,7 @@ namespace GoblinXNA.SceneGraph
 
             backgroundTexture = null;
             backgroundColor = Color.CornflowerBlue;
+            videoBackgroundColor = Color.White;
 
             showCameraImage = false;
             trackerVideoID = 0;
@@ -360,9 +360,9 @@ namespace GoblinXNA.SceneGraph
 
             physicsElapsedTime = 0;
 
-            videoRect = new Rectangle(0, 0, State.Width, State.Height);
-
             processing = false;
+            isStarted = false;
+            curCamNodeName = "";
 
             isMarkerTrackingThreaded = ((State.ThreadOption & (ushort)ThreadOptions.MarkerTracking) != 0);
             isPhysicsThreaded = ((State.ThreadOption & (ushort)ThreadOptions.PhysicsSimulation) != 0);
@@ -399,16 +399,19 @@ namespace GoblinXNA.SceneGraph
             {
                 if (value == null)
                     throw new GoblinException("Root node can not be assigned to null");
+                while (processing) { }
                 rootNode = value; 
 
                 // Clears all of the saved information related to scene graph
                 nodeTable.Clear();
-                nodeRenderGroups.Clear();
                 renderGroups.Clear();
                 transparentGroup.Clear();
-                opaqueGroups.Clear();
+                opaqueGroup.Clear();
                 renderedEffects.Clear();
                 occluderGroup.Clear();
+                globalLights.Clear();
+                markerUpdateList.Clear();
+                lodNodes.Clear();
             }
         }
 
@@ -419,7 +422,11 @@ namespace GoblinXNA.SceneGraph
         public CameraNode CameraNode
         {
             get { return cameraNode; }
-            set { cameraNode = value; }
+            set 
+            {
+                while (processing) { }
+                cameraNode = value; 
+            }
         }
 
         /// <summary>
@@ -455,6 +462,20 @@ namespace GoblinXNA.SceneGraph
         {
             get { return backgroundColor; }
             set { backgroundColor = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the background color mixed with the video image. This is applicable only when
+        /// ShowCameraImage is set to true. Default color is Color.White.
+        /// </summary>
+        /// <remarks>
+        /// You can use this property to, for example, modify the transparency of the video image or
+        /// mix a color to it.
+        /// </remarks>
+        public Color VideoBackgroundColor
+        {
+            get { return videoBackgroundColor; }
+            set { videoBackgroundColor = value; }
         }
 
         /// <summary>
@@ -594,7 +615,11 @@ namespace GoblinXNA.SceneGraph
         public bool EnableLighting
         {
             get { return enableLighting; }
-            set { enableLighting = value; }
+            set 
+            { 
+                enableLighting = value;
+                needsToUpdateGlobalLighting = true;
+            }
         }
 
         /// <summary>
@@ -625,55 +650,13 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Gets or sets whether to have each client perform their own physics simulation when
-        /// the application requires networking. It is necessary to have the server perform physics 
-        /// simulation in order to have synchronized simulation result, but in case the server
-        /// does not maintain a list of physics objects, it is necessary for the client to perform
-        /// physics simulation on the client's side. The default value is false.
-        /// </summary>
-        public bool ClientPerformSelfPhysicsSimulation
-        {
-            get { return clientPerformPhysicsSimulation; }
-            set { clientPerformPhysicsSimulation = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the shader used to draw the axis-aligned bounding box generated in the physics
-        /// engine for debugging purposes. Default shader is SimpleEffectShader.
-        /// </summary>
-        public IShader AabbShader
-        {
-            get { return aabbShader; }
-            set { aabbShader = value; }
-        }
-
-        /// <summary>
         /// Gets or sets the color used to draw the axis-aligned bounding box of each model for 
         /// debugging. Default color is Color.YellowGreen.
         /// </summary>
         public Color AabbColor
         {
             get { return aabbColor; }
-            set
-            {
-                aabbColor = value;
-                Material tmpMat = new Material();
-                tmpMat.Specular = value.ToVector4();
-                tmpMat.Ambient = value.ToVector4();
-                tmpMat.Diffuse = value.ToVector4();
-                tmpMat.Emissive = value.ToVector4();
-                aabbShader.SetParameters(tmpMat);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the shader used to draw the actual mesh used for collision detection 
-        /// by the physics engine for debugging purposes. Default shader is SimpleEffectShader.
-        /// </summary>
-        public IShader CollisionMeshShader
-        {
-            get { return cmeshShader; }
-            set { cmeshShader = value; }
+            set { aabbColor = value; }
         }
 
         /// <summary>
@@ -683,16 +666,7 @@ namespace GoblinXNA.SceneGraph
         public Color CollisionMeshColor
         {
             get { return cmeshColor; }
-            set
-            {
-                cmeshColor = value;
-                Material tmpMat = new Material();
-                tmpMat.Specular = value.ToVector4();
-                tmpMat.Ambient = value.ToVector4();
-                tmpMat.Diffuse = value.ToVector4();
-                tmpMat.Emissive = value.ToVector4();
-                cmeshShader.SetParameters(tmpMat);
-            }
+            set { cmeshColor = value; }
         }
 
         /// <summary>
@@ -727,7 +701,11 @@ namespace GoblinXNA.SceneGraph
         public bool ShowCameraImage
         {
             get { return showCameraImage; }
-            set { showCameraImage = value; }
+            set 
+            {
+                while (processing) { }
+                showCameraImage = value; 
+            }
         }
 
         /// <summary>
@@ -851,11 +829,71 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Sets the callback function that is invoked after all 3D geometries are rendered, but
+        /// right before the 2D UIs are rendered.
+        /// </summary>
+        public RenderBeforeUI RenderBeforeUICallback
+        {
+            set { renderBeforeUI = value; }
+        }
+
+        /// <summary>
+        /// Sets the callback function that is invoked after the 2D UIs are rendered.
+        /// </summary>
+        public RenderAfterUI RenderAfterUICallback
+        {
+            set { renderAfterUI = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets whether you need the image pointer to be passed back by your
+        /// IVideoCapture.GetTextureImage(...) even if it is not needed by the Scene class.
+        /// Default value is false. Use this with caution.
+        /// </summary>
+        public bool NeedsImagePtr { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether you need the image data (int array) to be passed back by your
+        /// IVideoCapture.GetTextureImage(...) even if it is not needed by the Scene class.
+        /// Default value is false. Use this with caution.
+        /// </summary>
+        public bool NeedsImageData { get; set; }
+
+        /// <summary>
+        /// Gets or sets the shift amount applied to all 2D HUD drawings including the text
+        /// in the X screen coordinate. 
+        /// </summary>
+        /// <remarks>
+        /// This shift is applied only when right eye view is rendered in stereo mode. 
+        /// </remarks>
+        public int GlobalUIShift
+        {
+            get { return uiRenderer.GlobalUIShift; }
+            set { uiRenderer.GlobalUIShift = value; }
+        }
+
+        #endregion
+
+        #region Internal Properties
+
+        /// <summary>
         /// Indicates whether the scene graph is currently being traversed.
         /// </summary>
         internal bool Processing
         {
             get { return processing; }
+        }
+
+        /// <summary>
+        /// Indicates whether the scene processing has already started.
+        /// </summary>
+        /// <remarks>
+        /// This is used to check whether adding nodes outside of tree traversal is 
+        /// exception free. 
+        /// </remarks>
+        internal bool IsStarted
+        {
+            get { return isStarted; }
         }
 
         #endregion
@@ -880,7 +918,6 @@ namespace GoblinXNA.SceneGraph
         protected virtual void PrepareSceneForRendering()
         {
             localLights.Clear();
-            globalLights.Clear();
 
             trackMarkers = false;
             processing = true;
@@ -1016,11 +1053,12 @@ namespace GoblinXNA.SceneGraph
             else if (node is GeometryNode)
             {
                 GeometryNode gNode = (GeometryNode) node;
+                bool shouldBeSynchronized = (gNode is SynchronizedGeometryNode);
 
-                if (State.EnableNetworking && State.IsServer)
+                if (shouldBeSynchronized && State.EnableNetworking && State.IsServer)
                     prevMatrix = gNode.WorldTransformation;
 
-                if (clientPerformPhysicsSimulation || !(State.EnableNetworking && !State.IsServer))
+                if (!shouldBeSynchronized || !(State.EnableNetworking && !State.IsServer))
                 {
                     if (physicsEngine != null && gNode.AddToPhysicsEngine)
                     {
@@ -1042,7 +1080,7 @@ namespace GoblinXNA.SceneGraph
                     else
                         gNode.WorldTransformation = parentTransformation;
 
-                    if (gNode.Model.OffsetToOrigin)
+                    if (gNode.Model != null && gNode.Model.OffsetToOrigin)
                     {
                         Vector3 offset = gNode.Model.OffsetTransform.Translation;
 
@@ -1074,10 +1112,16 @@ namespace GoblinXNA.SceneGraph
 
                 parentTransformation = gNode.WorldTransformation;
 
-                if (State.EnableNetworking && State.IsServer)
+                if (shouldBeSynchronized && State.EnableNetworking && State.IsServer)
                 {
-                    if (MatrixHelper.HasMovedSignificantly(prevMatrix, gNode.WorldTransformation))
-                        gNode.Network.ReadyToSend = true;
+                    //if (MatrixHelper.HasMovedSignificantly(prevMatrix, gNode.WorldTransformation))
+                        ((SynchronizedGeometryNode)gNode).ReadyToSend = true;
+                }
+
+                if (gNode.OcclusionStateChanged)
+                {
+                    RemoveFromRenderedGroups(gNode);
+                    gNode.OcclusionStateChanged = false;
                 }
 
                 if (gNode.IsOccluder)
@@ -1089,7 +1133,7 @@ namespace GoblinXNA.SceneGraph
                     if (gNode.Material.Diffuse.W < 1.0f)
                         AddToTransparencyGroup(gNode);
                     else
-                        AddToRenderedGroups(gNode);
+                        AddToOpaqueGroup(gNode);
                 }
 
                 if (gNode is LODNode)
@@ -1099,45 +1143,71 @@ namespace GoblinXNA.SceneGraph
                         lodNodes.Add(lodNode);
                 }
 
-                BoundingSphere boundingVol = gNode.BoundingVolume;
-                tmpMat1 = gNode.WorldTransformation;
-
-                tmpVec1.X = (float)Math.Sqrt(tmpMat1.M11 * tmpMat1.M11 + tmpMat1.M12 * tmpMat1.M12 + tmpMat1.M13 * tmpMat1.M13);
-                tmpVec1.Y = (float)Math.Sqrt(tmpMat1.M21 * tmpMat1.M21 + tmpMat1.M22 * tmpMat1.M22 + tmpMat1.M23 * tmpMat1.M23);
-                tmpVec1.Z = (float)Math.Sqrt(tmpMat1.M31 * tmpMat1.M31 + tmpMat1.M32 * tmpMat1.M32 + tmpMat1.M33 * tmpMat1.M33);
-
-                boundingVol.Radius = gNode.Model.MinimumBoundingSphere.Radius * Math.Max(tmpVec1.X,
-                    Math.Max(tmpVec1.Y, tmpVec1.Z));
-
-                if (!gNode.Model.OffsetToOrigin)
+                if (gNode.Model != null)
                 {
-                    tmpVec1 = gNode.Model.MinimumBoundingBox.Min;
-                    tmpVec2 = gNode.Model.MinimumBoundingBox.Max;
-                    Vector3.Add(ref tmpVec1, ref tmpVec2, out tmpVec3);
-                    Vector3.Divide(ref tmpVec3, 2, out tmpVec1);
+                    BoundingSphere boundingVol = gNode.BoundingVolume;
+                    tmpMat1 = gNode.WorldTransformation;
+
+                    tmpVec1.X = (float)Math.Sqrt(tmpMat1.M11 * tmpMat1.M11 + tmpMat1.M12 * tmpMat1.M12 + tmpMat1.M13 * tmpMat1.M13);
+                    tmpVec1.Y = (float)Math.Sqrt(tmpMat1.M21 * tmpMat1.M21 + tmpMat1.M22 * tmpMat1.M22 + tmpMat1.M23 * tmpMat1.M23);
+                    tmpVec1.Z = (float)Math.Sqrt(tmpMat1.M31 * tmpMat1.M31 + tmpMat1.M32 * tmpMat1.M32 + tmpMat1.M33 * tmpMat1.M33);
+
+                    boundingVol.Radius = gNode.Model.MinimumBoundingSphere.Radius * Math.Max(tmpVec1.X,
+                        Math.Max(tmpVec1.Y, tmpVec1.Z));
+
+                    tmpVec1 = gNode.Model.MinimumBoundingSphere.Center;
 
                     Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
                     tmpMat2 = gNode.WorldTransformation;
                     Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+
+                    if (markerTransform.M44 == 0)
+                    {
+                        boundingVol.Center.X = float.MaxValue;
+                        boundingVol.Center.Y = float.MaxValue;
+                        boundingVol.Center.Z = float.MaxValue;
+                    }
+                    else
+                    {
+                        Matrix.Multiply(ref tmpMat3, ref markerTransform, out tmpMat1);
+                        boundingVol.Center = tmpMat1.Translation;
+                    }
+
+                    gNode.BoundingVolume = boundingVol;
                 }
 
-                if (markerTransform.M44 == 0)
+                // Set the local lights that will affect this geometry model
+                if (gNode.LocalLights.Count != localLights.Count)
                 {
-                    boundingVol.Center.X = float.MaxValue;
-                    boundingVol.Center.Y = float.MaxValue;
-                    boundingVol.Center.Z = float.MaxValue;
+                    gNode.LocalLights.Clear();
+                    gNode.LocalLights.AddRange(localLights);
+                    gNode.NeedsToUpdateLocalLights = true;
                 }
                 else
                 {
-                    Matrix.Multiply(ref tmpMat3, ref markerTransform, out tmpMat1);
-                    boundingVol.Center = tmpMat1.Translation;
+                    bool allMatch = true;
+                    foreach(LightNode light in gNode.LocalLights)
+                        if (!localLights.Contains(light))
+                        {
+                            allMatch = false;
+                            break;
+                        }
+
+                    if (allMatch)
+                    {
+                        foreach (LightNode light in gNode.LocalLights)
+                        {
+                            gNode.NeedsToUpdateLocalLights |= light.HasChanged;
+                            light.HasChanged = false;
+                        }
+                    }
+                    else
+                    {
+                        gNode.LocalLights.Clear();
+                        gNode.LocalLights.AddRange(localLights);
+                        gNode.NeedsToUpdateLocalLights = true;
+                    }
                 }
-
-                gNode.BoundingVolume = boundingVol;
-
-                // Set the local lights that will affect this geometry model
-                gNode.LocalLights.Clear();
-                gNode.LocalLights.AddRange(localLights);
 
                 gNode.ShouldRender = true;
             }
@@ -1167,7 +1237,7 @@ namespace GoblinXNA.SceneGraph
                 else
                     pNode.WorldTransformation = parentTransformation;
 
-                pNode.WorldTransformation *= markerTransform;
+                pNode.MarkerTransformation = markerTransform;
                 if (!pNode.IsRendered)
                 {
                     pNode.IsRendered = true;
@@ -1183,22 +1253,65 @@ namespace GoblinXNA.SceneGraph
                 if (sNode.SwitchChanged)
                 {
                     foreach (Node child in sNode.Children)
-                        RecursivelyRemoveFromRendering(child);
+                        RecursivelyRemoveFromScene(child);
                     sNode.SwitchChanged = false;
                 }
             }
             else if (node is SoundNode)
             {
                 SoundNode soNode = (SoundNode)node;
-                soNode.WorldTransformation = parentTransformation;
+                if (soNode.Parent is GeometryNode)
+                    tmpMat1 = ((GeometryNode)soNode.Parent).WorldTransformation;
+                else
+                    tmpMat1 = parentTransformation;
+
+                if (markerTransform.M44 == 0)
+                {
+                    // have not decided what to do yet if marker is not detected
+                }
+                else
+                {
+                    Matrix.Multiply(ref tmpMat1, ref markerTransform, out tmpMat1);
+                }
+
+                soNode.WorldTransformation = tmpMat1;
             }
 
             if (node is BranchNode)
             {
                 BranchNode bNode = (BranchNode)node;
+                // before processing them, first add or remove nodes if necessary
+                if (bNode.ChangeList.Count > 0)
+                {
+                    List<BranchNode.NodeChangeInfo> changeList = 
+                        new List<BranchNode.NodeChangeInfo>(bNode.ChangeList);
+                    bNode.ChangeList.Clear();
+                    foreach (BranchNode.NodeChangeInfo info in changeList)
+                    {
+                        if (info.Type == BranchNode.ChangeType.Add)
+                            bNode.Children.Add(info.Node);
+                        else
+                        {
+                            bNode.Children.Remove(info.Node);
+                            RecursivelyRemoveFromScene(info.Node);
+                        }
+                    }
+                }
                 if (switchPass >= 0)
-                    RecursivePrepareForRendering(bNode.Children[switchPass], ref parentTransformation,
-                        ref parentMarkerTransform, isWorldTransformationDirty || calculateAll);
+                {
+                    if (bNode.Children[switchPass] is LightNode)
+                    {
+                        int numLocalLights = 0;
+                        ProcessLightNode((LightNode)bNode.Children[switchPass],
+                            ref parentTransformation, ref parentMarkerTransform,
+                            ref numLocalLights);
+                        if(numLocalLights > 0)
+                            localLights.Pop();
+                    }
+                    else
+                        RecursivePrepareForRendering(bNode.Children[switchPass], ref parentTransformation,
+                            ref parentMarkerTransform, isWorldTransformationDirty || calculateAll);
+                }
                 else
                 {
                     if (!(bNode.Prune || pruneForMarkerNode))
@@ -1208,25 +1321,16 @@ namespace GoblinXNA.SceneGraph
                         // to the siblings as well as the descendants
                         foreach (Node child in bNode.Children)
                         {
-                            if (child.Enabled && (child is LightNode))
-                            {
-                                LightNode lNode = (LightNode)child;
-                                Matrix.Multiply(ref parentTransformation, ref parentMarkerTransform, out tmpMat1);
-                                lNode.WorldTransformation = tmpMat1;
-                                if (lNode.Global)
-                                    globalLights.Add(lNode);
-                                else
-                                {
-                                    localLights.Push(lNode);
-                                    numLocalLights++;
-                                }
-                            }
+                            if (child is LightNode)
+                                ProcessLightNode((LightNode)child,
+                                    ref parentTransformation, ref parentMarkerTransform, 
+                                    ref numLocalLights);
                         }
 
                         // Now, go through all of the child nodes except the light nodes
                         foreach (Node child in bNode.Children)
                         {
-                            if(!(child is LightNode))
+                            if (!(child is LightNode))
                                 RecursivePrepareForRendering(child, ref parentTransformation,
                                     ref parentMarkerTransform, isWorldTransformationDirty || calculateAll);
                         }
@@ -1239,11 +1343,52 @@ namespace GoblinXNA.SceneGraph
             }
         }
 
+        protected virtual void ProcessLightNode(LightNode lNode, ref Matrix parentTransformation, 
+            ref Matrix parentMarkerTransform, ref int numLocalLights)
+        {
+            if (lNode.Enabled)
+            {
+                Matrix.Multiply(ref parentTransformation, ref parentMarkerTransform, out tmpMat1);
+                lNode.WorldTransformation = tmpMat1;
+                if (lNode.Global)
+                {
+                    if (globalLights.Contains(lNode))
+                    {
+                        if (lNode.HasChanged)
+                            needsToUpdateGlobalLighting = true;
+                    }
+                    else
+                    {
+                        globalLights.Add(lNode);
+                        needsToUpdateGlobalLighting = true;
+                    }
+
+                    lNode.HasChanged = false;
+                }
+                else
+                {
+                    localLights.Push(lNode);
+                    numLocalLights++;
+                }
+            }
+            else
+            {
+                if (lNode.Global)
+                {
+                    if (globalLights.Contains(lNode))
+                    {
+                        globalLights.Remove(lNode);
+                        needsToUpdateGlobalLighting = true;
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Recursively removes a node and all of its children from the scene graph.
         /// </summary>
         /// <param name="node"></param>
-        internal virtual void RecursivelyRemoveFromRendering(Node node)
+        internal virtual void RecursivelyRemoveFromScene(Node node)
         {
             nodeTable.Remove(node.Name);
             if (node is GeometryNode)
@@ -1253,37 +1398,37 @@ namespace GoblinXNA.SceneGraph
                 renderedEffects.Remove((ParticleNode)node);
                 ((ParticleNode)node).IsRendered = false;
             }
+            else if (node is LightNode)
+            {
+                if (globalLights.Contains((LightNode)node))
+                {
+                    globalLights.Remove((LightNode)node);
+                    needsToUpdateGlobalLighting = true;
+                }
+            }
             else if (node is MarkerNode)
                 markerUpdateList.Remove((MarkerNode)node);
 
             if(node is BranchNode)
                 foreach (Node child in ((BranchNode)node).Children)
-                    RecursivelyRemoveFromRendering(child);
+                    RecursivelyRemoveFromScene(child);
         }
 
         /// <summary>
         /// Adds a geometry node to the render group with opaque material.
         /// </summary>
         /// <param name="node"></param>
-        protected virtual void AddToRenderedGroups(GeometryNode node)
+        protected virtual void AddToOpaqueGroup(GeometryNode node)
         {
             if (!node.IsRendered)
             {
-                if (!nodeRenderGroups.ContainsKey(node.GroupID))
-                {
-                    List<GeometryNode> renderNodes = new List<GeometryNode>();
-                    renderNodes.Add(node);
-                    nodeRenderGroups.Add(node.GroupID, renderNodes);
-                    if (!renderGroups.ContainsKey(node.GroupID))
-                        renderGroups.Add(node.GroupID, true);
-                }
-                else
-                    nodeRenderGroups[node.GroupID].Add(node);
+                if (!renderGroups.ContainsKey(node.GroupID))
+                    renderGroups.Add(node.GroupID, true);
 
-                opaqueGroups.Add(node);
+                opaqueGroup.Add(node);
 
-                if (networkHandler != null)
-                    networkHandler.AddNetworkObject(node.Network);
+                if ((networkHandler != null) && (node is SynchronizedGeometryNode))
+                    networkHandler.AddNetworkObject((SynchronizedGeometryNode)node);
 
                 node.IsRendered = true;
             }
@@ -1292,16 +1437,7 @@ namespace GoblinXNA.SceneGraph
                 if (transparentGroup.Contains(node))
                 {
                     transparentGroup.Remove(node);
-                    if (!nodeRenderGroups.ContainsKey(node.GroupID))
-                    {
-                        List<GeometryNode> renderNodes = new List<GeometryNode>();
-                        renderNodes.Add(node);
-                        nodeRenderGroups.Add(node.GroupID, renderNodes);
-                    }
-                    else
-                        nodeRenderGroups[node.GroupID].Add(node);
-
-                    opaqueGroups.Add(node);
+                    opaqueGroup.Add(node);
                 }
             }
         }
@@ -1320,18 +1456,17 @@ namespace GoblinXNA.SceneGraph
 
                 transparentGroup.Add(node);
 
-                if (networkHandler != null)
-                    networkHandler.AddNetworkObject(node.Network);
+                if ((networkHandler != null) && (node is SynchronizedGeometryNode))
+                    networkHandler.AddNetworkObject((SynchronizedGeometryNode)node);
 
                 node.IsRendered = true;
                 needTransparencySort = true;
             }
             else
             {
-                if (opaqueGroups.Contains(node))
+                if (opaqueGroup.Contains(node))
                 {
-                    opaqueGroups.Remove(node);
-                    nodeRenderGroups[node.GroupID].Remove(node);
+                    opaqueGroup.Remove(node);
                     transparentGroup.Add(node);
                     needTransparencySort = true;
                 }
@@ -1353,8 +1488,8 @@ namespace GoblinXNA.SceneGraph
 
                 occluderGroup.Add(node);
 
-                if (networkHandler != null)
-                    networkHandler.AddNetworkObject(node.Network);
+                if ((networkHandler != null) && (node is SynchronizedGeometryNode))
+                    networkHandler.AddNetworkObject((SynchronizedGeometryNode)node);
 
                 node.IsRendered = true;
             }
@@ -1368,35 +1503,17 @@ namespace GoblinXNA.SceneGraph
         {
             if (node.IsRendered)
             {
-                if (nodeRenderGroups.ContainsKey(node.GroupID) &&
-                    nodeRenderGroups[node.GroupID].Contains(node))
-                {
-                    nodeRenderGroups[node.GroupID].Remove(node);
-                    opaqueGroups.Remove(node);
-                    if (networkHandler != null)
-                        networkHandler.RemoveNetworkObject(node.Network);
-                    if(physicsEngine != null && node.AddToPhysicsEngine)
-                        physicsEngine.RemovePhysicsObject(node.Physics);
-
-                    if (nodeRenderGroups[node.GroupID].Count == 0)
-                        nodeRenderGroups.Remove(node.GroupID);
-                }
+                if (opaqueGroup.Contains(node))
+                    opaqueGroup.Remove(node);
                 else if (transparentGroup.Contains(node))
-                {
                     transparentGroup.Remove(node);
-                    if (networkHandler != null)
-                        networkHandler.RemoveNetworkObject(node.Network);
-                    if(physicsEngine != null && node.AddToPhysicsEngine)
-                        physicsEngine.RemovePhysicsObject(node.Physics);
-                }
                 else if (occluderGroup.Contains(node))
-                {
                     occluderGroup.Remove(node);
-                    if(physicsEngine != null && node.AddToPhysicsEngine)
-                        physicsEngine.RemovePhysicsObject(node.Physics);
-                    if (networkHandler != null)
-                        networkHandler.RemoveNetworkObject(node.Network);
-                }
+
+                if ((networkHandler != null) && (node is SynchronizedGeometryNode))
+                    networkHandler.RemoveNetworkObject((SynchronizedGeometryNode)node);
+                if (physicsEngine != null && node.AddToPhysicsEngine)
+                    physicsEngine.RemovePhysicsObject(node.Physics);
 
                 node.IsRendered = false;
             }
@@ -1413,12 +1530,11 @@ namespace GoblinXNA.SceneGraph
             State.ShadowShader.GenerateShadows(
                 delegate
                 {
-                    foreach (int renderGroup in nodeRenderGroups.Keys)
-                        if (renderGroups[renderGroup])
-                            foreach (GeometryNode node in nodeRenderGroups[renderGroup])
-                                if (node.Model != null && node.Model.Enabled && node.ShouldRender)
-                                    node.Model.GenerateShadows(node.WorldTransformation *
-                                        node.MarkerTransform);
+                    foreach (GeometryNode node in opaqueGroup)
+                        if (renderGroups[node.GroupID])
+                            if (node.Model != null && node.Model.Enabled && node.ShouldRender)
+                                node.Model.GenerateShadows(node.WorldTransformation *
+                                    node.MarkerTransform);
 
                     foreach (GeometryNode transNode in transparentGroup)
                         if (renderGroups[transNode.GroupID])
@@ -1437,18 +1553,16 @@ namespace GoblinXNA.SceneGraph
             State.ShadowShader.RenderShadows(
                 delegate
                 {
-                    foreach (int renderGroup in nodeRenderGroups.Keys)
-                        if (renderGroups[renderGroup])
-                            foreach (GeometryNode node in nodeRenderGroups[renderGroup])
-                                if (node.Model != null && node.Model.Enabled && 
-                                    node.Material.Diffuse.W == 1.0f && node.ShouldRender &&
-                                    IsWithinViewFrustum(node.BoundingVolume))
-                                    node.Model.UseShadows(node.WorldTransformation * node.MarkerTransform);
+                    foreach (GeometryNode node in opaqueGroup)
+                        if (renderGroups[node.GroupID])
+                            if (node.Model != null && node.Model.Enabled && node.ShouldRender &&
+                                IsWithinViewFrustum(node.BoundingVolume))
+                                node.Model.UseShadows(node.WorldTransformation * node.MarkerTransform);
 
                     foreach (GeometryNode occluderNode in occluderGroup)
                         if (renderGroups[occluderNode.GroupID] && occluderNode.Model != null
-                            && occluderNode.Model.Enabled && occluderNode.ShouldRender/* &&
-                            cameraNode.BoundingFrustum.Intersects(occluderNode.BoundingVolume)*/)
+                            && occluderNode.Model.Enabled && occluderNode.ShouldRender &&
+                            IsWithinViewFrustum(occluderNode.BoundingVolume))
                             occluderNode.Model.UseShadows(occluderNode.WorldTransformation *
                                 occluderNode.MarkerTransform);
                 });
@@ -1478,9 +1592,8 @@ namespace GoblinXNA.SceneGraph
 
                     occluderNode.Model.Render(tmpMat3, emptyMaterial);
                     // If it's stereo rendering, then we want to set this back to false only after
-                    // drawing the left eye view (renderLeftView is NOTted because it's rendering
-                    // left eye view, renderLeftView is already set to false at this point
-                    if(!(cameraNode.Stereo && !renderLeftView))
+                    // drawing the left eye view 
+                    if(!(cameraNode.Stereo && renderLeftView))
                         occluderNode.ShouldRender = false;
                 }
             }
@@ -1495,9 +1608,7 @@ namespace GoblinXNA.SceneGraph
                 // If not doing stereo video overlay
                 if (leftEyeVideoID >= 0 && rightEyeVideoID >= 0)
                 {
-                    // In RenderScene, renderLeftView is already flipped, so we'll take care of right eye
-                    // video if renderLeftView is true, and left eye video if false
-                    if (renderLeftView)
+                    if (!renderLeftView)
                     {
                         // If right eye video is not the default overlaid video, then
                         // we use the additional image
@@ -1514,16 +1625,16 @@ namespace GoblinXNA.SceneGraph
                 if (secondImage)
                 {
                     IVideoCapture capDev = videoCaptures[actualRightEyeVideoID];
-                    spriteBatch.Draw(videoTextures[1], videoRect,
+                    spriteBatch.Draw(videoTextures[1], new Rectangle(0, 0, State.Width, State.Height),
                         new Rectangle(0, 0, capDev.Width, capDev.Height),
-                        Color.White, 0, Vector2.Zero, capDev.RenderFormat, 0);
+                        videoBackgroundColor, 0, Vector2.Zero, capDev.RenderFormat, 0);
                 }
                 else
                 {
                     IVideoCapture capDev = videoCaptures[actualLeftEyeVideoID];
-                    spriteBatch.Draw(videoTextures[0], videoRect,
+                    spriteBatch.Draw(videoTextures[0], new Rectangle(0, 0, State.Width, State.Height),
                         new Rectangle(0, 0, capDev.Width, capDev.Height),
-                        Color.White, 0, Vector2.Zero, capDev.RenderFormat, 0);
+                        videoBackgroundColor, 0, Vector2.Zero, capDev.RenderFormat, 0);
                 }
 
                 spriteBatch.End();
@@ -1533,7 +1644,7 @@ namespace GoblinXNA.SceneGraph
             {
                 spriteBatch.Begin();
                 spriteBatch.Draw(BackgroundTexture,
-                    new Rectangle(0, 0, State.Width, State.Height), Color.White);
+                    new Rectangle(0, 0, State.Width, State.Height), videoBackgroundColor);
                 spriteBatch.End();
             }
 
@@ -1543,57 +1654,9 @@ namespace GoblinXNA.SceneGraph
 
             State.Restore3DSettings();
             State.AlphaBlendingEnabled = true;
+
             // First render all of the opaque geometries
-            foreach (int renderGroup in nodeRenderGroups.Keys)
-            {
-                if (renderGroups[renderGroup])
-                {
-                    foreach (GeometryNode node in nodeRenderGroups[renderGroup])
-                    {
-                        if (node.Model != null && node.Model.Enabled && node.ShouldRender && 
-                            IsWithinViewFrustum(node.BoundingVolume))
-                        { 
-                            triangleCount += node.Model.TriangleCount;
-
-                            if (node.Model.UseLighting)
-                            {
-                                node.Model.Shader.SetParameters(globalLights, node.LocalLights);
-                                if (node.Model.Shader is SimpleEffectShader)
-                                    ((SimpleEffectShader)node.Model.Shader).PreferPerPixelLighting =
-                                        preferPerPixelLighting;
-                            }
-                            else
-                            {
-                                node.Model.Shader.SetParameters(emptyLightList, emptyLightList);
-                            }
-
-                            if(environment != null)
-                                node.Model.Shader.SetParameters(environment);
-                            tmpMat1 = node.WorldTransformation;
-                            if (!node.MarkerTransform.Equals(Matrix.Identity))
-                            {
-                                tmpMat2 = node.MarkerTransform;
-                                Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
-                                tmpMat1 = tmpMat3;
-                            }
-
-                            node.Model.Render(tmpMat1, node.Material);
-
-                            // If it's stereo rendering, then we want to set this back to false only after
-                            // drawing the left eye view (renderLeftView is NOTted because it's rendering
-                            // left eye view, renderLeftView is already set to false at this point
-                            if (!(cameraNode.Stereo && !renderLeftView))
-                                node.ShouldRender = false;
-
-                            if (renderAabb && node.AddToPhysicsEngine && (physicsEngine != null))
-                                RenderAabb(node.MarkerTransform, physicsEngine.GetAxisAlignedBoundingBox(node.Physics));
-
-                            if (renderCollisionMesh && node.AddToPhysicsEngine && (physicsEngine != null))
-                                RenderColMesh(node.MarkerTransform, physicsEngine.GetCollisionMesh(node.Physics));
-                        }
-                    }
-                }
-            }
+            RenderGroup(opaqueGroup);
 
             // Before rendering tranparent objects, we need to sort them back to front
             if (needTransparencySort)
@@ -1604,53 +1667,15 @@ namespace GoblinXNA.SceneGraph
             }
 
             // Then render all of the geometries with transparent material
-            GeometryNode transparentNode = null;
-            for (int i = 0; i < transparentGroup.Count; i++)
-            {
-                transparentNode = transparentGroup[i];
-                if (renderGroups[transparentNode.GroupID])
-                {
-                    if (transparentNode.Model != null && transparentNode.Model.Enabled &&
-                        transparentNode.ShouldRender &&
-                        IsWithinViewFrustum(transparentNode.BoundingVolume))
-                    {
-                        triangleCount += transparentNode.Model.TriangleCount;
-                        if (transparentNode.Model.UseLighting)
-                        {
-                            transparentNode.Model.Shader.SetParameters(globalLights, transparentNode.LocalLights);
-                            if (transparentNode.Model.Shader is SimpleEffectShader)
-                                ((SimpleEffectShader)transparentNode.Model.Shader).PreferPerPixelLighting =
-                                    preferPerPixelLighting;
-                        }
-                        else
-                            transparentNode.Model.Shader.SetParameters(emptyLightList, emptyLightList);
+            RenderGroup(transparentGroup);
 
-                        tmpMat1 = transparentNode.WorldTransformation;
-                        if (!transparentNode.MarkerTransform.Equals(Matrix.Identity))
-                        {
-                            tmpMat2 = transparentNode.MarkerTransform;
-                            Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
-                            tmpMat1 = tmpMat3;
-                        }
-                        transparentNode.Model.Render(tmpMat1, transparentNode.Material);
+            // Render any geometries that ignore the depth buffer
+            State.Device.RenderState.DepthBufferEnable = false;
+            RenderGroup(ignoreDepthGroup);
+            State.Device.RenderState.DepthBufferEnable = true;
+            ignoreDepthGroup.Clear();
 
-                        // If it's stereo rendering, then we want to set this back to false only after
-                        // drawing the left eye view (renderLeftView is NOTted because it's rendering
-                        // left eye view, renderLeftView is already set to false at this point
-                        if (!(cameraNode.Stereo && !renderLeftView))
-                            transparentNode.ShouldRender = false;
-
-                        if (renderAabb && transparentNode.AddToPhysicsEngine && (physicsEngine != null))
-                                RenderAabb(transparentNode.MarkerTransform,
-                                    physicsEngine.GetAxisAlignedBoundingBox(transparentNode.Physics));
-
-                            if (renderCollisionMesh && transparentNode.AddToPhysicsEngine && 
-                                (physicsEngine != null))
-                            RenderColMesh(transparentNode.MarkerTransform,
-                                physicsEngine.GetCollisionMesh(transparentNode.Physics));
-                    }
-                }
-            }
+            needsToUpdateGlobalLighting = false;
 
             // Finally render all of the particle effects
             foreach (ParticleNode particle in renderedEffects)
@@ -1660,9 +1685,8 @@ namespace GoblinXNA.SceneGraph
                     particle.Render();
 
                     // If it's stereo rendering, then we want to set this back to false only after
-                    // drawing the left eye view (renderLeftView is NOTted because it's rendering
-                    // left eye view, renderLeftView is already set to false at this point
-                    if (!(cameraNode.Stereo && !renderLeftView))
+                    // drawing the left eye view 
+                    if (!(cameraNode.Stereo && renderLeftView))
                         particle.ShouldRender = false;
                 }
             }
@@ -1678,6 +1702,83 @@ namespace GoblinXNA.SceneGraph
             catch (Exception exp) { }
 
             uiRenderer.TriangleCount = triangleCount;
+        }
+
+        protected virtual void RenderGroup(List<GeometryNode> group)
+        {
+            bool isIgnoreGroup = (group == ignoreDepthGroup);
+            foreach (GeometryNode node in group)
+            {
+                if (node.IgnoreDepth && !isIgnoreGroup)
+                {
+                    ignoreDepthGroup.Add(node);
+                    continue;
+                }
+
+                if (renderGroups[node.GroupID])
+                {
+                    if (node.Model != null && node.Model.Enabled && node.ShouldRender &&
+                        IsWithinViewFrustum(node.BoundingVolume) && node.Material.Diffuse.W > 0)
+                    {
+                        triangleCount += node.Model.TriangleCount;
+
+                        if (enableLighting && node.Model.UseLighting)
+                        {
+                            if (needsToUpdateGlobalLighting || node.NeedsToUpdateLocalLights)
+                            {
+                                node.Model.Shader.SetParameters(globalLights, node.LocalLights);
+
+                                foreach (IShader shader in node.Model.AfterEffectShaders)
+                                    shader.SetParameters(globalLights, node.LocalLights);
+
+                                node.NeedsToUpdateLocalLights = false;
+                            }
+
+                            if (node.Model.Shader is SimpleEffectShader)
+                                ((SimpleEffectShader)node.Model.Shader).PreferPerPixelLighting =
+                                    preferPerPixelLighting;
+                        }
+                        else
+                        {
+                            node.Model.Shader.SetParameters(emptyLightList, emptyLightList);
+                            // this is needed for when UseLighting is set back to true
+                            node.NeedsToUpdateLocalLights = true;
+                        }
+
+                        if (environment != null)
+                            node.Model.Shader.SetParameters(environment);
+                        node.Model.Shader.SetParameters(cameraNode);
+
+                        foreach (IShader shader in node.Model.AfterEffectShaders)
+                        {
+                            if (environment != null)
+                                shader.SetParameters(environment);
+                            shader.SetParameters(cameraNode);
+                        }
+
+                        tmpMat1 = node.WorldTransformation;
+                        if (!node.MarkerTransform.Equals(Matrix.Identity))
+                        {
+                            tmpMat2 = node.MarkerTransform;
+                            Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+                            node.Model.Render(tmpMat3, node.Material);
+                        }
+                        else
+                            node.Model.Render(tmpMat1, node.Material);
+
+                        // If it's stereo rendering, then we want to set this back to false only after
+                        // drawing the left eye view 
+                        if (!(cameraNode.Stereo && renderLeftView))
+                            node.ShouldRender = false;
+
+                        if (renderAabb && node.AddToPhysicsEngine && (physicsEngine != null))
+                            AddAabbLine(node.MarkerTransform, physicsEngine.GetAxisAlignedBoundingBox(node.Physics));
+
+                        if (renderCollisionMesh && node.AddToPhysicsEngine && (physicsEngine != null))
+                            AddColMeshLine(node.MarkerTransform, physicsEngine.GetCollisionMesh(node.Physics));
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -1784,98 +1885,98 @@ namespace GoblinXNA.SceneGraph
             if (!((videoCaptures[actualTrackerVideoID] is NullCapture) &&
                 ((NullCapture)videoCaptures[actualTrackerVideoID]).IsImageAlreadyProcessed))
             {
+                bool processLeftImageData = NeedsImageData;
+                bool processLeftImagePtr = NeedsImagePtr;
+                bool processRightImageData = (cameraNode.Stereo) ? NeedsImageData : false;
+                bool processRightImagePtr = (cameraNode.Stereo) ? NeedsImagePtr : false;
+                bool processSeparateImagePtr = false;
+                bool passToMarkerTracker = false;
+
                 if (showCameraImage)
                 {
+                    processLeftImageData = true;
+
                     if (markerTracker != null)
                     {
+                        passToMarkerTracker = true;
+
                         if (cameraNode.Stereo)
                         {
                             if (leftEyeVideoID == trackerVideoID)
                             {
-                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                                    bufferedVideoImages[0][curVideoBufferIndex],
-                                    ref bufferedVideoPointers[curVideoBufferIndex]);
+                                processLeftImagePtr = true;
 
                                 if (leftEyeVideoID != rightEyeVideoID)
-                                    videoCaptures[actualRightEyeVideoID].GetImageTexture(
-                                        bufferedVideoImages[1][curVideoBufferIndex],
-                                        ref nullPtr);
+                                    processRightImageData = true;
                             }
                             else if (rightEyeVideoID == trackerVideoID)
                             {
-                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                                    bufferedVideoImages[0][curVideoBufferIndex],
-                                    ref nullPtr);
-
-                                videoCaptures[actualRightEyeVideoID].GetImageTexture(
-                                    bufferedVideoImages[1][curVideoBufferIndex],
-                                    ref bufferedVideoPointers[curVideoBufferIndex]);
+                                processRightImageData = true;
+                                processRightImagePtr = true;
                             }
                             else
                             {
-                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                                    bufferedVideoImages[0][curVideoBufferIndex],
-                                    ref nullPtr);
-
                                 if (leftEyeVideoID != rightEyeVideoID)
-                                    videoCaptures[actualRightEyeVideoID].GetImageTexture(
-                                        bufferedVideoImages[1][curVideoBufferIndex],
-                                        ref nullPtr);
+                                    processRightImageData = true;
 
-                                videoCaptures[actualTrackerVideoID].GetImageTexture(
-                                    null, ref bufferedVideoPointers[curVideoBufferIndex]);
+                                processSeparateImagePtr = true;
                             }
-
-                            SetTextureData(0);
-                            SetTextureData(1);
                         }
                         else
                         {
                             if (leftEyeVideoID == trackerVideoID)
-                            {
-                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                                    bufferedVideoImages[0][curVideoBufferIndex],
-                                    ref bufferedVideoPointers[curVideoBufferIndex]);
-                            }
+                                processLeftImagePtr = true;
                             else
-                            {
-                                videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                                    bufferedVideoImages[0][curVideoBufferIndex],
-                                    ref nullPtr);
-
-                                videoCaptures[actualTrackerVideoID].GetImageTexture(
-                                    null, ref bufferedVideoPointers[curVideoBufferIndex]);
-                            }
-
-                            SetTextureData(0);
+                                processSeparateImagePtr = true;
                         }
-
-                        markerTracker.ProcessImage(videoCaptures[actualTrackerVideoID],
-                            bufferedVideoPointers[curVideoBufferIndex]);
                     }
                     else
                     {
-                        videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                            bufferedVideoImages[0][curVideoBufferIndex], ref nullPtr);
-
-                        SetTextureData(0);
-
                         if (cameraNode.Stereo && (leftEyeVideoID != rightEyeVideoID))
-                            videoCaptures[actualRightEyeVideoID].GetImageTexture(
-                                bufferedVideoImages[1][curVideoBufferIndex], ref nullPtr);
+                            processRightImageData = true;
                     }
                 }
                 else if (trackMarkers && (markerTracker != null))
                 {
+                    passToMarkerTracker = true;
+                    processSeparateImagePtr = true;
+                }
+
+                if (processLeftImageData || processLeftImagePtr)
+                {
+                    IntPtr leftImagePtr = (processLeftImagePtr) ? 
+                        bufferedVideoPointers[curVideoBufferIndex] : nullPtr;
+                    videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                        ((processLeftImageData) ? bufferedVideoImages[0][curVideoBufferIndex] : null),
+                        ref leftImagePtr);
+
+                    if (processLeftImageData)
+                        SetTextureData(0);
+                }
+
+                if (processRightImageData || processRightImagePtr)
+                {
+                    IntPtr rightImagePtr = (processRightImagePtr) ?
+                        bufferedVideoPointers[curVideoBufferIndex] : nullPtr;
+                    videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                        ((processRightImageData) ? bufferedVideoImages[1][curVideoBufferIndex] : null),
+                        ref rightImagePtr);
+
+                    if (processRightImageData)
+                        SetTextureData(1);
+                }
+
+                if (processSeparateImagePtr)
                     videoCaptures[actualTrackerVideoID].GetImageTexture(null,
                         ref bufferedVideoPointers[curVideoBufferIndex]);
+
+                if(passToMarkerTracker)
                     markerTracker.ProcessImage(videoCaptures[actualTrackerVideoID],
                         bufferedVideoPointers[curVideoBufferIndex]);
-                }
-            }
 
-            if (videoCaptures[actualTrackerVideoID] is NullCapture)
-                ((NullCapture)videoCaptures[actualTrackerVideoID]).IsImageAlreadyProcessed = true;
+                if (videoCaptures[actualTrackerVideoID] is NullCapture)
+                    ((NullCapture)videoCaptures[actualTrackerVideoID]).IsImageAlreadyProcessed = true;
+            }
 
             prevVideoBufferIndex = curVideoBufferIndex;
             curVideoBufferIndex = (curVideoBufferIndex + 1) % VIDEO_BUFFER_SIZE;
@@ -1913,7 +2014,7 @@ namespace GoblinXNA.SceneGraph
             }
             catch (Exception exp)
             {
-                GraphicsDevice.Textures[0] = null;
+                State.Device.Textures[0] = null;
                 videoTextures[id].SetData<int>(bufferedVideoImages[id][curVideoBufferIndex]);
             }
             copyingVideoImage = false;
@@ -1925,7 +2026,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="worldTransform"></param>
         /// <param name="aabb"></param>
-        protected void RenderAabb(Matrix worldTransform, BoundingBox aabb)
+        protected void AddAabbLine(Matrix worldTransform, BoundingBox aabb)
         {
             Vector3 min = aabb.Min;
             Vector3 max = aabb.Max;
@@ -1937,39 +2038,45 @@ namespace GoblinXNA.SceneGraph
             Vector3 maxMinY = Vector3Helper.Get(max.X, min.Y, max.Z);
             Vector3 maxMinZ = Vector3Helper.Get(max.X, max.Y, min.Z);
 
-            VertexPositionColor[] verts = new VertexPositionColor[8];
-            verts[0] = new VertexPositionColor(min, ColorHelper.Empty);
-            verts[1] = new VertexPositionColor(max, ColorHelper.Empty);
-            verts[2] = new VertexPositionColor(minMaxX, ColorHelper.Empty);
-            verts[3] = new VertexPositionColor(minMaxY, ColorHelper.Empty);
-            verts[4] = new VertexPositionColor(minMaxZ, ColorHelper.Empty);
-            verts[5] = new VertexPositionColor(maxMinX, ColorHelper.Empty);
-            verts[6] = new VertexPositionColor(maxMinY, ColorHelper.Empty);
-            verts[7] = new VertexPositionColor(maxMinZ, ColorHelper.Empty);
+            if (!worldTransform.Equals(Matrix.Identity))
+            {
+                tmpMat1 = Matrix.CreateTranslation(minMaxX);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                minMaxX = tmpMat1.Translation;
 
-            short[] indecies = new short[24];
+                tmpMat1 = Matrix.CreateTranslation(minMaxY);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                minMaxY = tmpMat1.Translation;
 
-            indecies[0] = 0; indecies[1] = 2;
-            indecies[2] = 0; indecies[3] = 3;
-            indecies[4] = 0; indecies[5] = 4;
-            indecies[6] = 1; indecies[7] = 5;
-            indecies[8] = 1; indecies[9] = 6;
-            indecies[10] = 1; indecies[11] = 7;
-            indecies[12] = 3; indecies[13] = 5;
-            indecies[14] = 3; indecies[15] = 7;
-            indecies[16] = 4; indecies[17] = 5;
-            indecies[18] = 4; indecies[19] = 6;
-            indecies[20] = 2; indecies[21] = 6;
-            indecies[22] = 2; indecies[23] = 7;
+                tmpMat1 = Matrix.CreateTranslation(minMaxZ);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                minMaxZ = tmpMat1.Translation;
 
-            aabbShader.Render(
-                worldTransform,
-                "",
-                delegate
-                {
-                    State.Device.DrawUserIndexedPrimitives<VertexPositionColor>(
-                        PrimitiveType.LineList, verts, 0, 8, indecies, 0, 12);
-                });
+                tmpMat1 = Matrix.CreateTranslation(maxMinX);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                maxMinX = tmpMat1.Translation;
+
+                tmpMat1 = Matrix.CreateTranslation(maxMinY);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                maxMinY = tmpMat1.Translation;
+
+                tmpMat1 = Matrix.CreateTranslation(maxMinZ);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                maxMinZ = tmpMat1.Translation;
+            }
+
+            State.LineManager.AddLine(min, minMaxX, aabbColor);
+            State.LineManager.AddLine(min, minMaxY, aabbColor);
+            State.LineManager.AddLine(min, minMaxZ, aabbColor);
+            State.LineManager.AddLine(max, maxMinX, aabbColor);
+            State.LineManager.AddLine(max, maxMinY, aabbColor);
+            State.LineManager.AddLine(max, maxMinZ, aabbColor);
+            State.LineManager.AddLine(minMaxY, maxMinX, aabbColor);
+            State.LineManager.AddLine(minMaxY, maxMinZ, aabbColor);
+            State.LineManager.AddLine(minMaxZ, maxMinX, aabbColor);
+            State.LineManager.AddLine(minMaxZ, maxMinY, aabbColor);
+            State.LineManager.AddLine(minMaxX, maxMinY, aabbColor);
+            State.LineManager.AddLine(minMaxX, maxMinZ, aabbColor);
         }
 
         /// <summary>
@@ -1978,7 +2085,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="worldTransform"></param>
         /// <param name="collisionMesh"></param>
-        protected void RenderColMesh(Matrix worldTransform, List<List<Vector3>> collisionMesh)
+        protected void AddColMeshLine(Matrix worldTransform, List<List<Vector3>> collisionMesh)
         {
             if (collisionMesh == null)
                 return;
@@ -1988,15 +2095,12 @@ namespace GoblinXNA.SceneGraph
             foreach(List<Vector3> polygonVerts in collisionMesh)
                 count += polygonVerts.Count;
 
-            VertexPositionColor[] verts = new VertexPositionColor[count];
-            indiceCount = count * 2;
+            Vector3[] verts = new Vector3[count];
             count = 0;
             for (int i = 0; i < collisionMesh.Count; i++)
                 for (int j = 0; j < collisionMesh[i].Count; j++)
-                    verts[count++] = new VertexPositionColor(collisionMesh[i][j], cmeshColor);
+                    verts[count++] = collisionMesh[i][j];
 
-            short[] indices = new short[indiceCount];
-            indiceCount = 0;
             count = 0;
             int initCount = 0;
             for (int i = 0; i < collisionMesh.Count; i++)
@@ -2005,25 +2109,13 @@ namespace GoblinXNA.SceneGraph
 
                 for (int j = 0; j < collisionMesh[i].Count - 1; j++, count++)
                 {
-                    indices[indiceCount++] = (short)count;
-                    indices[indiceCount++] = (short)(count + 1);
+                    State.LineManager.AddLine(new LineManager3D.Line(
+                        verts[count], verts[count + 1], cmeshColor));
                 }
 
-                indices[indiceCount++] = (short)count;
-                indices[indiceCount++] = (short)initCount;
+                State.LineManager.AddLine(new LineManager3D.Line(
+                        verts[count], verts[initCount], cmeshColor));
                 count++;
-            }
-
-            if (verts.Length > 0)
-            {
-                cmeshShader.Render(
-                    worldTransform,
-                    "",
-                    delegate
-                    {
-                        State.Device.DrawUserIndexedPrimitives<VertexPositionColor>(
-                            PrimitiveType.LineList, verts, 0, verts.Length, indices, 0, indices.Length / 2);
-                    });
             }
         }
 
@@ -2034,6 +2126,85 @@ namespace GoblinXNA.SceneGraph
         {
             physicsEngine.Update(physicsElapsedTime);
             physicsElapsedTime = 0;
+        }
+
+        /// <summary>
+        /// Recursively saves a scene graph node into an XML document.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        /// <param name="node"></param>
+        /// <param name="xmlDoc"></param>
+        protected static void RecursivelySave(XmlElement xmlNode, Node node, XmlDocument xmlDoc)
+        {
+            XmlElement parentXmlNode = node.Save(xmlDoc);
+            xmlNode.AppendChild(parentXmlNode);
+
+            if (node is BranchNode && ((BranchNode)node).Children.Count > 0)
+            {
+                XmlElement childXmlNode = xmlDoc.CreateElement("Children");
+                parentXmlNode.AppendChild(childXmlNode);
+
+                foreach (Node child in ((BranchNode)node).Children)
+                    RecursivelySave(childXmlNode, child, xmlDoc);
+            }
+        }
+
+        /// <summary>
+        /// Recursively loads each scene graph node from XML elements.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        /// <returns></returns>
+        protected static Node RecursivelyLoad(XmlElement xmlNode)
+        {
+            Type nodeType = Type.GetType(xmlNode.Name);
+            Node node = (Node)Activator.CreateInstance(nodeType);
+            node.Load(xmlNode);
+
+            foreach (XmlElement childXmlNode in xmlNode.ChildNodes)
+            {
+                if (childXmlNode.Name.Equals("Children"))
+                {
+                    BranchNode branch = (BranchNode)node;
+                    foreach (XmlElement child in childXmlNode.ChildNodes)
+                    {
+                        Node childNode = RecursivelyLoad(child);
+                        branch.AddChild(childNode);
+                    }
+                }
+            }
+
+            return node;
+        }
+
+        /// <summary>
+        /// Recursively loads a scene graph node from an XML document.
+        /// </summary>
+        /// <param name="xmlNode"></param>
+        /// <returns></returns>
+        protected Node RecursivelyLoadForSceneGraph(XmlElement xmlNode)
+        {
+            Type nodeType = Type.GetType(xmlNode.Name);
+            Node node = (Node)Activator.CreateInstance(nodeType);
+            node.Load(xmlNode);
+            node.SceneGraph = this;
+
+            if((node is CameraNode) && node.Name.Equals(curCamNodeName))
+                cameraNode = (CameraNode)node;
+
+            foreach (XmlElement childXmlNode in xmlNode.ChildNodes)
+            {
+                if (childXmlNode.Name.Equals("Children"))
+                {
+                    BranchNode branch = (BranchNode)node;
+                    foreach (XmlElement child in childXmlNode.ChildNodes)
+                    {
+                        Node childNode = RecursivelyLoadForSceneGraph(child);
+                        branch.AddChild(childNode);
+                    }
+                }
+            }
+
+            return node;
         }
 
         #endregion
@@ -2051,7 +2222,7 @@ namespace GoblinXNA.SceneGraph
         /// </remarks>
         /// <param name="name">The name of the node you're looking for</param>
         /// <returns></returns>
-        public Node GetNode(String name)
+        public virtual Node GetNode(String name)
         {
             return nodeTable[name];
         }
@@ -2061,7 +2232,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public bool HasNode(String name)
+        public virtual bool HasNode(String name)
         {
             return nodeTable.ContainsKey(name);
         }
@@ -2071,7 +2242,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="groupID"></param>
         /// <param name="enable"></param>
-        public void EnableRenderGroups(int groupID, bool enable)
+        public virtual void EnableRenderGroups(int groupID, bool enable)
         {
             if (renderGroups.ContainsKey(groupID))
                 renderGroups[groupID] = enable;
@@ -2109,7 +2280,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="filename"></param>
         /// <param name="format"></param>
-        public void CaptureScene(String filename, ImageFileFormat format)
+        public virtual void CaptureScene(String filename, ImageFileFormat format)
         {
             if(screen == null)
                 screen = new ResolveTexture2D(State.Device, State.Width, State.Height,
@@ -2126,7 +2297,7 @@ namespace GoblinXNA.SceneGraph
         /// need to render the scene more than once (e.g., when rendering multiple viewport or stereoscopic
         /// view).
         /// </summary>
-        public void RenderScene()
+        public virtual void RenderScene()
         {
             if (cameraNode.Stereo)
             {
@@ -2134,13 +2305,11 @@ namespace GoblinXNA.SceneGraph
                 {
                     State.ViewMatrix = cameraNode.LeftCompoundViewMatrix;
                     State.ProjectionMatrix = ((StereoCamera)cameraNode.Camera).LeftProjection;
-                    renderLeftView = false;
                 }
                 else
                 {
                     State.ViewMatrix = cameraNode.RightCompoundViewMatrix;
                     State.ProjectionMatrix = ((StereoCamera)cameraNode.Camera).RightProjection;
-                    renderLeftView = true;
                 }
             }
             else
@@ -2150,6 +2319,7 @@ namespace GoblinXNA.SceneGraph
             }
 
             State.CameraTransform = cameraNode.WorldTransformation;
+            State.ViewProjectionMatrix = State.ViewMatrix * State.ProjectionMatrix;
 
             try
             {
@@ -2160,31 +2330,50 @@ namespace GoblinXNA.SceneGraph
 
             RenderSceneGraph(globalLightSources);
 
+            State.LineManager.Render();
+
+            if (renderBeforeUI != null)
+                renderBeforeUI(renderLeftView);
+
             if (cameraNode.Stereo)
             {
-                if (renderLeftView) // if rendering right eye (it's already flipped here)
-                    uiRenderer.Draw(0, true);
+                if (renderLeftView) 
+                    uiRenderer.Draw(uiElapsedTime, false, false);
                 else
-                    uiRenderer.Draw(uiElapsedTime, false);
+                    uiRenderer.Draw(0, true, true);
             }
             else
-                uiRenderer.Draw(uiElapsedTime, true);
+                uiRenderer.Draw(uiElapsedTime, true, false);
+
+            if (renderAfterUI != null)
+                renderAfterUI(renderLeftView);
+
+            if (cameraNode.Stereo)
+                renderLeftView = !renderLeftView;
         }
 
         /// <summary>
         /// Saves the current scene graph structure into an XML file.
         /// </summary>
-        /// <param name="filename"></param>
-        public void SaveSceneGraph(String filename)
+        /// <param name="filename">An XML file</param>
+        public virtual void SaveSceneGraph(String filename)
         {
             XmlDocument xmlDoc = new XmlDocument();
             XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
 
-            XmlElement xmlRootNode = xmlDoc.CreateElement("SceneGraph");
             xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
+
+            XmlElement xmlRootNode = xmlDoc.CreateElement("GoblinXNA");
             xmlDoc.AppendChild(xmlRootNode);
 
-            RecursiveSave(xmlRootNode, rootNode, xmlDoc);
+            XmlElement xmlCurCamNode = xmlDoc.CreateElement("CurrentCameraNode");
+            xmlCurCamNode.InnerText = cameraNode.Name;
+            xmlRootNode.AppendChild(xmlCurCamNode);
+
+            XmlElement xmlSceneNode = xmlDoc.CreateElement("SceneGraph");
+            xmlRootNode.AppendChild(xmlSceneNode);
+
+            RecursivelySave(xmlSceneNode, rootNode, xmlDoc);
 
             try
             {
@@ -2197,31 +2386,10 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Recursively saves the scene graph nodes into an XML document.
-        /// </summary>
-        /// <param name="xmlNode"></param>
-        /// <param name="node"></param>
-        /// <param name="xmlDoc"></param>
-        private void RecursiveSave(XmlElement xmlNode, Node node, XmlDocument xmlDoc)
-        {
-            XmlElement parentXmlNode = node.Save(xmlDoc);
-            xmlNode.AppendChild(parentXmlNode);
-
-            if (node is BranchNode && ((BranchNode)node).Children.Count > 0)
-            {
-                XmlElement childXmlNode = xmlDoc.CreateElement("Children");
-                parentXmlNode.AppendChild(childXmlNode);
-
-                foreach (Node child in ((BranchNode)node).Children)
-                    RecursiveSave(childXmlNode, child, xmlDoc);
-            }
-        }
-
-        /// <summary>
         /// Loads a scene graph from an XML file.
         /// </summary>
-        /// <param name="filename"></param>
-        public void LoadSceneGraph(String filename)
+        /// <param name="filename">An XML file</param>
+        public virtual void LoadSceneGraph(String filename)
         {
             XmlDocument xmlDoc = new XmlDocument();
 
@@ -2235,41 +2403,139 @@ namespace GoblinXNA.SceneGraph
             }
 
             // Before loading the scene graph, first remove all of the currently added nodes
-            RecursivelyRemoveFromRendering(rootNode);
+            RecursivelyRemoveFromScene(rootNode);
 
             foreach(XmlNode xmlNode in xmlDoc.ChildNodes)
             {
-                if((xmlNode is XmlElement) && xmlNode.Name.Equals("SceneGraph"))
-                    rootNode = (BranchNode)RecursiveLoad((XmlElement)xmlNode.FirstChild);
+                if (xmlNode is XmlElement)
+                {
+                    if (xmlNode.Name.Equals("GoblinXNA"))
+                    {
+                        foreach (XmlNode goblinXmlNode in xmlNode.ChildNodes)
+                        {
+                            if (goblinXmlNode.Name.Equals("SceneGraph"))
+                                rootNode = (BranchNode)RecursivelyLoadForSceneGraph(
+                                    (XmlElement)goblinXmlNode.FirstChild);
+                            else if (goblinXmlNode.Name.Equals("CurrentCameraNode"))
+                                curCamNodeName = ((XmlElement)goblinXmlNode).InnerText;
+                        }
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// Recursively loads each scene graph node from XML elements.
+        /// Saves a scene node including its children nodes into an XML file.
         /// </summary>
-        /// <param name="xmlNode"></param>
-        /// <returns></returns>
-        public Node RecursiveLoad(XmlElement xmlNode)
+        /// <param name="filename">An XML file</param>
+        public static void SaveNode(String filename, Node node)
         {
-            Type nodeType = Type.GetType(xmlNode.Name);
-            Node node = (Node)Activator.CreateInstance(nodeType);
-            node.Load(xmlNode);
-            node.SceneGraph = this;
+            XmlDocument xmlDoc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
 
-            if (node is CameraNode)
-                cameraNode = (CameraNode)node;
+            XmlElement xmlNode = xmlDoc.CreateElement("Node");
 
-            foreach (XmlElement childXmlNode in xmlNode.ChildNodes)
+            xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
+            xmlDoc.AppendChild(xmlNode);
+
+            RecursivelySave(xmlNode, node, xmlDoc);
+
+            try
             {
-                if (childXmlNode.Name.Equals("Children"))
-                {
-                    BranchNode branch = (BranchNode)node;
-                    foreach (XmlElement child in childXmlNode.ChildNodes)
-                    {
-                        Node childNode = RecursiveLoad(child);
-                        branch.AddChild(childNode);
-                    }
-                }
+                xmlDoc.Save(filename);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException("Failed to save the node: " + filename);
+            }
+        }
+
+        /// <summary>
+        /// Loads a scene graph node from an XML file.
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public static Node LoadNode(String filename)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+
+            try
+            {
+                xmlDoc.Load(filename);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException(exp.Message);
+            }
+
+            Node node = null;
+
+            foreach (XmlNode xmlNode in xmlDoc.ChildNodes)
+            {
+                if ((xmlNode is XmlElement) && xmlNode.Name.Equals("Node"))
+                    node = RecursivelyLoad((XmlElement)xmlNode.FirstChild);
+            }
+
+            return node;
+        }
+
+        /// <summary>
+        /// Encodes a scene graph node into an XML format, and converts the strings to a byte array
+        /// so that the node can be transferred over the network.
+        /// </summary>
+        /// <param name="node">A node to be encoded</param>
+        /// <returns>Array of bytes of XML string that encodes the node information</returns>
+        public static byte[] EncodeNode(Node node)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
+
+            XmlElement xmlNode = xmlDoc.CreateElement("Node");
+
+            xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
+            xmlDoc.AppendChild(xmlNode);
+
+            RecursivelySave(xmlNode, node, xmlDoc);
+
+            try
+            {
+                StringWriter sw = new StringWriter();
+                XmlTextWriter tw = new XmlTextWriter(sw);
+                xmlDoc.WriteTo(tw);
+
+                return ByteHelper.ConvertToByte(sw.ToString());
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException("Failed to save the node: " + node.Name);
+            }
+        }
+
+        /// <summary>
+        /// Decodes the XML string represented as byte array to a node. 
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public static Node DecodeNode(byte[] data)
+        {
+            String xmlString = ByteHelper.ConvertToString(data);
+
+            XmlDocument xmlDoc = new XmlDocument();
+            try
+            {
+                xmlDoc.LoadXml(xmlString);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException(exp.Message);
+            }
+
+            Node node = null;
+
+            foreach (XmlNode xmlNode in xmlDoc.ChildNodes)
+            {
+                if ((xmlNode is XmlElement) && xmlNode.Name.Equals("Node"))
+                    node = RecursivelyLoad((XmlElement)xmlNode.FirstChild);
             }
 
             return node;
@@ -2303,6 +2569,8 @@ namespace GoblinXNA.SceneGraph
             if (rootNode == null || cameraNode == null)
                 return;
 
+            isStarted = true;
+
             uiElapsedTime = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
             if (isMarkerTrackingThreaded)
@@ -2312,7 +2580,7 @@ namespace GoblinXNA.SceneGraph
 
             bool updatePhysicsEngine = (physicsEngine != null);
 
-            if (!clientPerformPhysicsSimulation && State.EnableNetworking && (networkHandler != null))
+            if (State.EnableNetworking && (networkHandler != null))
             {
                 // If we're the server, then don't update the physics simulation until we get
                 // connections from clients
@@ -2321,8 +2589,6 @@ namespace GoblinXNA.SceneGraph
                     if (networkHandler.NetworkServer.NumConnectedClients < State.NumberOfClientsToWait)
                         updatePhysicsEngine = false;
                 }
-                else
-                    updatePhysicsEngine = false;
             }
 
             if (updatePhysicsEngine)
@@ -2352,32 +2618,29 @@ namespace GoblinXNA.SceneGraph
             globalLightSources.Clear();
             foreach (LightNode lightNode in globalLights)
             {
-                foreach (LightSource lightSource in lightNode.LightSources)
+                if (lightNode.LightSource.Enabled)
                 {
-                    if (lightSource.Enabled)
+                    LightSource light = new LightSource(lightNode.LightSource);
+                    if (light.Type != LightType.Directional)
                     {
-                        LightSource light = new LightSource(lightSource);
-                        if (light.Type != LightType.Directional)
-                        {
-                            tmpMat1 = lightNode.WorldTransformation;
-                            tmpVec1 = light.Position;
-                            Matrix.CreateTranslation(ref tmpVec1, out tmpMat2);
-                            Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+                        tmpMat1 = lightNode.WorldTransformation;
+                        tmpVec1 = light.Position;
+                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat2);
+                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
 
-                            light.Position = tmpMat3.Translation;
-                        }
-                        if (light.Type != LightType.Point)
-                        {
-                            tmpVec1 = light.Direction;
-                            tmpMat1 = lightNode.WorldTransformation;
-                            Matrix.CreateTranslation(ref tmpVec1, out tmpMat2);
-                            MatrixHelper.GetRotationMatrix(ref tmpMat1, out tmpMat3);
-                            Matrix.Multiply(ref tmpMat2, ref tmpMat3, out tmpMat1);
-
-                            light.Direction = tmpMat1.Translation;
-                        }
-                        globalLightSources.Add(light);
+                        light.Position = tmpMat3.Translation;
                     }
+                    if (light.Type != LightType.Point)
+                    {
+                        tmpVec1 = light.Direction;
+                        tmpMat1 = lightNode.WorldTransformation;
+                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat2);
+                        MatrixHelper.GetRotationMatrix(ref tmpMat1, out tmpMat3);
+                        Matrix.Multiply(ref tmpMat2, ref tmpMat3, out tmpMat1);
+
+                        light.Direction = tmpMat1.Translation;
+                    }
+                    globalLightSources.Add(light);
                 }
             }
 
@@ -2398,10 +2661,12 @@ namespace GoblinXNA.SceneGraph
                 physicsThread.Abort();
 
             renderGroups.Clear();
-            nodeRenderGroups.Clear();
+            opaqueGroup.Clear();
             transparentGroup.Clear();
             renderedEffects.Clear();
             occluderGroup.Clear();
+            markerUpdateList.Clear();
+            lodNodes.Clear();
 
             if(rootNode != null)
                 rootNode.Dispose();

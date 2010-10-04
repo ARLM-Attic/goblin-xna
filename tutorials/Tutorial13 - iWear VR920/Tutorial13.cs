@@ -1,36 +1,3 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Author: Ohan Oda (ohan@cs.columbia.edu)
- * 
- *************************************************************************************/ 
-
-
 //#define USE_ARTAG
 
 using System;
@@ -80,13 +47,12 @@ namespace Tutorial13___iWear_VR920
         Scene scene;
         MarkerNode groundMarkerNode;
 
-        bool stereoMode = false;
+        bool stereoMode = true;
 
         iWearTracker iTracker;
 
-        ResolveTexture2D sbsStereoScreenLeft;
-        ResolveTexture2D sbsStereoScreenRight;
-        SpriteBatch spriteBatch;
+        Viewport leftViewport;
+        Viewport rightViewport;
 
         public Tutorial13()
         {
@@ -151,11 +117,21 @@ namespace Tutorial13___iWear_VR920
 
             if (stereoMode && (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920))
             {
-                sbsStereoScreenLeft = new ResolveTexture2D(GraphicsDevice, State.Width, State.Height, 1,
-                GraphicsDevice.PresentationParameters.BackBufferFormat);
-                sbsStereoScreenRight = new ResolveTexture2D(GraphicsDevice, State.Width, State.Height, 1,
-                    GraphicsDevice.PresentationParameters.BackBufferFormat);
-                spriteBatch = new SpriteBatch(GraphicsDevice);
+                leftViewport = new Viewport();
+                leftViewport.X = 0;
+                leftViewport.Y = 0;
+                leftViewport.Width = State.Width / 2;
+                leftViewport.Height = State.Height;
+                leftViewport.MinDepth = State.Device.Viewport.MinDepth;
+                leftViewport.MaxDepth = State.Device.Viewport.MaxDepth;
+
+                rightViewport = new Viewport();
+                rightViewport.X = State.Width / 2;
+                rightViewport.Y = 0;
+                rightViewport.Width = State.Width / 2;
+                rightViewport.Height = State.Height;
+                rightViewport.MinDepth = State.Device.Viewport.MinDepth;
+                rightViewport.MaxDepth = State.Device.Viewport.MaxDepth;
             }
 
             base.Initialize();
@@ -169,10 +145,10 @@ namespace Tutorial13___iWear_VR920
 
             if (key == Keys.Enter)
             {
-                if (scene.RightEyeVideoID == 2)
-                    scene.RightEyeVideoID = 1;
+                if (scene.RightEyeVideoID == 1)
+                    scene.RightEyeVideoID = 0;
                 else
-                    scene.RightEyeVideoID = 2;
+                    scene.RightEyeVideoID = 1;
             }
         }
 
@@ -189,13 +165,8 @@ namespace Tutorial13___iWear_VR920
             scene.RootNode.AddChild(cameraNode);
             scene.CameraNode = cameraNode;
 
-            // The stereo mode only works correctly when it's in full screen mode when iWear VR920
-            // is used
-            if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_VR920)
-            {
-                graphics.IsFullScreen = true;
-                graphics.ApplyChanges();
-            }
+            graphics.IsFullScreen = true;
+            graphics.ApplyChanges();
         }
 
         private void CreateLights()
@@ -210,7 +181,7 @@ namespace Tutorial13___iWear_VR920
             LightNode lightNode = new LightNode();
             // Add an ambient component
             lightNode.AmbientLightColor = new Vector4(0.3f, 0.3f, 0.3f, 1);
-            lightNode.LightSources.Add(lightSource);
+            lightNode.LightSource = lightSource;
 
             // Add this light node to the root node
             groundMarkerNode.AddChild(lightNode);
@@ -228,9 +199,10 @@ namespace Tutorial13___iWear_VR920
 
             // if we're using Wrap920AR, then we need to add another capture device for
             // processing stereo camera
+            DirectShowCapture captureDevice2 = null;
             if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
-                DirectShowCapture captureDevice2 = new DirectShowCapture();
+                captureDevice2 = new DirectShowCapture();
                 captureDevice2.InitVideoCapture(1, FrameRate._30Hz, Resolution._640x480,
                     ImageFormat.R8G8B8_24, false);
 
@@ -256,9 +228,15 @@ namespace Tutorial13___iWear_VR920
 
             if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
-                scene.LeftEyeVideoID = 0;
-                scene.RightEyeVideoID = 1;
-                scene.TrackerVideoID = 0;
+                scene.LeftEyeVideoID = captureDevice.VideoDeviceID;
+                scene.RightEyeVideoID = captureDevice2.VideoDeviceID;
+                scene.TrackerVideoID = captureDevice.VideoDeviceID;
+            }
+            else
+            {
+                scene.LeftEyeVideoID = captureDevice.VideoDeviceID;
+                scene.RightEyeVideoID = captureDevice.VideoDeviceID;
+                scene.TrackerVideoID = captureDevice.VideoDeviceID;
             }
 
             // Create a marker node to track a ground marker array. 
@@ -267,14 +245,7 @@ namespace Tutorial13___iWear_VR920
 
             scene.RootNode.AddChild(groundMarkerNode);
 #else
-            // Create an array to hold a list of marker IDs that are used in the marker
-            // array configuration (even though these are already specified in the configuration
-            // file, ALVAR still requires this array)
-            int[] ids = new int[28];
-            for (int i = 0; i < ids.Length; i++)
-                ids[i] = i;
-
-            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.txt", ids);
+            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.xml");
 
             // Add a transform node to tranlate the objects to be centered around the
             // marker board.
@@ -451,7 +422,7 @@ namespace Tutorial13___iWear_VR920
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-
+            iTracker.Update(gameTime, true);
             base.Update(gameTime);
         }
 
@@ -466,15 +437,11 @@ namespace Tutorial13___iWear_VR920
             {
                 if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
                 {
+                    State.Device.Viewport = leftViewport;
                     base.Draw(gameTime);
-                    graphics.GraphicsDevice.ResolveBackBuffer(sbsStereoScreenLeft);
-                    scene.RenderScene();
-                    graphics.GraphicsDevice.ResolveBackBuffer(sbsStereoScreenRight);
 
-                    spriteBatch.Begin(SpriteBlendMode.None, SpriteSortMode.Immediate, SaveStateMode.None);
-                    spriteBatch.Draw((Texture2D)sbsStereoScreenLeft, new Rectangle(0, 0, 400, 600), Color.White);
-                    spriteBatch.Draw((Texture2D)sbsStereoScreenRight, new Rectangle(400, 0, 400, 600), Color.White);
-                    spriteBatch.End();
+                    State.Device.Viewport = rightViewport;
+                    scene.RenderScene();
                 }
                 else if (iTracker.IsStereoAvailable)
                 {

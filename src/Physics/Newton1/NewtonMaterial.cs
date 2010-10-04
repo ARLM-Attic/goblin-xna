@@ -36,14 +36,14 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 
-namespace GoblinXNA.Physics
+namespace GoblinXNA.Physics.Newton1
 {
     /// <summary>
     /// A default implementation of the IPhysicsMaterial interface. A physics material defines
     /// how two materials behave when they physically interact, including support for friction 
     /// and elasticity. 
     /// </summary>
-    public class NewtonMaterial : IPhysicsMaterial
+    public class NewtonMaterial
     {
         #region Delegates
         /// <summary>
@@ -144,42 +144,68 @@ namespace GoblinXNA.Physics
         #endregion
 
         #region Properties
+
+        /// <summary>
+        /// Gets or sets the first material name
+        /// </summary>
         public String MaterialName1
         {
             get { return materialName1; }
             set { materialName1 = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the second material name
+        /// </summary>
         public String MaterialName2
         {
             get { return materialName2; }
             set { materialName2 = value; }
         }
 
+        /// <summary>
+        /// Gets or sets whether these two materials can collide.
+        /// </summary>
         public bool Collidable
         {
             get { return collidable; }
             set { collidable = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the static friction between the two materials.
+        /// </summary>
         public float StaticFriction
         {
             get { return staticFriction; }
             set { staticFriction = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the kinetic/dynamic friction between the two materials.
+        /// </summary>
         public float KineticFriction
         {
             get { return kineticFriction; }
             set { kineticFriction = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the softness between the two materials. This property is used 
+        /// only when the two objects interpenetrate. The larger the value, the more restoring 
+        /// force is applied to the interpenetrating objects. Restoring force is a force 
+        /// applied to make both interpenetrating objects push away from each other so that 
+        /// they no longer interpenetrate.
+        /// </summary>
         public float Softness
         {
             get { return softness; }
             set { softness = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the elasticity between the two materials. 
+        /// </summary>
         public float Elasticity
         {
             get { return elasticity; }

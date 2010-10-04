@@ -59,6 +59,8 @@ namespace GoblinXNA.Graphics
 
         protected Texture2D texture;
         protected Effect internalEffect;
+
+        protected bool hasChanged;
         #endregion
 
         #region Constructors
@@ -76,6 +78,7 @@ namespace GoblinXNA.Graphics
 
             texture = null;
             internalEffect = null;
+            hasChanged = false;
         }
         #endregion
 
@@ -85,56 +88,91 @@ namespace GoblinXNA.Graphics
         /// The larger the specular power, the smaller the size of the specular highlight.
         /// The default value is 10.0f
         /// </summary>
-        public float SpecularPower
+        public virtual float SpecularPower
         {
             get { return specularPower; }
-            set { specularPower = value; }
+            set 
+            {
+                if (specularPower != value)
+                {
+                    specularPower = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
         /// Gets or sets the diffuse color of this material.
         /// The default value is Color.Black
         /// </summary>
-        public Vector4 Diffuse
+        public virtual Vector4 Diffuse
         {
             get { return diffuseColor; }
-            set { diffuseColor = value; }
+            set 
+            {
+                if (!diffuseColor.Equals(value))
+                {
+                    diffuseColor = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
         /// Gets or sets the ambient color of this material.
         /// The default value is Color.Black
         /// </summary>
-        public Vector4 Ambient
+        public virtual Vector4 Ambient
         {
             get { return ambientColor; }
-            set { ambientColor = value; }
+            set 
+            {
+                if (!ambientColor.Equals(value))
+                {
+                    ambientColor = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
         /// Gets or sets the specular color of this material.
         /// The default value is Color.Black
         /// </summary>
-        public Vector4 Specular
+        public virtual Vector4 Specular
         {
             get { return specularColor; }
-            set { specularColor = value; }
+            set 
+            {
+                if (!specularColor.Equals(value))
+                {
+                    specularColor = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
         /// Gets or sets the color of the light this material emits. 
         /// The default value is Color.Black
         /// </summary>
-        public Vector4 Emissive
+        public virtual Vector4 Emissive
         {
             get { return emissiveColor; }
-            set { emissiveColor = value; }
+            set 
+            {
+                if (!emissiveColor.Equals(value))
+                {
+                    emissiveColor = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
         /// Gets whether this material contains texture information.
         /// </summary>
-        public bool HasTexture
+        public virtual bool HasTexture
         {
             get { return (texture != null); }
         }
@@ -142,10 +180,26 @@ namespace GoblinXNA.Graphics
         /// <summary>
         /// Gets or sets the texture applied to this material.
         /// </summary>
-        public Texture2D Texture
+        public virtual Texture2D Texture
         {
             get { return texture; }
-            set { texture = value; }
+            set 
+            { 
+                texture = value;
+                hasChanged = true;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets whether there is a change in the material setting
+        /// </summary>
+        /// <remarks>
+        /// Do not set this value in your application. It is set by the system.
+        /// </remarks>
+        public virtual bool HasChanged
+        {
+            get { return hasChanged; }
+            set { hasChanged = value; }
         }
 
         /// <summary>
@@ -155,7 +209,7 @@ namespace GoblinXNA.Graphics
         /// <remarks>
         /// See XNA's reference manual for the details of an "Effect" class
         /// </remarks>
-        public Effect InternalEffect
+        public virtual Effect InternalEffect
         {
             get { return internalEffect; }
             set { internalEffect = value; }

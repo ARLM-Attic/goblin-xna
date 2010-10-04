@@ -1,4 +1,4 @@
-/************************************************************************************ 
+﻿/************************************************************************************ 
  * Copyright (c) 2008-2010, Columbia University
  * All rights reserved.
  *
@@ -32,52 +32,60 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
-namespace GoblinXNA.Physics
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+
+namespace GoblinXNA.Shaders
 {
     /// <summary>
-    /// This class defines the physical material properties between two materials.
+    /// A shader for rendering 3D lines.
     /// </summary>
-    public interface IPhysicsMaterial
+    public class Line3DShader : Shader
     {
         /// <summary>
-        /// Gets or sets the first material name
+        /// Creates a 3D line shader.
         /// </summary>
-        String MaterialName1 { get; set; }
+        /// <param name="shaderName"></param>
+        public Line3DShader(string shaderName)
+            : base(shaderName)
+        {
+        }
 
-        /// <summary>
-        /// Gets or sets the second material name
-        /// </summary>
-        String MaterialName2 { get; set; }
+        protected override void GetParameters()
+        {
+            worldViewProj = effect.Parameters["worldViewProj"];
+        }
 
-        /// <summary>
-        /// Gets or sets whether these two materials can collide.
-        /// </summary>
-        bool Collidable { get; set; }
+        public override void Render(Matrix worldMatrix, string techniqueName, 
+            RenderHandler renderDelegate)
+        {
+            worldViewProj.SetValue(worldMatrix * State.ViewMatrix * State.ProjectionMatrix);
 
-        /// <summary>
-        /// Gets or sets the static friction between the two materials.
-        /// </summary>
-        float StaticFriction { get; set; }
+            // Start shader
+            effect.CurrentTechnique = effect.Techniques[techniqueName];
+            try
+            {
+                effect.Begin(SaveStateMode.None);
 
-        /// <summary>
-        /// Gets or sets the kinetic/dynamic friction between the two materials.
-        /// </summary>
-        float KineticFriction { get; set; }
+                // Render all passes (usually just one)
+                //foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+                for (int num = 0; num < effect.CurrentTechnique.Passes.Count; num++)
+                {
+                    EffectPass pass = effect.CurrentTechnique.Passes[num];
 
-        /// <summary>
-        /// Gets or sets the elasticity between the two materials. 
-        /// </summary>
-        float Elasticity { get; set; }
-
-        /// <summary>
-        /// Gets or sets the softness between the two materials. This property is used 
-        /// only when the two objects interpenetrate. The larger the value, the more restoring 
-        /// force is applied to the interpenetrating objects. Restoring force is a force 
-        /// applied to make both interpenetrating objects push away from each other so that 
-        /// they no longer interpenetrate.
-        /// </summary>
-        float Softness { get; set; }
+                    pass.Begin();
+                    renderDelegate();
+                    pass.End();
+                }
+            }
+            finally
+            {
+                // End shader
+                effect.End();
+            }
+        }
     }
 }

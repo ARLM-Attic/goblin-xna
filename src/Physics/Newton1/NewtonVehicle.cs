@@ -43,7 +43,7 @@ using NewtonDynamics;
 using GoblinXNA.Graphics;
 using GoblinXNA.Helpers;
 
-namespace GoblinXNA.Physics
+namespace GoblinXNA.Physics.Newton1
 {
     #region Enums
     public enum TireID
@@ -89,9 +89,9 @@ namespace GoblinXNA.Physics
         protected IPhysicsMeshProvider meshProvider;
 
         protected IntPtr joint;
-        protected Newton.NewtonSetTransform transformCallback;
-        protected Newton.NewtonApplyForceAndTorque forceCallback;
-        protected Newton.NewtonVehicleTireUpdate tireUpdate;
+        protected NewtonDynamics.Newton.NewtonSetTransform transformCallback;
+        protected NewtonDynamics.Newton.NewtonApplyForceAndTorque forceCallback;
+        protected NewtonDynamics.Newton.NewtonVehicleTireUpdate tireUpdate;
         #endregion
 
         #region Constructors
@@ -369,7 +369,7 @@ namespace GoblinXNA.Physics
         /// <remarks>
         /// This callback must be set before a vehicle can be added for physical simulation.
         /// </remarks>
-        public Newton.NewtonSetTransform TransformCallback
+        public NewtonDynamics.Newton.NewtonSetTransform TransformCallback
         {
             get { return transformCallback; }
             set { transformCallback = value; }
@@ -381,7 +381,7 @@ namespace GoblinXNA.Physics
         /// <remarks>
         /// This callback must be set before a vehicle can be added for physical simulation.
         /// </remarks>
-        public Newton.NewtonApplyForceAndTorque ForceCallback
+        public NewtonDynamics.Newton.NewtonApplyForceAndTorque ForceCallback
         {
             get { return forceCallback; }
             set { forceCallback = value; }
@@ -393,7 +393,7 @@ namespace GoblinXNA.Physics
         /// <remarks>
         /// This callback must be set before this vehicle can be added for physical simulation.
         /// </remarks>
-        public Newton.NewtonVehicleTireUpdate TireUpdateCallback
+        public NewtonDynamics.Newton.NewtonVehicleTireUpdate TireUpdateCallback
         {
             get { return tireUpdate; }
             set { tireUpdate = value; }

@@ -270,16 +270,13 @@ namespace GoblinXNA.Shaders
 
                 if (lightDir.Equals(Vector3.Zero))
                 {
-                    foreach (LightSource light in lNode.LightSources)
-                    {
-                        // skip the light source if not enabled or not a direction light
-                        if (!light.Enabled || (light.Type != LightType.Directional))
-                            continue;
-                        lightDir = Vector3.Negate(((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation);
+                    // skip the light source if not enabled or not a direction light
+                    if (!lNode.LightSource.Enabled || (lNode.LightSource.Type != LightType.Directional))
+                        continue;
+                    lightDir = Vector3.Negate(((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
+                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation);
 
-                        break;
-                    }
+                    break;
                 }
             }
 
@@ -290,17 +287,14 @@ namespace GoblinXNA.Shaders
 
                 if (lightDir.Equals(Vector3.Zero))
                 {
-                    foreach (LightSource light in lNode.LightSources)
-                    {
-                        // skip the light source if not enabled or not a point light
-                        if (!light.Enabled || (light.Type != LightType.Directional))
-                            continue;
+                    // skip the light source if not enabled or not a point light
+                    if (!lNode.LightSource.Enabled || (lNode.LightSource.Type != LightType.Directional))
+                        continue;
 
-                        lightDir = Vector3.Negate(((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation);
+                    lightDir = Vector3.Negate(((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
+                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation);
 
-                        break;
-                    }
+                    break;
                 }
             }
 

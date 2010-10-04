@@ -52,7 +52,7 @@ namespace GoblinXNA.Device.Capture
         _640x480, 
         _800x600, 
         _1024x768, 
-        _1280x960, 
+        _1280x1024, 
         _1600x1200 
     };
 

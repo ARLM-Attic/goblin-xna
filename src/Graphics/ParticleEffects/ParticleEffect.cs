@@ -56,6 +56,10 @@ namespace GoblinXNA.Graphics.ParticleEffects
         protected Blend sourceBlend;
         protected Blend destinationBlend;
 
+        protected Vector3 up;
+        protected Vector3 right;
+        protected Vector3 forward;
+
         protected IShader shader;
         protected String shaderTechnique;
         protected bool enabled;
@@ -190,7 +194,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets a shader to render this particle effect
         /// </summary>
-        public IShader Shader
+        public virtual IShader Shader
         {
             get { return shader; }
             set { shader = value; }
@@ -199,7 +203,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets the shader technique to use .
         /// </summary>
-        public String ShaderTechnique
+        public virtual String ShaderTechnique
         {
             get { return shaderTechnique; }
             set { shaderTechnique = value; }
@@ -208,7 +212,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets whether this particle effect should be rendered. The default is true.
         /// </summary>
-        public bool Enabled
+        public virtual bool Enabled
         {
             get { return enabled; }
             set { enabled = value; }
@@ -217,7 +221,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets the name of the texture used by this particle system.
         /// </summary>
-        public String TextureName
+        public virtual String TextureName
         {
             get { return textureName; }
             set { textureName = value; }
@@ -226,7 +230,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets the maximum number of particles that can be displayed at one time.
         /// </summary>
-        public int MaxParticles
+        public virtual int MaxParticles
         {
             get { return maxParticles; }
             set
@@ -242,7 +246,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets how long these particles will last. 
         /// </summary>
-        public TimeSpan Duration
+        public virtual TimeSpan Duration
         {
             get { return duration; }
             set { duration = value; }
@@ -253,7 +257,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// 
         /// If greater than zero, some particles will last a shorter time than others.
         /// </summary>
-        public float DurationRandomness
+        public virtual float DurationRandomness
         {
             get { return durationRandomness; }
             set { durationRandomness = value; }
@@ -267,7 +271,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// value very low so they are less affected by the velocity of the projectile.
         /// </summary>
         /// <see cref="GoblinXNA.Graphics.ParticleEffects.ExplosionParticleEffect"/>
-        public float EmitterVelocitySensitivity
+        public virtual float EmitterVelocitySensitivity
         {
             get { return emitterVelocitySensitivity; }
             set { emitterVelocitySensitivity = value; }
@@ -279,7 +283,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// between this value and MaxHorizontalVelocity.
         /// </summary>
         /// <see cref="MaxHorizontalVelocity"/>
-        public float MinHorizontalVelocity
+        public virtual float MinHorizontalVelocity
         {
             get { return minHorizontalVelocity; }
             set { minHorizontalVelocity = value; }
@@ -291,7 +295,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// between MinHorizontalVelocity and this value.
         /// </summary>
         /// <see cref="MinHorizontalVelocity"/>
-        public float MaxHorizontalVelocity
+        public virtual float MaxHorizontalVelocity
         {
             get { return maxHorizontalVelocity; }
             set { maxHorizontalVelocity = value; }
@@ -303,7 +307,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// between this value and MaxVerticalVelocity.
         /// </summary>
         /// <see cref="MinVerticalVelocity"/>
-        public float MinVerticalVelocity
+        public virtual float MinVerticalVelocity
         {
             get { return minVerticalVelocity; }
             set { minVerticalVelocity = value; }
@@ -315,7 +319,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// between MinVerticalVelocity and this value.
         /// </summary>
         /// <see cref="MaxVerticalVelocity"/>
-        public float MaxVerticalVelocity
+        public virtual float MaxVerticalVelocity
         {
             get { return maxVerticalVelocity; }
             set { maxVerticalVelocity = value; }
@@ -326,7 +330,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// direction, not just down! The fire effect points it upward to make the flames
         /// rise, and the smoke plume points it sideways to simulate wind.
         /// </summary>
-        public Vector3 Gravity
+        public virtual Vector3 Gravity
         {
             get { return gravity; }
             set { gravity = value; }
@@ -339,7 +343,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// Values greater than 1 make the particles speed up over time.
         /// The default value is 1.
         /// </summary>
-        public float EndVelocity
+        public virtual float EndVelocity
         {
             get { return endVelocity; }
             set { endVelocity = value; }
@@ -351,7 +355,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// and MaxColor. The default value is Color.Black.
         /// </summary>
         /// <see cref="MaxColor"/>
-        public Color MinColor
+        public virtual Color MinColor
         {
             get { return minColor; }
             set { minColor = value; }
@@ -363,7 +367,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// and this value.
         /// </summary>
         /// <see cref="MinColor"/>
-        public Color MaxColor
+        public virtual Color MaxColor
         {
             get { return maxColor; }
             set { maxColor = value; }
@@ -379,7 +383,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// boost from leaving these values at 0.
         /// </summary>
         /// <see cref="MaxRotateSpeed"/>
-        public float MinRotateSpeed
+        public virtual float MinRotateSpeed
         {
             get { return minRotateSpeed; }
             set { minRotateSpeed = value; }
@@ -395,7 +399,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// boost from leaving these values at 0. 
         /// </summary>
         /// <see cref="MinRotateSpeed"/>
-        public float MaxRotateSpeed
+        public virtual float MaxRotateSpeed
         {
             get { return maxRotateSpeed; }
             set { maxRotateSpeed = value; }
@@ -407,7 +411,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// MinStartSize and MaxStartSize. 
         /// </summary>
         /// <see cref="MinStartSize"/>
-        public float MinStartSize
+        public virtual float MinStartSize
         {
             get { return minStartSize; }
             set { minStartSize = value; }
@@ -419,7 +423,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// MinStartSize and MaxStartSize. 
         /// </summary>
         /// <see cref="MaxStartSize"/>
-        public float MaxStartSize
+        public virtual float MaxStartSize
         {
             get { return maxStartSize; }
             set { maxStartSize = value; }
@@ -431,7 +435,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// between MinEndSize and MaxEndSize. 
         /// </summary>
         /// <see cref="MaxEndSize"/>
-        public float MinEndSize
+        public virtual float MinEndSize
         {
             get { return minEndSize; }
             set { minEndSize = value; }
@@ -443,7 +447,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// between MinEndSize and MaxEndSize.
         /// </summary>
         /// <see cref="MaxEndSize"/>
-        public float MaxEndSize
+        public virtual float MaxEndSize
         {
             get { return maxEndSize; }
             set { maxEndSize = value; }
@@ -452,7 +456,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Alpha source blending setting. 
         /// </summary>
-        public Blend SourceBlend
+        public virtual Blend SourceBlend
         {
             get { return sourceBlend; }
             set { sourceBlend = value; }
@@ -461,16 +465,43 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Alpha destination blending setting. 
         /// </summary>
-        public Blend DestinationBlend
+        public virtual Blend DestinationBlend
         {
             get { return destinationBlend; }
             set { destinationBlend = value; }
         }
 
         /// <summary>
+        /// A direction in which vertical velocity is applied. Default is Vector3.UnitY.
+        /// </summary>
+        public virtual Vector3 Up
+        {
+            get { return up; }
+            set { up = value; }
+        }
+
+        /// <summary>
+        /// A direction in which horizontal velocity is applied. Default is Vector3.UnitX.
+        /// </summary>
+        public virtual Vector3 Right
+        {
+            get { return right; }
+            set { right = value; }
+        }
+
+        /// <summary>
+        /// A direction in which horizontal velocity is applied. Default is Vector3.UnitZ.
+        /// </summary>
+        public virtual Vector3 Forward
+        {
+            get { return forward; }
+            set { forward = value; }
+        }
+
+        /// <summary>
         /// Gets the time elapsed since the particle simulation started. 
         /// </summary>
-        public float CurrentTime
+        public virtual float CurrentTime
         {
             get { return currentTime; }
         }
@@ -478,7 +509,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Gets or sets the order of drawing each particle effect. Smaller value is drawn earlier. 
         /// </summary>
-        public int DrawOrder
+        public virtual int DrawOrder
         {
             get { return drawOrder; }
             set { drawOrder = value; }
@@ -513,6 +544,10 @@ namespace GoblinXNA.Graphics.ParticleEffects
             destinationBlend = Blend.InverseSourceAlpha;
             currentTime = 0;
             drawOrder = 0;
+
+            up = Vector3.UnitY;
+            right = Vector3.UnitX;
+            forward = Vector3.UnitZ;
 
             particles = new ParticleVertex[maxParticles];
 
@@ -832,11 +867,11 @@ namespace GoblinXNA.Graphics.ParticleEffects
 
             double horizontalAngle = random.NextDouble() * MathHelper.TwoPi;
 
-            velocity.X += horizontalVelocity * (float)Math.Cos(horizontalAngle);
-            velocity.Z += horizontalVelocity * (float)Math.Sin(horizontalAngle);
+            velocity += right * horizontalVelocity * (float)Math.Cos(horizontalAngle);
+            velocity += forward * horizontalVelocity * (float)Math.Sin(horizontalAngle);
 
             // Add in some random amount of vertical velocity.
-            velocity.Y += MathHelper.Lerp(minVerticalVelocity,
+            velocity += up * MathHelper.Lerp(minVerticalVelocity,
                                           maxVerticalVelocity,
                                           (float)random.NextDouble());
 

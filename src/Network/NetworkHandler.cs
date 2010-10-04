@@ -141,7 +141,7 @@ namespace GoblinXNA.Network
                     else if (identifier.Equals("NewConnectionEstablished"))
                         sendAll = true;
                     else
-                        Log.Write("Network Identifier: " + identifier + " is not found");
+                        Log.Write("Network Identifier: " + identifier + " is not found", Log.LogLevel.Log);
 
                     index += (size + 2);
                 }

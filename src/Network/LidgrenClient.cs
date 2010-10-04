@@ -65,9 +65,12 @@ namespace GoblinXNA.Network
         protected bool shutDownForced;
 
         protected NetClient netClient;
-        protected NetBuffer buffer;
         protected IPAddress myAddr;
-        protected NetConfiguration netConfig;
+        protected NetPeerConfiguration netConfig;
+
+        protected int sequenceChannel;
+        protected NetXtea xtea;
+        protected bool useSequencedInsteadOfOrdered;
 
         #endregion
 
@@ -106,7 +109,11 @@ namespace GoblinXNA.Network
             hostPoint = new IPEndPoint(hostAddr, portNumber);
 
             // Create a configuration for the client
-            netConfig = new NetConfiguration(appName);
+            netConfig = new NetPeerConfiguration(appName);
+
+            xtea = new NetXtea("GoblinXNA");
+            sequenceChannel = 0;
+            useSequencedInsteadOfOrdered = false;
         }
 
         /// <summary>
@@ -135,7 +142,11 @@ namespace GoblinXNA.Network
             hostPoint = new IPEndPoint(hostAddr, portNumber);
 
             // Create a configuration for the client
-            netConfig = new NetConfiguration(appName);
+            netConfig = new NetPeerConfiguration(appName);
+
+            xtea = new NetXtea("GoblinXNA");
+            sequenceChannel = 0;
+            useSequencedInsteadOfOrdered = false;
         }
         #endregion
 
@@ -157,7 +168,7 @@ namespace GoblinXNA.Network
         }
 
         /// <summary>
-        /// Gets or sets whether to enable encryption. (NOT implemented for Lidgren.Network)
+        /// Gets or sets whether to enable encryption.
         /// </summary>
         public bool EnableEncryption
         {
@@ -184,10 +195,30 @@ namespace GoblinXNA.Network
         /// For detailed information about each of the properties of NetConfiguration,
         /// please see the documentation included in the Lidgren's distribution package.
         /// </remarks>
-        public NetConfiguration NetConfig
+        public NetPeerConfiguration NetConfig
         {
             get { return netConfig; }
             set { netConfig = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the delivery channel. Default value is 0. Must be between 0 and 63.
+        /// </summary>
+        public int SequenceChannel
+        {
+            get { return sequenceChannel; }
+            set { sequenceChannel = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets whether to use Sequenced deliver method instead of Ordered.
+        /// (e.g., ReliableOrdered becomes ReliableSequenced when INetworkObject's Ordered
+        /// and Reliable are both set to true)
+        /// </summary>
+        public bool UseSequencedInsteadOfOrdered
+        {
+            get { return useSequencedInsteadOfOrdered; }
+            set { useSequencedInsteadOfOrdered = value; }
         }
 
         #endregion
@@ -196,22 +227,16 @@ namespace GoblinXNA.Network
 
         public void Connect()
         {
-            if (netClient != null && netClient.Status != NetConnectionStatus.Disconnected)
+            if (netClient != null && netClient.Status == NetPeerStatus.Running)
                 return;
 
             isConnected = false;
 
-            // enable encryption; this key was generated using the 'GenerateEncryptionKeys' application
-            if (enableEncryption)
-            {
-                // No encryption mechanism in Lidgren anymore
-            }
+            netConfig.EnableMessageType(NetIncomingMessageType.DiscoveryResponse);
 
             // Create a client
             netClient = new NetClient(netConfig);
             netClient.Start();
-
-            buffer = netClient.CreateBuffer();
 
             try
             {
@@ -223,9 +248,9 @@ namespace GoblinXNA.Network
                 else
                 {
                     if (myAddr.Equals(hostPoint.Address))
-                        netClient.DiscoverLocalServers(portNumber);
+                        netClient.DiscoverLocalPeers(portNumber);
                     else
-                        netClient.DiscoverKnownServer(hostPoint, false);
+                        netClient.DiscoverKnownPeer(hostPoint);
                 }
             }
             catch (SocketException se)
@@ -239,9 +264,9 @@ namespace GoblinXNA.Network
             while (!isServerDiscovered && !shutDownForced)
             {
                 if (myAddr.Equals(hostPoint.Address))
-                    netClient.DiscoverLocalServers(portNumber);
+                    netClient.DiscoverLocalPeers(portNumber);
                 else
-                    netClient.DiscoverKnownServer(hostPoint, false);
+                    netClient.DiscoverKnownPeer(hostPoint);
 
                 Thread.Sleep(500);
 
@@ -254,26 +279,37 @@ namespace GoblinXNA.Network
 
         public void ReceiveMessage(ref List<byte[]> messages)
         {
-            NetMessageType type;
+            NetIncomingMessage msg;
 
             try
             {
                 // read a packet if available
-                while (netClient.ReadMessage(buffer, out type))
+                while ((msg = netClient.ReadMessage()) != null)
                 {
-                    switch (type)
+                    if (enableEncryption)
+                        msg.Decrypt(xtea);
+
+                    switch (msg.MessageType)
                     {
-                        case NetMessageType.ServerDiscovered:
-                            NetBuffer buf = netClient.CreateBuffer();
-                            buf.Write(myAddr.ToString());
-                            netClient.Connect(buffer.ReadIPEndPoint(), buf.ToArray());
+                        case NetIncomingMessageType.DiscoveryResponse:
+                            netClient.Connect(msg.SenderEndpoint);
                             isServerDiscovered = true;
                             break;
-                        case NetMessageType.DebugMessage:
-                            Log.Write(buffer.ReadString(), Log.LogLevel.Log);
+                        case NetIncomingMessageType.DebugMessage:
+                        case NetIncomingMessageType.VerboseDebugMessage:
+                            Log.Write(msg.ReadString(), Log.LogLevel.Log);
                             break;
-                        case NetMessageType.StatusChanged:
-                            if (netClient.Status == NetConnectionStatus.Connected)
+                        case NetIncomingMessageType.WarningMessage:
+                            Log.Write(msg.ReadString(), Log.LogLevel.Warning);
+                            break;
+                        case NetIncomingMessageType.ErrorMessage:
+                            Log.Write(msg.ReadString(), Log.LogLevel.Error);
+                            break;
+                        case NetIncomingMessageType.StatusChanged:
+                            NetConnectionStatus status = (NetConnectionStatus)msg.ReadByte();
+                            string reason = msg.ReadString();
+                            Log.Write("New status: " + status + " (" + reason + ")", Log.LogLevel.Log);
+                            if (status == NetConnectionStatus.Connected)
                             {
                                 isConnected = true;
                                 if (ServerConnected != null)
@@ -285,12 +321,11 @@ namespace GoblinXNA.Network
                                 if (ServerDisconnected != null)
                                     ServerDisconnected();
                             }
-
-                            Log.Write("New status: " + netClient.Status + " (" + buffer.ReadString() + ")",
-                                Log.LogLevel.Log);
                             break;
-                        case NetMessageType.Data:
-                            messages.Add(buffer.ToArray());
+                        case NetIncomingMessageType.Data:
+                            byte[] data = new byte[msg.LengthBytes];
+                            msg.Read(data, 0, msg.LengthBytes);
+                            messages.Add(data);
                             break;
                     }
                 }
@@ -305,23 +340,34 @@ namespace GoblinXNA.Network
         {
             // subsequent input; send chat message to server
             // create a message
-            NetBuffer buf = netClient.CreateBuffer();
-            buf.Write(msg);
+            NetOutgoingMessage om = netClient.CreateMessage();
+            om.Write(msg);
+            if (enableEncryption)
+                om.Encrypt(xtea);
 
-            NetChannel channel = NetChannel.Unreliable;
+            NetDeliveryMethod deliverMethod = NetDeliveryMethod.Unreliable;
+            int channel = sequenceChannel;
             if (reliable)
             {
                 if (inOrder)
-                    channel = NetChannel.ReliableInOrder1;
+                {
+                    if (useSequencedInsteadOfOrdered)
+                        deliverMethod = NetDeliveryMethod.ReliableSequenced;
+                    else
+                        deliverMethod = NetDeliveryMethod.ReliableOrdered;
+                }
                 else
-                    channel = NetChannel.ReliableUnordered;
+                {
+                    deliverMethod = NetDeliveryMethod.ReliableUnordered;
+                    channel = 0;
+                }
             }
             else if (inOrder)
-                channel = NetChannel.UnreliableInOrder1;
+                deliverMethod = NetDeliveryMethod.UnreliableSequenced;
 
             try
             {
-                netClient.SendMessage(buf, channel);
+                netClient.SendMessage(om, deliverMethod, sequenceChannel);
             }
             catch (SocketException se)
             {

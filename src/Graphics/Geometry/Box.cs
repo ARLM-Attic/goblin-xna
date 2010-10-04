@@ -43,9 +43,9 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A box geometry primitive constructed with PrimitiveMesh
+    /// A box geometry primitive constructed with CustomMesh
     /// </summary>
-    public class Box : Model
+    public class Box : PrimitiveModel
     {
         #region Constructors
 
@@ -58,7 +58,7 @@ namespace GoblinXNA.Graphics.Geometry
         public Box(float xdim, float ydim, float zdim)
             : base(CreateBox(xdim, ydim, zdim))
         {
-            primitiveShapeParameters = xdim + ", " + ydim + ", " + zdim;
+            customShapeParameters = xdim + ", " + ydim + ", " + zdim;
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace GoblinXNA.Graphics.Geometry
         public Box(float length)
             : base(CreateBox(length, length, length))
         {
-            primitiveShapeParameters = length + ", " + length + ", " + length;
+            customShapeParameters = length + ", " + length + ", " + length;
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace GoblinXNA.Graphics.Geometry
         public Box(Vector3 dimension)
             : base(CreateBox(dimension.X, dimension.Y, dimension.Z))
         {
-            primitiveShapeParameters = dimension.X + ", " + dimension.Y + ", " + dimension.Z;
+            customShapeParameters = dimension.X + ", " + dimension.Y + ", " + dimension.Z;
         }
 
         /// <summary>
@@ -89,16 +89,16 @@ namespace GoblinXNA.Graphics.Geometry
             : base(CreateBox(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]),
                 float.Parse(xmlParams[2])))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
         }
 
         #endregion
 
         #region Private Static Method
 
-        private static PrimitiveMesh CreateBox(float xdim, float ydim, float zdim)
+        private static CustomMesh CreateBox(float xdim, float ydim, float zdim)
         {
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             VertexPositionNormal[] vertices = new VertexPositionNormal[24];
             Vector3 halfExtent = new Vector3(); 

@@ -179,7 +179,7 @@ namespace GoblinXNA.Device.Util
         /// <param name="p">The original position</param>
         /// <param name="q">The original rotation</param>
         /// <param name="result">A smoothed matrix</param>
-        public void FilterMatrix(ref Vector3 p, ref Quaternion q, out Matrix result)
+        public virtual void FilterMatrix(ref Vector3 p, ref Quaternion q, out Matrix result)
         {
             if (initialized)
             {
@@ -314,7 +314,7 @@ namespace GoblinXNA.Device.Util
         /// <summary>
         /// Performs the DES algorithm.
         /// </summary>
-        private void ComputeDESMatrix(ref Vector3 p, ref Quaternion q, out Matrix result)
+        protected void ComputeDESMatrix(ref Vector3 p, ref Quaternion q, out Matrix result)
         {
             // If translational alpha is 1, then no need to perform smoothing
             if (transAlpha == 1)

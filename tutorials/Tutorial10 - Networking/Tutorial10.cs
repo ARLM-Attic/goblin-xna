@@ -1,36 +1,3 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Author: Ohan Oda (ohan@cs.columbia.edu)
- * 
- *************************************************************************************/ 
-
-
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -52,6 +19,7 @@ using GoblinXNA.Device;
 using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Network;
 using GoblinXNA.Physics;
+using GoblinXNA.Physics.Newton1;
 
 namespace Tutorial10___Networking
 {
@@ -127,13 +95,15 @@ namespace Tutorial10___Networking
             // function
             mouseNetworkObj.CallbackFunc = ShootBox;
 
-            scene.PhysicsEngine = new NewtonPhysics();
-
             // Create a network handler for handling the network transfers
             NetworkHandler networkHandler = new NetworkHandler();
 
             if (State.IsServer)
+            {
                 networkHandler.NetworkServer = new LidgrenServer("Tutorial10", 14242);
+                scene.PhysicsEngine = new NewtonPhysics();
+                scene.PhysicsEngine.Gravity = 30;
+            }
             else
             {
                 // Create a client that connects to the local machine assuming that both
@@ -171,7 +141,7 @@ namespace Tutorial10___Networking
 
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
-            lightNode.LightSources.Add(lightSource);
+            lightNode.LightSource = lightSource;
 
             // Add this light node to the root node
             scene.RootNode.AddChild(lightNode);
@@ -206,7 +176,7 @@ namespace Tutorial10___Networking
 
         private void CreateObject()
         {
-            GeometryNode sphereNode = new GeometryNode("Sphere");
+            SynchronizedGeometryNode sphereNode = new SynchronizedGeometryNode("Sphere");
             sphereNode.Model = new Sphere(3, 20, 20);
             sphereNode.Model.ShowBoundingBox = true;
 
@@ -219,7 +189,7 @@ namespace Tutorial10___Networking
 
             TransformNode transNode = new TransformNode();
 
-            GeometryNode cylinderNode = new GeometryNode("Cylinder");
+            SynchronizedGeometryNode cylinderNode = new SynchronizedGeometryNode("Cylinder");
             cylinderNode.Model = new Cylinder(3, 3, 8, 20);
             cylinderNode.Model.ShowBoundingBox = true;
 
@@ -327,7 +297,7 @@ namespace Tutorial10___Networking
         {
             Vector3 camPos = scene.CameraNode.Camera.Translation;
 
-            GeometryNode shootBox = new GeometryNode("ShooterBox" + shooterID++);
+            SynchronizedGeometryNode shootBox = new SynchronizedGeometryNode("ShooterBox" + shooterID++);
             shootBox.Model = new Box(1);
             shootBox.Material = shootMat;
             shootBox.Physics.Interactable = true;
@@ -340,7 +310,7 @@ namespace Tutorial10___Networking
             Vector3 linVel = far - near;
             linVel.Normalize();
             // Multiply the direction with the velocity of 20
-            linVel *= 20f;
+            linVel *= 60f;
 
             // Assign the initial velocity to this shooting box
             shootBox.Physics.InitialLinearVelocity = linVel;

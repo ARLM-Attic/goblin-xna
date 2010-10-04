@@ -85,6 +85,8 @@ namespace GoblinXNA.Graphics
         protected float outerConeAngle;
         protected float range;
 
+        protected bool hasChanged;
+
         #endregion
 
         #region Constructors
@@ -106,6 +108,7 @@ namespace GoblinXNA.Graphics
             innerConeAngle = (float)(0.2 * Math.PI);
             outerConeAngle = (float)(0.3 * Math.PI);
             range = 500;
+            hasChanged = false;
         }
 
         /// <summary>
@@ -127,6 +130,7 @@ namespace GoblinXNA.Graphics
             innerConeAngle = light.InnerConeAngle;
             outerConeAngle = light.OuterConeAngle;
             range = light.Range;
+            hasChanged = true;
         }
         #endregion
 
@@ -138,7 +142,14 @@ namespace GoblinXNA.Graphics
         public LightType Type
         {
             get{ return lightType; }
-            set{ lightType = value; }
+            set
+            {
+                if (lightType != value)
+                {
+                    lightType = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -147,7 +158,14 @@ namespace GoblinXNA.Graphics
         public bool Enabled 
         {
             get{ return enabled; }
-            set{ enabled = value; }
+            set
+            {
+                if (enabled != value)
+                {
+                    enabled = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -156,7 +174,14 @@ namespace GoblinXNA.Graphics
         public Vector4 Diffuse
         {
             get{ return diffuse; }
-            set{ diffuse = value; }
+            set
+            {
+                if (!diffuse.Equals(value))
+                {
+                    diffuse = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -165,7 +190,14 @@ namespace GoblinXNA.Graphics
         public Vector4 Specular
         {
             get { return specular; }
-            set { specular = value; }
+            set 
+            {
+                if (!specular.Equals(value))
+                {
+                    specular = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -175,7 +207,14 @@ namespace GoblinXNA.Graphics
         public Vector3 Position
         {
             get{ return position; }
-            set{ position = value; }
+            set
+            {
+                if (!position.Equals(value))
+                {
+                    position = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -185,7 +224,14 @@ namespace GoblinXNA.Graphics
         public Vector3 Direction
         {
             get{ return direction; }
-            set{ direction = value; }
+            set
+            {
+                if (!direction.Equals(value))
+                {
+                    direction = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -195,7 +241,14 @@ namespace GoblinXNA.Graphics
         public float Attenuation0
         {
             get { return attenuation0; }
-            set { attenuation0 = value; }
+            set 
+            {
+                if (attenuation0 != value)
+                {
+                    attenuation0 = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -205,7 +258,14 @@ namespace GoblinXNA.Graphics
         public float Attenuation1
         {
             get { return attenuation1; }
-            set { attenuation1 = value; }
+            set 
+            {
+                if (attenuation1 != value)
+                {
+                    attenuation1 = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -215,13 +275,27 @@ namespace GoblinXNA.Graphics
         public float Attenuation2
         {
             get { return attenuation2; }
-            set { attenuation2 = value; }
+            set 
+            {
+                if (attenuation2 != value)
+                {
+                    attenuation2 = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         public float Falloff
         {
             get { return falloff; }
-            set { falloff = value; }
+            set 
+            {
+                if (falloff != value)
+                {
+                    falloff = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -231,7 +305,14 @@ namespace GoblinXNA.Graphics
         public float InnerConeAngle
         {
             get { return innerConeAngle; }
-            set { innerConeAngle = value; }
+            set 
+            {
+                if (innerConeAngle != value)
+                {
+                    innerConeAngle = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -241,7 +322,14 @@ namespace GoblinXNA.Graphics
         public float OuterConeAngle
         {
             get { return outerConeAngle; }
-            set { outerConeAngle = value; }
+            set
+            {
+                if (outerConeAngle != value)
+                {
+                    outerConeAngle = value;
+                    hasChanged = true;
+                }
+            }
         }
 
         /// <summary>
@@ -251,7 +339,20 @@ namespace GoblinXNA.Graphics
         public float Range
         {
             get { return range; }
-            set { range = value; }
+            set 
+            {
+                if (range != value)
+                {
+                    range = value;
+                    hasChanged = true;
+                }
+            }
+        }
+
+        internal bool HasChanged
+        {
+            get { return hasChanged; }
+            set { hasChanged = value; }
         }
 
         #endregion

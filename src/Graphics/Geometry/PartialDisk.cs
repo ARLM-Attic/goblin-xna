@@ -38,7 +38,7 @@ using System.Xml;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A partial disk geometry primitive constructed with PrimitiveMesh
+    /// A partial disk geometry primitive constructed with CustomMesh
     /// </summary>
     public class PartialDisk : Disk
     {
@@ -60,7 +60,7 @@ namespace GoblinXNA.Graphics.Geometry
         public PartialDisk(float inner, float outer, int slices, double start, double sweep, bool twoSided)
             : base(inner, outer, slices, start, sweep, twoSided)
         {
-            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + start + ", " +
+            customShapeParameters = inner + ", " + outer + ", " + slices + ", " + start + ", " +
                 sweep + ", " + twoSided;
         }
 
@@ -68,7 +68,7 @@ namespace GoblinXNA.Graphics.Geometry
             : base(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]), int.Parse(xmlParams[2]),
                 double.Parse(xmlParams[3]), double.Parse(xmlParams[4]), bool.Parse(xmlParams[5]))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2] + ", "
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2] + ", "
                 + xmlParams[3] + ", " + xmlParams[4] + ", " + xmlParams[5];
         }
 

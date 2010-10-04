@@ -112,6 +112,12 @@ namespace GoblinXNA.Shaders
             get{ return effect; }
         }
 
+        public Material CurrentMaterial
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Gets the effect technique from the technique name defined in the loaded shader file.
         /// </summary>
@@ -325,7 +331,7 @@ namespace GoblinXNA.Shaders
         /// This shader does not support special camera effect.
         /// </summary>
         /// <param name="camera"></param>
-        public virtual void SetParameters(Camera camera)
+        public virtual void SetParameters(CameraNode camera)
         {
         }
 

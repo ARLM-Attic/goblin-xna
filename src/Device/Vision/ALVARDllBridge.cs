@@ -71,10 +71,6 @@ namespace GoblinXNA.Device.Vision
         public static extern void alvar_add_multi_marker(int num_ids,
             [MarshalAs(UnmanagedType.LPArray, SizeConst = 128)] int[] ids, String filename);
 
-        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_add_multi_marker_bundle")]
-        public static extern void alvar_add_multi_marker_bundle(int num_ids,
-            [MarshalAs(UnmanagedType.LPArray, SizeConst = 128)] int[] ids);
-
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_detect_marker")]
         public static extern void alvar_detect_marker(int numChannels, string colorModel,
             string channelSeq, IntPtr imageData, [In, Out] IntPtr interestedMarkerIDs,
@@ -95,6 +91,14 @@ namespace GoblinXNA.Device.Vision
             [Out] IntPtr errors,
             bool returnHideTextures,
             [Out] IntPtr hideTextures);
+
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_calibrate_camera")]
+        public static extern bool alvar_calibrate_camera(int numChannels, string colorModel,
+            string channelSeq, IntPtr imageData, double etalon_square_size, int etalon_rows,
+            int etalon_columns);
+
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_finalize_calibration")]
+        public static extern bool alvar_finalize_calibration(string calibrationFilename);
 
         #endregion
     }

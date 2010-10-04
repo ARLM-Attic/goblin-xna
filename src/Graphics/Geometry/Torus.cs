@@ -43,9 +43,9 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A torus geometry primitive constructed with PrimitiveMesh
+    /// A torus geometry primitive constructed with CustomMesh
     /// </summary>
-    public class Torus : Model
+    public class Torus : PrimitiveModel
     {
         #region Constructors
 
@@ -65,14 +65,14 @@ namespace GoblinXNA.Graphics.Geometry
         public Torus(float inner, float outer, int slices, int stacks)
             : base(CreateTorus(inner, outer, slices, stacks))
         {
-            primitiveShapeParameters = inner + ", " + outer + ", " + slices + ", " + stacks;
+            customShapeParameters = inner + ", " + outer + ", " + slices + ", " + stacks;
         }
 
         public Torus(params String[] xmlParams)
             : base(CreateTorus(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]),
                 int.Parse(xmlParams[2]), int.Parse(xmlParams[3])))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2]
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2]
                 + ", " + xmlParams[3];
         }
 
@@ -80,7 +80,7 @@ namespace GoblinXNA.Graphics.Geometry
 
         #region Private Static Methods
 
-        private static PrimitiveMesh CreateTorus(float inner, float outer, int slices, int stacks)
+        private static CustomMesh CreateTorus(float inner, float outer, int slices, int stacks)
         {
             if (slices < 5)
                 throw new ArgumentException("Cannot draw a torus with slices less than 5");
@@ -97,7 +97,7 @@ namespace GoblinXNA.Graphics.Geometry
             if (inner >= outer)
                 throw new ArgumentException("Inner radius has to be less than outer radius");
 
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 

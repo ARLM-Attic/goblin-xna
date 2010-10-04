@@ -46,7 +46,7 @@ namespace ARDominos
     /// <summary>
     /// A box geometry primitive constructed with PrimitiveMesh representing a domino model
     /// </summary>
-    public class DominoBox : Model
+    public class DominoBox : PrimitiveModel
     {
         /// <summary>
         /// Create a domino box model with the given dimension
@@ -58,9 +58,9 @@ namespace ARDominos
         {
         }
 
-        private static PrimitiveMesh CreateBox(Vector3 dimension, Vector2 textCoord)
+        private static CustomMesh CreateBox(Vector3 dimension, Vector2 textCoord)
         {
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             // Even though we only need 8 vertices to create a cube/box geometry, because
             // XNA uses vertex normals instead of face normals, we need 3 duplicate vertices

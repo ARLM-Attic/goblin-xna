@@ -1,15 +1,20 @@
 //digitaltutors
 
+struct Light 
+{
+    float4 color;
+    float3 direction;
+};
+
 #define MaxBones 59
 float4x4 Bones[MaxBones];
 float4x4 View;
 float4x4 Projection;
 float4x4 World;
 
-float3 lightDir1 = float3(1,1,1);
-float3 lightDir2 = float3(-1,-0,-0);
-float3 lightDir3 = float3(0.5,-0,-1);
-
+shared float4 ambientLightColor;
+Light lights[3];
+int numLights;
 
 texture Texture;
 
@@ -59,47 +64,21 @@ VS_OUTPUT VSBasic(VS_INPUT input)  {
 }
 
 //
-//Vertex lit
-//
-float4 PSBasic(VS_OUTPUT input) : COLOR0 {
-    float4 outColor = tex2D(C_Sampler, input.TexCoord);
-	return outColor;
-}
-
-
-//
-//A debug pixel shader 
-//
-float4 PSDebug(VS_OUTPUT input) : COLOR0 {
-    float4 outColor = float4(1.0,1.0,1.0,1.0);
-	return outColor;
-}
-
-//
 //Diffuse lighting using the light source in header
 //
 float4 PSDiffuse(VS_OUTPUT input) : COLOR0 {
 	float4 outColor = tex2D(C_Sampler, input.TexCoord);
-	float diffuse = saturate(dot(input.Normal, normalize(lightDir1))) +
-					saturate(dot(input.Normal, normalize(lightDir2))) + 
-					0.5 * saturate(dot(input.Normal, normalize(lightDir3)));
-	outColor = outColor * diffuse;
+	float4 diffuse = float4(0.0,0.0,0.0,1.0);
+	for(int i = 0; i < numLights; i++)
+	{
+		float intensity = saturate(dot(input.Normal, normalize(-lights[i].direction)));
+		diffuse += intensity * lights[i].color;
+	}
+
+	outColor = outColor * (ambientLightColor + diffuse);
 	outColor.a = 1.0;
 	return outColor;
 	
-}
-
-//
-//"Invisble man"
-//
-float4 PSInvisible(VS_OUTPUT input) : COLOR0 {
-	float4 outColor = tex2D(C_Sampler, input.TexCoord);
-	float diffuse = saturate(dot(input.Normal, normalize(lightDir1))) +
-					saturate(dot(input.Normal, normalize(lightDir2))) + 
-					0.5 * saturate(dot(input.Normal, normalize(lightDir3)));
-	outColor = outColor * diffuse;
-	outColor.a = 0.1;
-	return outColor;	
 }
 
 
@@ -109,33 +88,6 @@ technique SkinnedModelTechnique
 	{
 		VertexShader = compile vs_1_1 VSBasic();
 		PixelShader = compile ps_2_0 PSDiffuse();
-	}
-}
-
-technique Diffuse
-{
-	pass SkinnedModelPass
-	{
-		VertexShader = compile vs_1_1 VSBasic();
-		PixelShader = compile ps_2_0 PSDiffuse();
-	}
-}
-
-technique Debug
-{
-	pass SkinnedModelPass
-	{
-		VertexShader = compile vs_1_1 VSBasic();
-		PixelShader = compile ps_2_0 PSDebug();
-	}
-}
-
-technique Invisible
-{
-	pass SkinnedModelPass
-	{
-		VertexShader = compile vs_1_1 VSBasic();
-		PixelShader = compile ps_2_0 PSInvisible();
 	}
 }
 

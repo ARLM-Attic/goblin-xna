@@ -205,13 +205,29 @@ namespace GoblinXNA.Helpers
         }
 
         /// <summary>
+        /// Convert every elements of the matrix to bytes.
+        /// </summary>
+        /// <param name="mat"></param>
+        /// <returns></returns>
+        public static byte[] ConvertToUnoptimizedBytes(Matrix mat)
+        {
+            List<float> data = new List<float>();
+            data.Add(mat.M11); data.Add(mat.M12); data.Add(mat.M13); data.Add(mat.M14);
+            data.Add(mat.M21); data.Add(mat.M22); data.Add(mat.M23); data.Add(mat.M24);
+            data.Add(mat.M31); data.Add(mat.M32); data.Add(mat.M33); data.Add(mat.M34);
+            data.Add(mat.M41); data.Add(mat.M42); data.Add(mat.M43); data.Add(mat.M44);
+
+            return ByteHelper.ConvertFloatArray(data);
+        }
+
+        /// <summary>
         /// Decompose the matrix into rotation (Quaternion: 4 floats), scale (3 floats) if
         /// the scale is not Vector.One, and translation (3 floats), and pack these information
         /// into an array of bytes for efficiently transfering over the network.
         /// </summary>
         /// <param name="mat"></param>
         /// <returns></returns>
-        public static byte[] ConvertToBytes(Matrix mat)
+        public static byte[] ConvertToOptimizedBytes(Matrix mat)
         {
             Quaternion rot;
             Vector3 scale;
@@ -246,7 +262,22 @@ namespace GoblinXNA.Helpers
         /// <param name="bytes"></param>
         /// <see cref="ConvertToBytes"/>
         /// <returns></returns>
-        public static Matrix ConvertFromBytes(byte[] bytes)
+        public static Matrix ConvertFromOptimizedBytes(byte[] bytes)
+        {
+            Matrix mat = Matrix.Identity;
+            ConvertFromOptimizedBytes(bytes, ref mat);
+            return mat;
+        }
+
+        /// <summary>
+        /// Converts an array of bytes containing transformation (rotation, scale, and
+        /// translation) into a matrix. Use this method to convert back the information
+        /// packed by ConvertToBytes method.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <see cref="ConvertToBytes"/>
+        /// <returns></returns>
+        public static void ConvertFromOptimizedBytes(byte[] bytes, ref Matrix mat)
         {
             Quaternion rot = new Quaternion(
                 ByteHelper.ConvertToFloat(bytes, 0),
@@ -268,8 +299,38 @@ namespace GoblinXNA.Helpers
                     ByteHelper.ConvertToFloat(bytes, 36));
             }
 
-            return Matrix.CreateScale(scale) *
+            mat = Matrix.CreateScale(scale) *
                 Matrix.CreateFromQuaternion(rot) * Matrix.CreateTranslation(trans);
+        }
+
+        public static Matrix ConvertFromUnoptimizedBytes(byte[] bytes)
+        {
+            Matrix mat = Matrix.Identity;
+            ConvertFromUnoptimizedBytes(bytes, ref mat);
+            return mat;
+        }
+
+        public static void ConvertFromUnoptimizedBytes(byte[] bytes, ref Matrix mat)
+        {
+            mat.M11 = BitConverter.ToSingle(bytes, 0);
+            mat.M12 = BitConverter.ToSingle(bytes, 4);
+            mat.M13 = BitConverter.ToSingle(bytes, 8);
+            mat.M14 = BitConverter.ToSingle(bytes, 12);
+
+            mat.M21 = BitConverter.ToSingle(bytes, 16);
+            mat.M22 = BitConverter.ToSingle(bytes, 20);
+            mat.M23 = BitConverter.ToSingle(bytes, 24);
+            mat.M24 = BitConverter.ToSingle(bytes, 28);
+
+            mat.M31 = BitConverter.ToSingle(bytes, 32);
+            mat.M32 = BitConverter.ToSingle(bytes, 36);
+            mat.M33 = BitConverter.ToSingle(bytes, 40);
+            mat.M34 = BitConverter.ToSingle(bytes, 44);
+
+            mat.M41 = BitConverter.ToSingle(bytes, 48);
+            mat.M42 = BitConverter.ToSingle(bytes, 52);
+            mat.M43 = BitConverter.ToSingle(bytes, 56);
+            mat.M44 = BitConverter.ToSingle(bytes, 60);
         }
 
         public static Matrix FromString(String matVals)
@@ -340,6 +401,19 @@ namespace GoblinXNA.Helpers
             Console.WriteLine(mat.M13 + " " + mat.M23 + " " + mat.M33 + " " + mat.M43);
             Console.WriteLine(mat.M14 + " " + mat.M24 + " " + mat.M34 + " " + mat.M44);
             Console.WriteLine("");
+        }
+
+        /// <summary>
+        /// Converts a rotation vector into a rotation matrix.
+        /// </summary>
+        /// <param name="Rotation"></param>
+        /// <remarks>
+        /// http://www.innovativegames.net/blog/blog/2009/03/18/matrices-quaternions-and-euler-angle-vectors/
+        /// </remarks>
+        /// <returns></returns>
+        public static Matrix Vector3ToMatrix(Vector3 Rotation)
+        {
+            return Matrix.CreateFromYawPitchRoll(Rotation.Y, Rotation.X, Rotation.Z);
         }
     }
 }

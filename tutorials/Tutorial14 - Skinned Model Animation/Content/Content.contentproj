@@ -34,7 +34,7 @@
     <Reference Include="Microsoft.Xna.Framework.Content.Pipeline.XImporter, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d" />
     <Reference Include="SkinnedModelPipeline, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\bin\SkinnedModelPipeline.dll</HintPath>
+      <HintPath>..\..\SkinnedModelPipeline\bin\x86\Debug\SkinnedModelPipeline.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -46,18 +46,18 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="SkinnedModel.fx">
-      <Name>SkinnedModel</Name>
-      <Importer>EffectImporter</Importer>
-      <Processor>EffectProcessor</Processor>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="..\..\..\data\Textures\checkerboard.jpg">
       <Link>checkerboard.jpg</Link>
       <Name>checkerboard</Name>
       <Importer>TextureImporter</Importer>
       <Processor>TextureProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SkinnedModel.fx">
+      <Name>SkinnedModel</Name>
+      <Importer>EffectImporter</Importer>
+      <Processor>EffectProcessor</Processor>
     </Compile>
   </ItemGroup>
 </Project>

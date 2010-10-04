@@ -1,4 +1,36 @@
-﻿using System;
+/************************************************************************************ 
+ * Copyright (c) 2008-2010, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/ 
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,8 +49,18 @@ using GoblinXNA.Device;
 
 namespace GoblinXNA.Device.Capture
 {
+    /// <summary>
+    /// An implementation of IVideoCapture using DirectShowNET. This implementation performs
+    /// faster than the other DirectShowCapture implementation.
+    /// </summary>
+    /// <remarks>
+    /// This implementation currently has problem with certain cameras under 64-bit OS, so please
+    /// use the other implementation if you have problems.
+    /// </remarks>
     public class DirectShowCapture : ISampleGrabberCB, IVideoCapture
     {
+        public delegate bool ImageReadyCallback(IntPtr image, int[] background);
+
         private enum PlaybackState
         {
             Stopped,
@@ -71,9 +113,13 @@ namespace GoblinXNA.Device.Capture
         private FrameRate frameRate;
         private ImageFormat format;
 
+        private ImageReadyCallback imageReadyCallback;
+
         private volatile PlaybackState playbackState = PlaybackState.Stopped;
 
         private IntPtr grabbedImage;
+
+        private String selectedVideoDeviceName;
 
         /// <summary>
         /// Used to count the number of times it failed to capture an image
@@ -82,7 +128,7 @@ namespace GoblinXNA.Device.Capture
         /// </summary>
         private int failureCount;
 
-        private const int FAILURE_THRESHOLD = 100;
+        private const int FAILURE_THRESHOLD = 1000;
 
         private bool processing = false;
         private bool grabbing = false;
@@ -159,6 +205,14 @@ namespace GoblinXNA.Device.Capture
             get { return SpriteEffects.FlipVertically; }
         }
 
+        /// <summary>
+        /// Sets the callback function to be called when a new image becomes ready.
+        /// </summary>
+        public ImageReadyCallback CaptureCallback
+        {
+            set { imageReadyCallback = value; }
+        }
+
         #endregion
 
         #region Public Methods
@@ -197,9 +251,9 @@ namespace GoblinXNA.Device.Capture
                     cameraWidth = 1024;
                     cameraHeight = 768;
                     break;
-                case Resolution._1280x960:
+                case Resolution._1280x1024:
                     cameraWidth = 1280;
-                    cameraHeight = 960;
+                    cameraHeight = 1024;
                     break;
                 case Resolution._1600x1200:
                     cameraWidth = 1600;
@@ -236,6 +290,7 @@ namespace GoblinXNA.Device.Capture
                     + suggestion);
             }
             dev = (DsDevice)capDevices[videoDeviceID];
+            selectedVideoDeviceName = ((DsDevice)capDevices[videoDeviceID]).Name;
 
             if (dev == null)
                 throw new GoblinException("This video device cannot be accessed");
@@ -249,35 +304,89 @@ namespace GoblinXNA.Device.Capture
         {
             if (grabbedImage != IntPtr.Zero)
             {
+                failureCount = 0;
                 processing = true;
-                Marshal.Copy(grabbedImage, returnImage, 0, returnImage.Length);
 
-                int stride = cameraWidth * 3;
-                int srcStride = cameraWidth * 4;
+                bool replaceBackground = false;
+                if (imageReadyCallback != null)
+                    replaceBackground = imageReadyCallback(grabbedImage, returnImage);
+
+                if ((returnImage != null) && !replaceBackground)
+                    Marshal.Copy(grabbedImage, returnImage, 0, returnImage.Length);
+
+                int stride = 0;
+                int srcStride = 0;
 
                 if (imagePtr != IntPtr.Zero)
                 {
-                    unsafe
+                    switch (format)
                     {
-                        byte* src = (byte*)(new IntPtr(grabbedImage.ToInt32() + 
-                            (cameraHeight - 1) * srcStride));
-                        byte* dst = (byte*)imagePtr;
-                        for (int i = 0; i < cameraHeight; i++)
-                        {
-                            for (int j = 0, k = 0; j < stride; j += 3, k += 4)
-                            {
-                                //*(dst + j) = *(src + k + 2);
-                                *(dst + j + 1) = *(src + k + 1);
-                                //*(dst + j + 2) = *(src + k + 0);
-                            }
+                        case ImageFormat.R8G8B8_24:
+                        case ImageFormat.B8G8R8_24:
+                            stride = cameraWidth * 3;
+                            srcStride = cameraWidth * 4;
 
-                            src -= srcStride;
-                            dst += stride;
-                        }
+                            unsafe
+                            {
+                                byte* src = (byte*)(new IntPtr(grabbedImage.ToInt32() +
+                                    (cameraHeight - 1) * srcStride));
+                                byte* dst = (byte*)imagePtr;
+                                for (int i = 0; i < cameraHeight; i++)
+                                {
+                                    for (int j = 0, k = 0; j < stride; j += 3, k += 4)
+                                    {
+                                        *(dst + j) = *(src + k + 2);
+                                        *(dst + j + 1) = *(src + k + 1);
+                                        *(dst + j + 2) = *(src + k + 0);
+                                    }
+
+                                    src -= srcStride;
+                                    dst += stride;
+                                }
+                            }
+                            break;
+                        case ImageFormat.B8G8R8A8_32:
+                            //imagePtr = grabbedImage;
+                            stride = cameraWidth * 4;
+                            srcStride = cameraWidth * 4;
+
+                            unsafe
+                            {
+                                byte* src = (byte*)(new IntPtr(grabbedImage.ToInt32() +
+                                    (cameraHeight - 1) * srcStride));
+                                byte* dst = (byte*)imagePtr;
+                                for (int i = 0; i < cameraHeight; i++)
+                                {
+                                    for (int j = 0, k = 0; j < stride; j += 4, k += 4)
+                                    {
+                                        *(dst + j) = *(src + k + 2);
+                                        *(dst + j + 1) = *(src + k + 1);
+                                        *(dst + j + 2) = *(src + k + 0);
+                                    }
+
+                                    src -= srcStride;
+                                    dst += stride;
+                                }
+                            }
+                            break;
+                        default:
+                            throw new GoblinException("Format: " + format.ToString() + " is not supported " +
+                                "by DirectShowCapture2");
                     }
                 }
-                    
+
                 processing = false;
+            }
+            else
+            {
+                failureCount++;
+
+                if (failureCount > FAILURE_THRESHOLD)
+                {
+                    throw new GoblinException("Video capture device ID: " + videoDeviceID + ", Name: " +
+                        selectedVideoDeviceName + " is used by " +
+                        "other application, and can not be accessed");
+                }
             }
         }
 

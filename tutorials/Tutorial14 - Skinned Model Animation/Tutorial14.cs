@@ -138,12 +138,18 @@ namespace Tutorial14___Skinned_Model_Animation
             lightSource3.Diffuse = new Vector4(0.5f, 0.5f, 0.5f, 1);
 
             // Create a light node to hold the light source
-            LightNode lightNode = new LightNode();
-            lightNode.LightSources.Add(lightSource);
-            lightNode.LightSources.Add(lightSource2);
-            lightNode.LightSources.Add(lightSource3);
+            LightNode lightNode1 = new LightNode();
+            lightNode1.LightSource = lightSource;
 
-            scene.RootNode.AddChild(lightNode);
+            LightNode lightNode2 = new LightNode();
+            lightNode2.LightSource = lightSource2;
+
+            LightNode lightNode3 = new LightNode();
+            lightNode3.LightSource = lightSource3;
+
+            scene.RootNode.AddChild(lightNode1);
+            scene.RootNode.AddChild(lightNode2);
+            scene.RootNode.AddChild(lightNode3);
         }
 
         private void CreateGround()

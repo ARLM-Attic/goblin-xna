@@ -38,7 +38,7 @@ using Microsoft.Xna.Framework;
 
 using GoblinXNA.Graphics;
 
-namespace GoblinXNA.Physics
+namespace GoblinXNA.Physics.Newton1
 {
     /// <summary>
     /// This class represents a vehicle tire used for vehicle simulation by Newton physics library.

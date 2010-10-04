@@ -88,7 +88,7 @@ namespace GoblinXNA.Shaders
         /// For example, this method can be used to implement a fish-eye camera effect
         /// </remarks>
         /// <param name="camera">The camera properties</param>
-        void SetParameters(Camera camera);
+        void SetParameters(CameraNode camera);
 
         /// <summary>
         /// Sets the environmental effect (e.g., fog) to be applied for the rendering.
@@ -100,6 +100,11 @@ namespace GoblinXNA.Shaders
         /// Gets the current effect class used for this shader
         /// </summary>
         Effect CurrentEffect { get; }
+
+        /// <summary>
+        /// Gets or sets the current material used for this shader
+        /// </summary>
+        Material CurrentMaterial { get; }
 
         /// <summary>
         /// Renders a 3D mesh provided in the renderDelegate function with the specified

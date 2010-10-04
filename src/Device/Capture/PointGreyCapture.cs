@@ -91,6 +91,7 @@ namespace GoblinXNA.Device.Capture
             cameraInitialized = false;
             videoDeviceID = -1;
             focalPoint = new PointF(0, 0);
+            flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_ANY;
 
             cameraWidth = 0;
             cameraHeight = 0;
@@ -212,7 +213,7 @@ namespace GoblinXNA.Device.Capture
                     cameraWidth = 1024;
                     cameraHeight = 768;
                     break;
-                case Resolution._1280x960:
+                case Resolution._1280x1024:
                     cameraWidth = 1280;
                     cameraHeight = 960;
                     break;
@@ -249,35 +250,33 @@ namespace GoblinXNA.Device.Capture
                     break;
             }
 
-            PGRFlyModule.FlyCaptureVideoMode flyVideoMode =
-                PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_ANY;
-            switch (resolution)
+            if (flyVideoMode.Equals(PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_ANY))
             {
-                case Resolution._160x120:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_160x120YUV444;
-                    break;
-                case Resolution._320x240:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_320x240YUV422;
-                    break;
-                case Resolution._640x480:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_640x480Y8;
-                    break;
-                case Resolution._800x600:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_800x600Y8;
-                    break;
-                case Resolution._1024x768:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_1024x768Y8;
-                    break;
-                case Resolution._1280x960:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_1280x960Y8;
-                    break;
-                case Resolution._1600x1200:
-                    flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_1600x1200Y8;
-                    break;
+                switch (resolution)
+                {
+                    case Resolution._160x120:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_160x120YUV444;
+                        break;
+                    case Resolution._320x240:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_320x240YUV422;
+                        break;
+                    case Resolution._640x480:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_640x480Y8;
+                        break;
+                    case Resolution._800x600:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_800x600Y8;
+                        break;
+                    case Resolution._1024x768:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_1024x768Y8;
+                        break;
+                    case Resolution._1280x1024:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_1280x960Y8;
+                        break;
+                    case Resolution._1600x1200:
+                        flyVideoMode = PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_1600x1200Y8;
+                        break;
+                }
             }
-
-            //if (!this.flyVideoMode.Equals(PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_ANY))
-            //    flyVideoMode = this.flyVideoMode;
 
             flyCapture.Initialize(videoDeviceID, flyFrameRate, flyVideoMode, grayscale);
 

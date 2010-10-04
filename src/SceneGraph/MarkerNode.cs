@@ -78,7 +78,7 @@ namespace GoblinXNA.SceneGraph
         /// Creates a node that is tracked by fiducial marker (can be either an array or
         /// a single marker) and updated automatically.
         /// </summary>
-        /// <param name="name">Name of this marker node (doesn't have to be unique)</param>
+        /// <param name="name">Name of this marker node</param>
         /// <param name="tracker">A marker tracker used to track this fiducial marker</param>
         /// <param name="markerConfigs">A list of configs that specify the fiducial marker 
         /// (can be either an array or a single marker) to look for</param>
@@ -132,7 +132,7 @@ namespace GoblinXNA.SceneGraph
         /// Gets or sets the smoother used to filter the matrix returned by the optical marker
         /// tracker.
         /// </summary>
-        public ISmoother Smoother
+        public virtual ISmoother Smoother
         {
             get { return smoother; }
             set 
@@ -146,7 +146,7 @@ namespace GoblinXNA.SceneGraph
         /// Gets or sets the prediction filter to apply to the transformation returned by the
         /// optical marker tracker.
         /// </summary>
-        public IPredictor Predictor
+        public virtual IPredictor Predictor
         {
             get { return predictor; }
             set 
@@ -168,7 +168,7 @@ namespace GoblinXNA.SceneGraph
         /// detected transformation.
         /// </remarks>
         /// <seealso cref="WorldTransformation"/>
-        public int MaxDropouts
+        public virtual int MaxDropouts
         {
             get { return maxDropouts; }
             set { maxDropouts = value; }
@@ -198,7 +198,7 @@ namespace GoblinXNA.SceneGraph
         /// Gets or sets whether to optimize the scene graph by not traversing the nodes
         /// added below this node if marker is not found.
         /// </summary>
-        public bool Optimize
+        public virtual bool Optimize
         {
             get { return optimize; }
             set { optimize = value; }
@@ -271,7 +271,7 @@ namespace GoblinXNA.SceneGraph
         /// Updates the current matrix of this marker node
         /// </summary>
         /// <param name="elapsedTime">Elapsed time from last update in milliseconds</param>
-        internal void Update(float elapsedTime)
+        public virtual void Update(float elapsedTime)
         {
             if (tracker == null && scene.MarkerTracker != null)
             {

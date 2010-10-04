@@ -57,21 +57,29 @@
     <DocumentationFile>..\bin\GoblinXNA.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="DShowNET, Version=1.0.0.1, Culture=neutral">
+    <Reference Include="DirectX.Capture, Version=1.0.3674.42904, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\bin\DShowNET.dll</HintPath>
+      <HintPath>..\dlls\managed\DirectX.Capture.dll</HintPath>
     </Reference>
-    <Reference Include="Lidgren.Network, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="DShowNET, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\dlls\managed\DShowNET.dll</HintPath>
+    </Reference>
+    <Reference Include="Lidgren.Network, Version=2010.7.15.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\dlls\managed\Lidgren.Network.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Xna.Framework, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Content.Pipeline, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Game, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
-    <Reference Include="NewtonWrapper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="NewtonWrapper, Version=1.1.30.2009, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\bin\NewtonWrapper.dll</HintPath>
+      <HintPath>..\dlls\managed\NewtonWrapper.dll</HintPath>
     </Reference>
-    <Reference Include="Nuclex.Fonts, Version=2.0.3554.30001, Culture=neutral, processorArchitecture=x86" />
+    <Reference Include="Nuclex.Fonts, Version=2.0.3554.30001, Culture=neutral, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\dlls\managed\Nuclex.Fonts.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -82,7 +90,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Device\Capture\DirectShowCapture.cs" />
+    <Compile Include="Device\Capture\DirectShowCapture.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Device\Capture\DirectShowCapture2.cs" />
     <Compile Include="Device\Capture\HalfResizer.cs" />
     <Compile Include="Device\Capture\IResizer.cs" />
     <Compile Include="Device\Capture\IVideoCapture.cs" />
@@ -134,7 +145,10 @@
     <Compile Include="Graphics\Geometry\Torus.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Graphics\LineManager3D.cs" />
+    <Compile Include="Graphics\NormalMapMaterial.cs" />
     <Compile Include="Helpers\DefaultTransparencyComparer.cs" />
+    <Compile Include="Helpers\EffectHelper.cs" />
     <Compile Include="Helpers\Interpolator.cs" />
     <Compile Include="Helpers\LatLonMapper.cs" />
     <Compile Include="Helpers\StringHelper.cs">
@@ -143,21 +157,29 @@
     <Compile Include="Helpers\Vector4Helper.cs" />
     <Compile Include="Network\INetworkHandler.cs" />
     <Compile Include="Network\NetworkHandler.cs" />
-    <Compile Include="Network\NetworkObject.cs" />
-    <Compile Include="Physics\IPhysicsMaterial.cs" />
+    <Compile Include="Physics\Havok\HavokDllBridge.cs" />
+    <Compile Include="Physics\Havok\HavokObject.cs" />
+    <Compile Include="Physics\Havok\HavokPhysics.cs" />
     <Compile Include="Physics\IPhysicsMeshProvider.cs" />
-    <Compile Include="Physics\NewtonJoint.cs" />
-    <Compile Include="Physics\NewtonVehicle.cs" />
-    <Compile Include="Physics\NewtonTire.cs" />
-    <Compile Include="Physics\NewtonMaterial.cs" />
+    <Compile Include="Physics\Newton1\NewtonJoint.cs" />
+    <Compile Include="Physics\Newton1\NewtonMaterial.cs" />
+    <Compile Include="Physics\Newton1\NewtonPhysics.cs" />
+    <Compile Include="Physics\Newton1\NewtonTire.cs" />
+    <Compile Include="Physics\Newton1\NewtonVehicle.cs" />
     <Compile Include="Physics\PhysicsObject.cs" />
     <Compile Include="Physics\PickedObject.cs" />
     <Compile Include="SceneGraph\BranchNode.cs" />
+    <Compile Include="Graphics\PrimitiveModel.cs" />
+    <Compile Include="SceneGraph\MarkerBundleNode.cs" />
     <Compile Include="SceneGraph\SoundNode.cs" />
     <Compile Include="SceneGraph\StereoCamera.cs" />
+    <Compile Include="SceneGraph\SynchronizedGeometryNode.cs" />
     <Compile Include="SceneGraph\TrackerNode.cs" />
     <Compile Include="Shaders\DirectXShader.cs" />
+    <Compile Include="Shaders\GlowShader.cs" />
     <Compile Include="Shaders\IAlphaBlendable.cs" />
+    <Compile Include="Shaders\Line3DShader.cs" />
+    <Compile Include="Shaders\NormalMapShader.cs" />
     <Compile Include="Sounds\IAudioEmitter.cs" />
     <Compile Include="Sounds\Sound.cs" />
     <Compile Include="State.cs" />
@@ -172,7 +194,7 @@
     <Compile Include="Graphics\ParticleEffects\ParticleVertex.cs" />
     <Compile Include="Graphics\ParticleEffects\ProjectileTrailParticleEffect.cs" />
     <Compile Include="Graphics\ParticleEffects\SmokePlumeParticleEffect.cs" />
-    <Compile Include="Graphics\PrimitiveMesh.cs" />
+    <Compile Include="Graphics\CustomMesh.cs" />
     <Compile Include="Graphics\Texture.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -231,7 +253,6 @@
     <Compile Include="Network\LidgrenServer.cs" />
     <Compile Include="Physics\IPhysics.cs" />
     <Compile Include="Physics\IPhysicsObject.cs" />
-    <Compile Include="Physics\NewtonPhysics.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Graphics\IModel.cs" />
     <Compile Include="Graphics\IModelLoader.cs" />

@@ -60,7 +60,7 @@ namespace GoblinXNA.Graphics
                 Matrix[] transforms = new Matrix[xnaModel.Bones.Count];
                 xnaModel.CopyAbsoluteBoneTransformsTo(transforms);
 
-                IModel model = new Model(transforms, xnaModel.Meshes, null, null);
+                IModel model = new Model(transforms, xnaModel.Meshes, null);
                 return model;
             }
             else

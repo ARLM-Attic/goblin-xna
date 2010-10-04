@@ -26,11 +26,11 @@ namespace GoblinXNA.Helpers
                 State.CameraTransform.Translation);
 
             if (thisDist > otherDist)
-                return 1;
+                return -1;
             else if (thisDist == otherDist)
                 return 0;
             else
-                return -1;
+                return 1;
         }
 
         #endregion

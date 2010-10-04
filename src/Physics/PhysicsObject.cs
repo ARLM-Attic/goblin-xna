@@ -85,7 +85,7 @@ namespace GoblinXNA.Physics
         /// Creates a physics object with a container that uses the physical properties specified
         /// in this class. The 'container' is usually an instance of GeometryNode.
         /// </summary>
-        /// <param name="container"></param>
+        /// <param name="container">The container of this physics object.</param>
         public PhysicsObject(Object container)
         {
             this.container = container;
@@ -125,7 +125,7 @@ namespace GoblinXNA.Physics
 
         #region Properties
 
-        public IModel Model
+        public virtual IModel Model
         {
             get { return model; }
             set
@@ -136,7 +136,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public IPhysicsMeshProvider MeshProvider
+        public virtual IPhysicsMeshProvider MeshProvider
         {
             get { return meshProvider; }
             set 
@@ -147,25 +147,25 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public Object Container
+        public virtual Object Container
         {
             get { return container; }
             set { container = value; }
         }
 
-        public int CollisionGroupID
+        public virtual int CollisionGroupID
         {
             get { return collisionGroupID; }
             set { collisionGroupID = value; }
         }
 
-        public String MaterialName
+        public virtual String MaterialName
         {
             get { return materialName; }
             set { materialName = value; }
         }
 
-        public float Mass
+        public virtual float Mass
         {
             get { return mass; }
             set
@@ -178,7 +178,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public Vector3 CenterOfMass
+        public virtual Vector3 CenterOfMass
         {
             get { return centerOfMass; }
             set
@@ -188,7 +188,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public ShapeType Shape
+        public virtual ShapeType Shape
         {
             get { return shape; }
             set 
@@ -202,7 +202,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public List<float> ShapeData
+        public virtual List<float> ShapeData
         {
             get { return shapeData; }
             set 
@@ -213,7 +213,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public Vector3 MomentOfInertia
+        public virtual Vector3 MomentOfInertia
         {
             get { return momentOfInertia; }
             set
@@ -223,7 +223,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public bool Pickable
+        public virtual bool Pickable
         {
             get { return pickable; }
             set
@@ -231,9 +231,9 @@ namespace GoblinXNA.Physics
                 pickable = value;
                 modified = true;
             }
-        }   
+        }
 
-        public bool Collidable
+        public virtual bool Collidable
         {
             get { return collidable; }
             set
@@ -243,7 +243,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public bool Interactable
+        public virtual bool Interactable
         {
             get { return interactable; }
             set
@@ -253,19 +253,19 @@ namespace GoblinXNA.Physics
             }
         }
 
-        public bool Manipulatable
+        public virtual bool Manipulatable
         {
             get { return manipulatable; }
             set { manipulatable = value; }
         }
 
-        public bool ApplyGravity
+        public virtual bool ApplyGravity
         {
             get { return applyGravity; }
             set { applyGravity = value; }
         }
 
-        public bool NeverDeactivate
+        public virtual bool NeverDeactivate
         {
             get { return neverDeactivate; }
             set

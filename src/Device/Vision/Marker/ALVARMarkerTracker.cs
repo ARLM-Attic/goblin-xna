@@ -274,7 +274,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// </remarks>
         /// <see cref="SetHideMarkerTextureConfigurations"/>
         /// <seealso cref="HideList"/>
-        internal bool HideMarkers
+        public bool HideMarkers
         {
             get { return hideMarkers; }
             set 
@@ -287,7 +287,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// <summary>
         /// Gets the textures used for hiding the markers.
         /// </summary>
-        internal Dictionary<object, int[]> HideTextures
+        public Dictionary<object, int[]> HideTextures
         {
             get { return hideTextureMap; }
         }
@@ -298,7 +298,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// markers will be hiden if HideMarkers is set to true.
         /// </summary>
         /// <see cref="HideMarkers"/>
-        internal List<object> HideList
+        public List<object> HideList
         {
             get { return hideList; }
             set { hideList = value; }
@@ -333,7 +333,7 @@ namespace GoblinXNA.Device.Vision.Marker
                     img_width = (int)configs[0];
                     img_height = (int)configs[1];
                     configFilename = (String)configs[2];
-                    markerSize = (double)configs[3];
+                    markerSize = Double.Parse(configs[3].ToString());
                 }
                 catch (Exception)
                 {
@@ -347,9 +347,9 @@ namespace GoblinXNA.Device.Vision.Marker
                     img_width = (int)configs[0];
                     img_height = (int)configs[1];
                     configFilename = (String)configs[2];
-                    markerSize = (double)configs[3];
+                    markerSize = Double.Parse(configs[3].ToString());
                     markerRes = (int)configs[4];
-                    margin = (double)configs[5];
+                    margin = Double.Parse(configs[5].ToString());
                 }
                 catch (Exception)
                 {
@@ -381,7 +381,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// <param name="depth"></param>
         /// <param name="channels">The number of color channels.</param>
         /// <param name="margin"></param>
-        internal void SetHideMarkerTextureConfigurations(uint size, uint depth, uint channels, 
+        public void SetHideMarkerTextureConfigurations(uint size, uint depth, uint channels, 
             double margin)
         {
             ALVARDllBridge.alvar_set_hide_texture_configuration(size, depth, channels, margin);
@@ -395,7 +395,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// marker after processing the image. 
         /// </summary>
         /// <param name="markerConfigs">There are three ways to pass the parameters; (int markerID),
-        /// (int markerID, double markerSize), or (String multiMarkerConfig, int[] ids). </param>
+        /// (int markerID, double markerSize), or (String multiMarkerConfig). </param>
         /// <returns>An identifier for this marker object</returns>
         public Object AssociateMarker(params Object[] markerConfigs)
         {
@@ -410,9 +410,30 @@ namespace GoblinXNA.Device.Vision.Marker
 
             if (markerConfigs.Length == 1)
             {
-                if (!(markerConfigs[0] is int))
-                    throw new MarkerException(GetAssocMarkerUsage());
-                else
+                if (markerConfigs[0] is string)
+                {
+                    String markerConfigName = (String)markerConfigs[0];
+                    int[] ids = new int[1];
+                    if (markerConfigName.Equals(""))
+                        throw new MarkerException(GetAssocMarkerUsage());
+                    else
+                    {
+                        ALVARDllBridge.alvar_add_multi_marker(ids.Length, ids, markerConfigName);
+                        id = markerConfigName;
+                    }
+
+                    multiMarkerIDs.Add((String)id);
+                    multiMarkerID++;
+
+                    multiIdPtr = Marshal.AllocHGlobal(multiMarkerIDs.Count * sizeof(int));
+                    multiPosePtr = Marshal.AllocHGlobal(multiMarkerIDs.Count * 16 * sizeof(double));
+                    multiErrorPtr = Marshal.AllocHGlobal(multiMarkerIDs.Count * sizeof(double));
+
+                    multiIDs = new int[multiMarkerIDs.Count];
+                    multiPoseMats = new double[multiMarkerIDs.Count * 16];
+                    multiErrors = new double[multiMarkerIDs.Count];
+                }
+                else if (markerConfigs[0] is int)
                 {
                     id = markerConfigs[0];
                     int markerID = (int)markerConfigs[0];
@@ -429,6 +450,8 @@ namespace GoblinXNA.Device.Vision.Marker
                             *(dest + i) = singleMarkerIDs[i];
                     }
                 }
+                else
+                    throw new MarkerException(GetAssocMarkerUsage());
             }
             else
             {
@@ -438,7 +461,7 @@ namespace GoblinXNA.Device.Vision.Marker
                     {
                         id = markerConfigs[0];
                         int markerID = (int)markerConfigs[0];
-                        double markerSize = (double)markerConfigs[1];
+                        double markerSize = Double.Parse(markerConfigs[1].ToString());
                         ALVARDllBridge.alvar_set_marker_size(markerID, markerSize);
                         singleMarkerIDs.Add(markerID);
                         if (hideMarkers && hideMarkerConfigured)
@@ -458,10 +481,7 @@ namespace GoblinXNA.Device.Vision.Marker
                         String markerConfigName = (String)markerConfigs[0];
                         int[] ids = (int[])markerConfigs[1];
                         if (markerConfigName.Equals(""))
-                        {
-                            ALVARDllBridge.alvar_add_multi_marker_bundle(ids.Length, ids);
-                            id = "bundle_" + multiMarkerID;
-                        }
+                            throw new MarkerException(GetAssocMarkerUsage());
                         else
                         {
                             ALVARDllBridge.alvar_add_multi_marker(ids.Length, ids, markerConfigName);
@@ -496,30 +516,36 @@ namespace GoblinXNA.Device.Vision.Marker
         public void ProcessImage(IVideoCapture captureDevice, IntPtr imagePtr)
         {
             String channelSeq = "";
+            int nChannles = 1;
             switch(captureDevice.Format)
             {
                 case ImageFormat.R5G6B5_16:
                 case ImageFormat.R8G8B8_24:
                     channelSeq = "RGB";
+                    nChannles = 3;
                     break;
                 case ImageFormat.R8G8B8A8_32:
                     channelSeq = "RGBA";
+                    nChannles = 4;
                     break;
                 case ImageFormat.B8G8R8_24:
                     channelSeq = "BGR";
+                    nChannles = 3;
                     break;
                 case ImageFormat.B8G8R8A8_32:
                     channelSeq = "BGRA";
+                    nChannles = 4;
                     break;
                 case ImageFormat.A8B8G8R8_32:
                     channelSeq = "ARGB";
+                    nChannles = 4;
                     break;
             }
 
             int interestedMarkerNums = singleMarkerIDs.Count;
             int foundMarkerNums = 0;
 
-            ALVARDllBridge.alvar_detect_marker((captureDevice.GrayScale) ? 1 : 3, "RGB", channelSeq, 
+            ALVARDllBridge.alvar_detect_marker(nChannles, channelSeq, channelSeq, 
                 imagePtr, singleMarkerIDsPtr, ref foundMarkerNums, ref interestedMarkerNums,
                 max_marker_error, max_track_error);
 
@@ -599,7 +625,7 @@ namespace GoblinXNA.Device.Vision.Marker
         private String GetAssocMarkerUsage()
         {
             return "Usage: AssociateMarker(int markerID) or AssociateMarker(int markerID, " +
-                "double markerSize) or AssociateMarker(String multiMarkerConfig, int[] ids)";
+                "double markerSize) or AssociateMarker(String multiMarkerConfig)";
         }
 
         private void Process(int interestedMarkerNums, int foundMarkerNums)

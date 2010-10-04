@@ -43,9 +43,9 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A sphere geometry primitive constructed with PrimitiveMesh
+    /// A sphere geometry primitive constructed with CustomMesh
     /// </summary>
-    public class Sphere : Model
+    public class Sphere : PrimitiveModel
     {
         #region Constructors
 
@@ -62,21 +62,21 @@ namespace GoblinXNA.Graphics.Geometry
         public Sphere(float radius, int slices, int stacks)
             : base(CreateSphere(radius, slices, stacks))
         {
-            primitiveShapeParameters = radius + ", " + slices + ", " + stacks;
+            customShapeParameters = radius + ", " + slices + ", " + stacks;
         }
 
         public Sphere(params String[] xmlParams)
             : base(CreateSphere(float.Parse(xmlParams[0]), int.Parse(xmlParams[1]),
                 int.Parse(xmlParams[2])))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
         }
 
         #endregion
 
         #region Private Static Methods
 
-        private static PrimitiveMesh CreateSphere(float radius, int slices, int stacks)
+        private static CustomMesh CreateSphere(float radius, int slices, int stacks)
         {
             if (slices < 5)
                 throw new ArgumentException("Cannot draw a sphere with slices less than 5");
@@ -89,7 +89,7 @@ namespace GoblinXNA.Graphics.Geometry
             if (radius <= 0)
                 throw new ArgumentException("Radius has to be greater than 0");
 
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 

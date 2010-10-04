@@ -114,6 +114,12 @@ namespace GoblinXNA.Shaders
             get { return basicEffect; }
         }
 
+        public Material CurrentMaterial
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Indicates whether to prefer using per-pixel lighting if applicable.
         /// </summary>
@@ -133,7 +139,8 @@ namespace GoblinXNA.Shaders
             originalAlphas = new float[effectCollection.Count];
 
             for (int i = 0; i < effectCollection.Count; i++)
-                originalAlphas[i] = ((BasicEffect)effectCollection[i]).Alpha;
+                if(effectCollection[i] is BasicEffect)
+                    originalAlphas[i] = ((BasicEffect)effectCollection[i]).Alpha;
 
             originalSet = true;
         }
@@ -149,32 +156,20 @@ namespace GoblinXNA.Shaders
                     BasicEffect be = (BasicEffect)material.InternalEffect;
                     // maintein the previous lighting effects
 
-                    if (lightSources.Count > 0)
-                    {
-                        BasicDirectionalLight[] lights = {be.DirectionalLight0,
-                            be.DirectionalLight1, be.DirectionalLight2};
-
-                        bool atLeastOneLight = false;
-                        int numLightSource = lightSources.Count;
-                        for (int i = 0; i < numLightSource; i++)
-                        {
-                            lights[i].Enabled = true;
-                            lights[i].DiffuseColor = Vector3Helper.GetVector3(lightSources[i].Diffuse);
-                            lights[i].Direction = lightSources[i].Direction;
-                            lights[i].SpecularColor = Vector3Helper.GetVector3(lightSources[i].Specular);
-                            atLeastOneLight = true;
-                        }
-
-                        be.LightingEnabled = atLeastOneLight;
-                        
-                        be.PreferPerPixelLighting = basicEffect.PreferPerPixelLighting;
-                    }
-
                     Vector3 diffuse = Vector3Helper.GetVector3(material.Diffuse);
                     if (!diffuse.Equals(Vector3.Zero))
-                        be.DiffuseColor = diffuse;
-                    be.Alpha = originalAlphas[alphaIndexer] * material.Diffuse.W;
-                    be.AmbientLightColor = ambientLight;
+                        basicEffect.DiffuseColor = diffuse;
+                    else
+                        basicEffect.DiffuseColor = be.DiffuseColor;
+                    basicEffect.DiffuseColor = be.DiffuseColor;
+                    basicEffect.EmissiveColor = be.EmissiveColor;
+                    basicEffect.SpecularColor = be.SpecularColor;
+                    basicEffect.SpecularPower = be.SpecularPower;
+                    basicEffect.Texture = be.Texture;
+                    basicEffect.TextureEnabled = be.TextureEnabled;
+                    basicEffect.VertexColorEnabled = be.VertexColorEnabled;
+
+                    basicEffect.Alpha = originalAlphas[alphaIndexer] * material.Diffuse.W;
 
                     alphaIndexer = (alphaIndexer + 1) % originalAlphas.Length;
                 }
@@ -197,6 +192,7 @@ namespace GoblinXNA.Shaders
         public void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
         {
             bool ambientSet = false;
+            ClearBasicEffectLights();
             lightSources.Clear();
             LightNode lNode = null;
             Vector4 ambientLightColor = new Vector4(0, 0, 0, 1);
@@ -215,30 +211,27 @@ namespace GoblinXNA.Shaders
 
                 if (lightSources.Count < MaxLights)
                 {
-                    foreach (LightSource light in lNode.LightSources)
-                    {
-                        // skip the light source if not enabled or not a directional light
-                        if (!light.Enabled || (light.Type != LightType.Directional))
-                            continue;
+                    // skip the light source if not enabled or not a directional light
+                    if (!lNode.LightSource.Enabled || (lNode.LightSource.Type != LightType.Directional))
+                        continue;
 
-                        LightSource source = new LightSource();
-                        source.Diffuse = light.Diffuse;
+                    LightSource source = new LightSource();
+                    source.Diffuse = lNode.LightSource.Diffuse;
 
-                        tmpVec1 = light.Direction;
-                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                        tmpMat2 = lNode.WorldTransformation;
-                        MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+                    tmpVec1 = lNode.LightSource.Direction;
+                    Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                    tmpMat2 = lNode.WorldTransformation;
+                    MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
 
-                        source.Direction = tmpMat3.Translation;
-                        source.Specular = light.Specular;
+                    source.Direction = tmpMat3.Translation;
+                    source.Specular = lNode.LightSource.Specular;
 
-                        lightSources.Add(source);
+                    lightSources.Add(source);
 
-                        // If there are already 3 lights, then skip other lights
-                        if (lightSources.Count >= MaxLights)
-                            break;
-                    }
+                    // If there are already 3 lights, then skip other lights
+                    if (lightSources.Count >= MaxLights)
+                        break;
                 }
             }
 
@@ -255,30 +248,27 @@ namespace GoblinXNA.Shaders
 
                 if (lightSources.Count < MaxLights)
                 {
-                    foreach (LightSource light in lNode.LightSources)
-                    {
-                        // skip the light source if not enabled or not a directional light
-                        if (!light.Enabled || (light.Type != LightType.Directional))
-                            continue;
+                    // skip the light source if not enabled or not a directional light
+                    if (!lNode.LightSource.Enabled || (lNode.LightSource.Type != LightType.Directional))
+                        continue;
 
-                        LightSource source = new LightSource();
-                        source.Diffuse = light.Diffuse;
+                    LightSource source = new LightSource();
+                    source.Diffuse = lNode.LightSource.Diffuse;
 
-                        tmpVec1 = light.Direction;
-                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                        tmpMat2 = lNode.WorldTransformation;
-                        MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+                    tmpVec1 = lNode.LightSource.Direction;
+                    Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                    tmpMat2 = lNode.WorldTransformation;
+                    MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
 
-                        source.Direction = tmpMat3.Translation;
-                        source.Specular = light.Specular;
+                    source.Direction = tmpMat3.Translation;
+                    source.Specular = lNode.LightSource.Specular;
 
-                        lightSources.Add(source);
+                    lightSources.Add(source);
 
-                        // If there are already 3 lights, then skip other lights
-                        if (lightSources.Count >= MaxLights)
-                            break;
-                    }
+                    // If there are already 3 lights, then skip other lights
+                    if (lightSources.Count >= MaxLights)
+                        break;
                 }
             }
             
@@ -310,7 +300,7 @@ namespace GoblinXNA.Shaders
         /// This shader does not support special camera effect.
         /// </summary>
         /// <param name="camera"></param>
-        public virtual void SetParameters(Camera camera)
+        public virtual void SetParameters(CameraNode camera)
         {
         }
 
@@ -364,6 +354,17 @@ namespace GoblinXNA.Shaders
         {
             if (basicEffect != null)
                 basicEffect.Dispose();
+        }
+
+        #endregion
+
+        #region Private Method
+
+        private void ClearBasicEffectLights()
+        {
+            basicEffect.DirectionalLight0.Enabled = false;
+            basicEffect.DirectionalLight1.Enabled = false;
+            basicEffect.DirectionalLight2.Enabled = false;
         }
 
         #endregion

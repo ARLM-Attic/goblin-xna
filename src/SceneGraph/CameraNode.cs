@@ -282,23 +282,6 @@ namespace GoblinXNA.SceneGraph
             return node;
         }
 
-        public override byte[] Encode()
-        {
-            byte[] data = base.Encode();
-            byte[] additionalData = new byte[1];
-
-            return ByteHelper.ConcatenateBytes(data, additionalData);
-        }
-
-        public override int Decode(byte[] data, out int numBytesDecoded)
-        {
-            int bytesDecoded = 0;
-            int parentID = base.Decode(data, out bytesDecoded);
-
-            numBytesDecoded = bytesDecoded;
-            return parentID;
-        }
-
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);

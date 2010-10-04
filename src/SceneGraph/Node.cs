@@ -179,61 +179,6 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Encodes this node's information into a byte array so that this node's information
-        /// can be transferred over the network
-        /// </summary>
-        /// <returns>Encoded data</returns>
-        public virtual byte[] Encode()
-        {
-            // 1 byte for the length of the name
-            // the following bytes are the actual name
-            // 1 (bool) byte for enabled
-            // 4 (int) bytes for id, another 4 (int) bytes for groupID
-            // 4 (int) bytes for the parent id
-            
-            byte[] data = new byte[1 + name.Length + sizeof(bool) + sizeof(int) * 3];
-            data[0] = (byte)name.Length;
-            ByteHelper.FillByteArray(ref data, 1, ByteHelper.ConvertToByte(this.name));
-            int index = 1 + name.Length;
-            data[index++] = BitConverter.GetBytes(enabled)[0];
-            List<int> ints = new List<int>();
-            ints.Add(id);
-            ints.Add(groupID);
-            ints.Add(parent.ID);
-            ByteHelper.FillByteArray(ref data, index, ByteHelper.ConvertIntArray(ints));
-
-            return data;
-        }
-
-        /// <summary>
-        /// Decodes a node's information transferred over the network and copies the information to 
-        /// this node. It returns the number of bytes decoded from the given data.
-        /// </summary>
-        /// <param name="data">The data to be decoded</param>
-        /// <param name="numBytesDecoded">The number of bytes decoded from the given data</param>
-        /// <returns>The parent ID</returns>
-        public virtual int Decode(byte[] data, out int numBytesDecoded)
-        {
-            int pos = 1;
-            // Create an array of bytes that only contains the name string
-            byte[] nameBytes = ByteHelper.Truncate(data, pos, data[0]);
-            name = ByteHelper.ConvertToString(nameBytes);
-            pos += data[0];
-            enabled = BitConverter.ToBoolean(data, pos);
-            pos++;
-            id = BitConverter.ToInt32(data, pos);
-            pos += sizeof(int);
-            groupID = BitConverter.ToInt32(data, pos);
-            pos += sizeof(int);
-            int parentID = BitConverter.ToInt32(data, pos);
-            pos += sizeof(int);
-
-            numBytesDecoded = pos;
-
-            return parentID;
-        }
-
-        /// <summary>
         /// Saves the information of this node to an XML document.
         /// </summary>
         /// <param name="xmlDoc"></param>

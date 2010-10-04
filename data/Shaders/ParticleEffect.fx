@@ -7,6 +7,7 @@
 
 
 // Camera parameters.
+float4x4 World;
 float4x4 View;
 float4x4 Projection;
 float ViewportHeight;
@@ -100,7 +101,7 @@ float4 ComputeParticlePosition(float3 position, float3 velocity,
     position += Gravity * age * normalizedAge;
     
     // Apply the camera view and projection transforms.
-    return mul(mul(float4(position, 1), View), Projection);
+    return mul(mul(mul(float4(position, 1), World), View), Projection);
 }
 
 

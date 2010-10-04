@@ -54,13 +54,15 @@ namespace GoblinXNA.Network
         protected byte[] myIPAddress;
         protected bool enableEncryption;
         protected String appName;
-        protected NetConfiguration netConfig;
-        protected NetBuffer buffer;
+        protected NetPeerConfiguration netConfig;
         protected NetServer netServer;
         protected Dictionary<String, String> approveList;
+        protected NetXtea xtea;
 
         protected NetConnection prevSender;
         protected Dictionary<String, NetConnection> clients;
+        protected int sequenceChannel;
+        protected bool useSequencedInsteadOfOrdered;
 
         #endregion
 
@@ -122,10 +124,30 @@ namespace GoblinXNA.Network
         /// For detailed information about each of the properties of NetConfiguration,
         /// please see the documentation included in the Lidgren's distribution package.
         /// </remarks>
-        public NetConfiguration NetConfig
+        public NetPeerConfiguration NetConfig
         {
             get { return netConfig; }
             set { netConfig = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the delivery channel. Default value is 0. Must be between 0 and 63.
+        /// </summary>
+        public int SequenceChannel
+        {
+            get { return sequenceChannel; }
+            set { sequenceChannel = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets whether to use Sequenced deliver method instead of Ordered.
+        /// (e.g., ReliableOrdered becomes ReliableSequenced when INetworkObject's Ordered
+        /// and Reliable are both set to true)
+        /// </summary>
+        public bool UseSequencedInsteadOfOrdered
+        {
+            get { return useSequencedInsteadOfOrdered; }
+            set { useSequencedInsteadOfOrdered = value; }
         }
 
         #endregion 
@@ -150,9 +172,15 @@ namespace GoblinXNA.Network
             clients = new Dictionary<string, NetConnection>();
 
             // Create a net configuration
-            netConfig = new NetConfiguration(appName);
-            netConfig.MaxConnections = 32;
+            netConfig = new NetPeerConfiguration(appName);
+            netConfig.MaximumConnections = 32;
             netConfig.Port = portNumber;
+            netConfig.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
+            netConfig.EnableMessageType(NetIncomingMessageType.DiscoveryRequest);
+
+            xtea = new NetXtea("GoblinXNA");
+            sequenceChannel = 0;
+            useSequencedInsteadOfOrdered = false;
         }
 
         #endregion
@@ -161,18 +189,9 @@ namespace GoblinXNA.Network
 
         public void Initialize()
         {
-            // enable encryption; this key was generated using the 'GenerateEncryptionKeys' application
-            if (enableEncryption)
-            {
-                // No encryption mechanism for latest Lidgren library
-            }
-
             // Create a server
             netServer = new NetServer(netConfig);
-            netServer.SetMessageTypeEnabled(NetMessageType.ConnectionApproval, true);
             netServer.Start();
-
-            buffer = netServer.CreateBuffer();
         }
 
         public void BroadcastMessage(byte[] msg, bool reliable, bool inOrder, bool excludeSender)
@@ -181,22 +200,33 @@ namespace GoblinXNA.Network
             if (clients.Count > 0)
             {
                 // create new message to send to all clients
-                NetBuffer buf = netServer.CreateBuffer();
-                buf.Write(msg);
+                NetOutgoingMessage om = netServer.CreateMessage();
+                om.Write(msg);
+                if (enableEncryption)
+                    om.Encrypt(xtea);
 
                 //Log.Write("Sending message: " + msg.ToString(), Log.LogLevel.Log);
                 //Console.WriteLine("Sending message: " + ByteHelper.ConvertToString(msg));
 
-                NetChannel channel = NetChannel.Unreliable;
+                NetDeliveryMethod deliverMethod = NetDeliveryMethod.Unreliable;
+                int channel = sequenceChannel;
                 if (reliable)
                 {
                     if (inOrder)
-                        channel = NetChannel.ReliableInOrder1;
+                    {
+                        if (useSequencedInsteadOfOrdered)
+                            deliverMethod = NetDeliveryMethod.ReliableSequenced;
+                        else
+                            deliverMethod = NetDeliveryMethod.ReliableOrdered;
+                    }
                     else
-                        channel = NetChannel.ReliableUnordered;
+                    {
+                        deliverMethod = NetDeliveryMethod.ReliableUnordered;
+                        channel = 0;
+                    }
                 }
                 else if (inOrder)
-                    channel = NetChannel.UnreliableInOrder1;
+                    deliverMethod = NetDeliveryMethod.UnreliableSequenced;
 
                 // broadcast the message in order
                 if (excludeSender && (prevSender != null))
@@ -204,10 +234,15 @@ namespace GoblinXNA.Network
                     // if there is only one connection, then the sender to be excluded is
                     // the only connection the server has, so there is no point to broadcast
                     if (clients.Count > 1)
-                        netServer.SendToAll(buf, channel, prevSender);
+                    {
+                        List<NetConnection> recepients = new List<NetConnection>(
+                            clients.Values);
+                        recepients.Remove(prevSender);
+                        netServer.SendMessage(om, recepients, deliverMethod, channel);
+                    }
                 }
                 else
-                    netServer.SendToAll(buf, channel);
+                    netServer.SendMessage(om, clients.Values, deliverMethod, channel);
             }
         }
 
@@ -217,22 +252,33 @@ namespace GoblinXNA.Network
             if (clients.Count > 0)
             {
                 // create new message to send to all clients
-                NetBuffer buf = netServer.CreateBuffer();
-                buf.Write(msg);
+                NetOutgoingMessage om = netServer.CreateMessage();
+                om.Write(msg);
+                if (enableEncryption)
+                    om.Encrypt(xtea);
 
                 //Log.Write("Sending message: " + msg.ToString(), Log.LogLevel.Log);
                 //Console.WriteLine("Sending message: " + ByteHelper.ConvertToString(msg));
 
-                NetChannel channel = NetChannel.Unreliable;
+                NetDeliveryMethod deliverMethod = NetDeliveryMethod.Unreliable;
+                int channel = sequenceChannel;
                 if (reliable)
                 {
                     if (inOrder)
-                        channel = NetChannel.ReliableInOrder1;
+                    {
+                        if (useSequencedInsteadOfOrdered)
+                            deliverMethod = NetDeliveryMethod.ReliableSequenced;
+                        else
+                            deliverMethod = NetDeliveryMethod.ReliableOrdered;
+                    }
                     else
-                        channel = NetChannel.ReliableUnordered;
+                    {
+                        deliverMethod = NetDeliveryMethod.ReliableUnordered;
+                        channel = 0;
+                    }
                 }
                 else if (inOrder)
-                    channel = NetChannel.UnreliableInOrder1;
+                    deliverMethod = NetDeliveryMethod.UnreliableSequenced;
 
                 List<NetConnection> recipients = new List<NetConnection>();
                 foreach (String ipAddress in ipAddresses)
@@ -240,61 +286,77 @@ namespace GoblinXNA.Network
                         recipients.Add(clients[ipAddress]);
 
                 if (recipients.Count > 0)
-                    netServer.SendMessage(buf, recipients, channel);
+                    netServer.SendMessage(om, recipients, deliverMethod, channel);
             }
         }
 
         public void ReceiveMessage(ref List<byte[]> messages)
         {
-            NetMessageType type;
-            NetConnection sender;
-
+            NetIncomingMessage msg;
+            
             // read a packet if available
-            while (netServer.ReadMessage(buffer, out type, out sender))
+            while ((msg = netServer.ReadMessage()) != null)
             {
-                switch (type)
+                if (enableEncryption)
+                    msg.Decrypt(xtea);
+
+                switch (msg.MessageType)
                 {
-                    case NetMessageType.DebugMessage:
-                        Log.Write(buffer.ReadString(), Log.LogLevel.Log);
+                    case NetIncomingMessageType.DiscoveryRequest:
+                        netServer.SendDiscoveryResponse(null, msg.SenderEndpoint);
                         break;
-                    case NetMessageType.ConnectionApproval:
-                        if (!approveList.ContainsKey(sender.RemoteEndpoint.ToString()))
+                    case NetIncomingMessageType.DebugMessage:
+                    case NetIncomingMessageType.VerboseDebugMessage:
+                        Log.Write(msg.ReadString(), Log.LogLevel.Log);
+                        break;
+                    case NetIncomingMessageType.WarningMessage:
+                        Log.Write(msg.ReadString(), Log.LogLevel.Warning);
+                        break;
+                    case NetIncomingMessageType.ErrorMessage:
+                        Log.Write(msg.ReadString(), Log.LogLevel.Error);
+                        break;
+                    case NetIncomingMessageType.ConnectionApproval:
+                        if (!approveList.ContainsKey(msg.SenderEndpoint.ToString()))
                         {
-                            Log.Write("Connection request from IP address: " + sender.RemoteEndpoint.ToString(),
+                            Log.Write("Connection request from IP address: " + msg.SenderEndpoint.ToString(),
                                 Log.LogLevel.Log);
-                            sender.Approve();
-                            approveList.Add(sender.RemoteEndpoint.ToString(), "");
+                            msg.SenderConnection.Approve();
+                            approveList.Add(msg.SenderEndpoint.ToString(), "");
                         }
                         break;
-                    case NetMessageType.StatusChanged:
-                        Log.Write("New status for " + sender + ": " + sender.Status + 
-                            " (" + buffer.ReadString() + ")", Log.LogLevel.Log);
-                        if (sender.Status == NetConnectionStatus.Connected)
+                    case NetIncomingMessageType.StatusChanged:
+                        NetConnectionStatus status = (NetConnectionStatus)msg.ReadByte();
+                        string reason = msg.ReadString();
+                        Log.Write("New status: " + status + " (" + reason + ")", Log.LogLevel.Log);
+                        if (status == NetConnectionStatus.Connected)
                         {
                             byte[] data = ByteHelper.ConvertToByte("NewConnectionEstablished");
                             byte[] size = BitConverter.GetBytes((short)data.Length);
                             messages.Add(ByteHelper.ConcatenateBytes(size, data));
-                            clients.Add(sender.RemoteEndpoint.ToString(), sender);
-                            approveList.Remove(sender.RemoteEndpoint.ToString());
-                            if (sender != null)
-                                prevSender = clients[sender.RemoteEndpoint.ToString()];
+                            clients.Add(msg.SenderEndpoint.ToString(), msg.SenderConnection);
+                            approveList.Remove(msg.SenderEndpoint.ToString());
+                            if (msg.SenderConnection != null)
+                                prevSender = clients[msg.SenderEndpoint.ToString()];
                             if (ClientConnected != null)
-                                ClientConnected(sender.RemoteEndpoint.ToString());
+                                ClientConnected(msg.SenderEndpoint.ToString());
                         }
-                        else if (sender.Status == NetConnectionStatus.Disconnected)
+                        else if (status == NetConnectionStatus.Disconnected)
                         {
-                            clients.Remove(sender.RemoteEndpoint.ToString());
+                            clients.Remove(msg.SenderEndpoint.ToString());
                             if (ClientDisconnected != null)
-                                ClientDisconnected(sender.RemoteEndpoint.ToString());
+                                ClientDisconnected(msg.SenderEndpoint.ToString());
                         }
 
                         break;
-                    case NetMessageType.Data:
-                        messages.Add(buffer.ToArray());
-                        if (sender != null)
-                            prevSender = clients[sender.RemoteEndpoint.ToString()];
+                    case NetIncomingMessageType.Data:
+                        byte[] content = new byte[msg.LengthBytes];
+                        msg.Read(content, 0, msg.LengthBytes);
+                        messages.Add(content);
+                        if (msg.SenderConnection != null)
+                            prevSender = clients[msg.SenderEndpoint.ToString()];
                         break;
                 }
+                netServer.Recycle(msg);
             }
         }
 

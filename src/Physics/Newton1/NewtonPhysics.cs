@@ -44,7 +44,7 @@ using Model = GoblinXNA.Graphics.Model;
 
 using NewtonDynamics;
 
-namespace GoblinXNA.Physics
+namespace GoblinXNA.Physics.Newton1
 {
     /// <summary>
     /// An implementation of the IPhysics interface using the Newton physics library developed by
@@ -145,7 +145,7 @@ namespace GoblinXNA.Physics
             }
         }
 
-        private struct Joint
+        protected struct Joint
         {
             public IPhysicsObject Child;
             public IPhysicsObject Parent;
@@ -168,6 +168,9 @@ namespace GoblinXNA.Physics
         protected BoundingBox worldSize;
         protected bool useBoundingBox;
 
+        protected float simulationTimeStep;
+        protected bool pauseSimulation;
+
         /// <summary>
         /// Used to keep track of the object ids that are added to the physics simulation
         /// e.g., objectIDs.Put("PalmTree", 3), this way, when we want to get "PalmTree" matrix
@@ -175,53 +178,53 @@ namespace GoblinXNA.Physics
         /// RigidBody body = RigidBody.Upcast(world.CollisionObjects[objectIDs["PalmTree"]]);
         /// return body.Transform
         /// </summary>
-        private IDictionary<IPhysicsObject, IntPtr> objectIDs;
-        private IDictionary<IntPtr, Vector3> scaleTable;
-        private IDictionary<IntPtr, IPhysicsObject> reverseIDs;
+        protected IDictionary<IPhysicsObject, IntPtr> objectIDs;
+        protected IDictionary<IntPtr, Vector3> scaleTable;
+        protected IDictionary<IntPtr, IPhysicsObject> reverseIDs;
 
-        private IDictionary<String, int> materialIDs;
-        private List<String> materialPairs;
-        private IDictionary<IntPtr, NewtonMaterial> materials;
+        protected IDictionary<String, int> materialIDs;
+        protected List<String> materialPairs;
+        protected IDictionary<IntPtr, NewtonMaterial> materials;
 
-        private IDictionary<IntPtr, Joint> joints;
+        protected IDictionary<IntPtr, Joint> joints;
 
-        private IDictionary<CollisionPair, CollisionCallback> collisionCallbacks;
+        protected IDictionary<CollisionPair, CollisionCallback> collisionCallbacks;
 
-        private List<PickedObject> pickedObjects;
+        protected List<PickedObject> pickedObjects;
 
-        private IDictionary<IntPtr, Stack<Vector3>> forces;
-        private IDictionary<IntPtr, Stack<Vector3>> torques;
+        protected IDictionary<IntPtr, Stack<Vector3>> forces;
+        protected IDictionary<IntPtr, Stack<Vector3>> torques;
 
-        private List<List<Vector3>> collisionMesh;
+        protected List<List<Vector3>> collisionMesh;
 
-        private int numSubSteps;
+        protected int numSubSteps;
 
         #region Newton Physics
-        private IntPtr nWorld;
-        private Newton.NewtonSetTransform transformCallback;
-        private Newton.NewtonApplyForceAndTorque applyForceAndTorqueCallback;
-        private Newton.NewtonWorldRayFilter rayCastFilterCallback;
+        protected IntPtr nWorld;
+        protected Newton.NewtonSetTransform transformCallback;
+        protected Newton.NewtonApplyForceAndTorque applyForceAndTorqueCallback;
+        protected Newton.NewtonWorldRayFilter rayCastFilterCallback;
 
-        private Newton.NewtonContactBegin materialContactBeginCallback;
-        private Newton.NewtonContactProcess materialContactProcessCallback;
-        private Newton.NewtonContactEnd materialContactEndCallback;
+        protected Newton.NewtonContactBegin materialContactBeginCallback;
+        protected Newton.NewtonContactProcess materialContactProcessCallback;
+        protected Newton.NewtonContactEnd materialContactEndCallback;
 
-        private Newton.NewtonCollisionIterator collisionIterator;
-        private Newton.NewtonTreeCollision treeCollisionCallback;
+        protected Newton.NewtonCollisionIterator collisionIterator;
+        protected Newton.NewtonTreeCollision treeCollisionCallback;
 
-        private Dictionary<IPhysicsObject, Newton.NewtonSetTransform> setTransformMap;
-        private Dictionary<IPhysicsObject, Newton.NewtonApplyForceAndTorque> applyForceMap;
-        private Dictionary<IPhysicsObject, Newton.NewtonTreeCollision> treeCollisionMap;
+        protected Dictionary<IPhysicsObject, Newton.NewtonSetTransform> setTransformMap;
+        protected Dictionary<IPhysicsObject, Newton.NewtonApplyForceAndTorque> applyForceMap;
+        protected Dictionary<IPhysicsObject, Newton.NewtonTreeCollision> treeCollisionMap;
 
-        private List<Joint> jointsToBeAdded;
+        protected List<Joint> jointsToBeAdded;
         #endregion
 
         #region Temporary Variables For Calculation
 
-        private Matrix tmpMat1 = Matrix.Identity;
-        private Matrix tmpMat2 = Matrix.Identity;
-        private Vector3 tmpVec1 = new Vector3();
-        private Vector3 tmpVec2 = new Vector3();
+        protected Matrix tmpMat1 = Matrix.Identity;
+        protected Matrix tmpMat2 = Matrix.Identity;
+        protected Vector3 tmpVec1 = new Vector3();
+        protected Vector3 tmpVec2 = new Vector3();
 
         #endregion
 
@@ -262,6 +265,8 @@ namespace GoblinXNA.Physics
             collisionMesh = new List<List<Vector3>>();
 
             numSubSteps = 1;
+            pauseSimulation = false;
+            simulationTimeStep = 0.016f;
 
             transformCallback = delegate(IntPtr body, float[] pMatrix)
             {
@@ -303,7 +308,8 @@ namespace GoblinXNA.Physics
 
                     Newton.NewtonBodyGetMassMatrix(pNewtonBody, ref mass, ref Ixx, ref Iyy, ref Izz);
 
-                    force = Vector3Helper.ToFloats(Vector3Helper.Multiply(ref gravityDir, gravity * mass));
+                    Vector3.Multiply(ref gravityDir, gravity * mass, out tmpVec1);
+                    force = Vector3Helper.ToFloats(ref tmpVec1);
                 }
 
                 Vector3 tmp;
@@ -501,6 +507,16 @@ namespace GoblinXNA.Physics
         }
 
         /// <summary>
+        /// Gets or sets how much time to step for each physics simulation. The default value is 
+        /// 0.016 (60Hz).
+        /// </summary>
+        public float SimulationTimeStep
+        {
+            get { return simulationTimeStep; }
+            set { simulationTimeStep = value; }
+        }
+
+        /// <summary>
         /// True if we want to speed up the physics simulation by using bounding box
         /// collision detection instead of triangle mesh collision detection
         /// </summary>
@@ -509,6 +525,16 @@ namespace GoblinXNA.Physics
             get { return useBoundingBox; }
             set { useBoundingBox = value; }
         }
+
+        /// <summary>
+        /// Gets or sets whether to pause the simulation.
+        /// </summary>
+        public bool PauseSimulation
+        {
+            get { return pauseSimulation; }
+            set { pauseSimulation = value; }
+        }
+
         #endregion
 
         #region Public Methods
@@ -542,7 +568,7 @@ namespace GoblinXNA.Physics
             joints.Clear();
             //jointsToBeAdded.Clear();
 
-            foreach (IPhysicsMaterial physMat in physMats)
+            foreach (NewtonMaterial physMat in physMats)
                 AddPhysicsMaterial(physMat);
 
             foreach (Joint joint in physJoint)
@@ -907,7 +933,7 @@ namespace GoblinXNA.Physics
         /// </summary>
         /// <param name="physMat">A physics material that defines the physical 
         /// material properties to be added</param>
-        public void AddPhysicsMaterial(IPhysicsMaterial physMat)
+        public void AddPhysicsMaterial(NewtonMaterial physMat)
         {
             if (!(physMat is NewtonMaterial))
                 throw new GoblinException("You need to add NewtonMaterial for NewtonPhysics");
@@ -963,7 +989,7 @@ namespace GoblinXNA.Physics
         /// </summary>
         /// <param name="physMat">A physics material that defines the physical 
         /// material properties to be removed</param>
-        public void RemovePhysicsMaterial(IPhysicsMaterial physMat)
+        public void RemovePhysicsMaterial(NewtonMaterial physMat)
         {
             if (!(physMat is NewtonMaterial))
                 throw new GoblinException("You can only remove NewtonMaterial from NewtonPhysics");
@@ -1008,9 +1034,12 @@ namespace GoblinXNA.Physics
             if (jointsToBeAdded.Count > 0)
                 AddJoint();
 
+            if (pauseSimulation)
+                return;
+
             if (numSubSteps > 1)
             {
-                int updateTime = Math.Max((int)(elapsedTime / 0.016f * 2), 2);
+                int updateTime = Math.Max((int)(elapsedTime / simulationTimeStep * 2), 2);
                 updateTime = Math.Min(numSubSteps, updateTime);
                 for(int i = 0; i < updateTime; i++)
                     Newton.NewtonUpdate(nWorld, updateTime);

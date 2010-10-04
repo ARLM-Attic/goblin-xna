@@ -25,7 +25,7 @@ namespace GoblinXNA.Shaders
     /// An implementation of a simple particle effect shader. The implementation is based on the
     /// Particle 3D tutorial from the XNA Creators Club website (http://creators.xna.com).
     /// </summary>
-    internal class ParticleShader : Shader
+    public class ParticleShader : Shader
     {
         #region Member Fields
 
@@ -51,10 +51,19 @@ namespace GoblinXNA.Shaders
 
         #region Constructors
         /// <summary>
-        /// Creates a particle effect shader.
+        /// Creates a particle effect shader with default effect file (ParticleEffect.fx).
         /// </summary>
         public ParticleShader()
-            : base("ParticleEffect")
+            : this("ParticleEffect")
+        {
+        }
+
+        /// <summary>
+        /// Creates a particle effect shader with custom effect file.
+        /// </summary>
+        /// <param name="effectFile"></param>
+        public ParticleShader(string effectFile)
+            : base(effectFile)
         {
             prevTextureName = "";
             texture2d = null;
@@ -70,6 +79,7 @@ namespace GoblinXNA.Shaders
 
         protected override void GetParameters()
         {
+            world = effect.Parameters["World"];
             view = effect.Parameters["View"];
             projection = effect.Parameters["Projection"];
             viewportHeight = effect.Parameters["ViewportHeight"];
@@ -129,6 +139,7 @@ namespace GoblinXNA.Shaders
             if (renderDelegate == null)
                 throw new GoblinException("renderDelegate is null");
 
+            world.SetValue(worldMatrix);
             view.SetValue(State.ViewMatrix);
             projection.SetValue(State.ProjectionMatrix);
             viewportHeight.SetValue(State.Height);

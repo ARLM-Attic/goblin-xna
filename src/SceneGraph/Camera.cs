@@ -83,6 +83,7 @@ namespace GoblinXNA.SceneGraph
             rotation = Quaternion.Identity;
             view = Matrix.Identity;
             projection = Matrix.Identity;
+            cameraTransformation = Matrix.Identity;
 
             Vector3 location = translation;
             Vector3 target = -Vector3.UnitZ;

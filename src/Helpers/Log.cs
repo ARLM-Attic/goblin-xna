@@ -56,8 +56,6 @@ namespace GoblinXNA.Helpers
         /// </summary>
         private static string LogFilename = "Log.txt";
 
-        private static LogLevel printLevel = LogLevel.Log;
-
         private static bool writeToNotifier = false;
         #endregion
 
@@ -117,8 +115,6 @@ namespace GoblinXNA.Helpers
                     StringHelper.WriteIsoDateAndTime(DateTime.Now));
                 writer.WriteLine("/// GoblinXNA");
                 writer.WriteLine("");
-
-                printLevel = State.LogPrintLevel;
             } // try
             catch (IOException)
             {
@@ -163,6 +159,9 @@ namespace GoblinXNA.Helpers
         /// <param name="level">The log level</param>
         static public void Write(string message, LogLevel level)
         {
+            if ((int)level < (int)State.LogPrintLevel)
+                return;
+
             if(writeToNotifier)
                 GoblinXNA.UI.Notifier.AddMessage(level.ToString() + ": " + message);
 

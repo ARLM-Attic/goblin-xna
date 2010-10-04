@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -185,22 +185,19 @@ namespace Tutorial11___Shader
                     ambientSet = true;
                 }
 
-                foreach (LightSource light in lNode.LightSources)
-                {
-                    // skip the light source if not enabled
-                    if (!light.Enabled)
-                        continue;
+                // skip the light source if not enabled
+                if (!lNode.LightSource.Enabled)
+                    continue;
 
-                    LightSource source = new LightSource(light);
-                    if (light.Type != LightType.Directional)
-                        source.Position = ((Matrix)(lNode.WorldTransformation *
-                            Matrix.CreateTranslation(light.Position))).Translation;
-                    if (light.Type != LightType.Point)
-                        source.Direction = ((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                LightSource source = new LightSource(lNode.LightSource);
+                if (lNode.LightSource.Type != LightType.Directional)
+                    source.Position = ((Matrix)(lNode.WorldTransformation *
+                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                if (lNode.LightSource.Type != LightType.Point)
+                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
+                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
 
-                    lightSources.Add(source);
-                }
+                lightSources.Add(source);
             }
 
             // Next, traverse the global lights in normal order
@@ -214,22 +211,19 @@ namespace Tutorial11___Shader
                     ambientSet = true;
                 }
 
-                foreach (LightSource light in lNode.LightSources)
-                {
-                    // skip the light source if not enabled
-                    if (!light.Enabled)
-                        continue;
+                // skip the light source if not enabled
+                if (!lNode.LightSource.Enabled)
+                    continue;
 
-                    LightSource source = new LightSource(light);
-                    if (light.Type != LightType.Directional)
-                        source.Position = ((Matrix)(lNode.WorldTransformation *
-                            Matrix.CreateTranslation(light.Position))).Translation;
-                    if (light.Type != LightType.Point)
-                        source.Direction = ((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                LightSource source = new LightSource(lNode.LightSource);
+                if (lNode.LightSource.Type != LightType.Directional)
+                    source.Position = ((Matrix)(lNode.WorldTransformation *
+                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                if (lNode.LightSource.Type != LightType.Point)
+                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
+                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
 
-                    lightSources.Add(source);
-                }
+                lightSources.Add(source);
             }
 
             dirLightSources.Clear();

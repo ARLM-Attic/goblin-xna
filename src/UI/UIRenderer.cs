@@ -61,6 +61,7 @@ namespace GoblinXNA.UI
         private List<G3DComponent> comp3Ds;
         protected SpriteFont debugFont;
         protected int triangleCount;
+        protected int globalUIShift;
 
         #region FPS
         protected int counter;
@@ -103,6 +104,7 @@ namespace GoblinXNA.UI
             counter = 1;
             prevCounter = 0;
             passedTime = 0;
+            globalUIShift = 0;
 
             triangleCount = 0;
         }
@@ -124,6 +126,15 @@ namespace GoblinXNA.UI
         internal int FPS
         {
             get { return prevCounter; }
+        }
+
+        /// <summary>
+        /// Gets or sets the X shift amount applied to all 2D HUD drawings including the text. 
+        /// </summary>
+        internal int GlobalUIShift
+        {
+            get { return globalUIShift; }
+            set { globalUIShift = value; }
         }
         #endregion
 
@@ -185,10 +196,22 @@ namespace GoblinXNA.UI
         /// Draws all of the user interface components.
         /// </summary>
         /// <remarks>Do not call this method. This method will be called automatically</remarks>
-        /// <param name="gameTime"></param>
-        public void Draw(float elapsedTime, bool clear)
+        /// <param name="elapsedTime"></param>
+        /// <param name="clear"></param>
+        /// <param name="renderRightEye"></param>
+        public void Draw(float elapsedTime, bool clear, bool renderRightEye)
         {
             State.DepthBufferEnabled = false;
+
+            passedTime += elapsedTime;
+            if (passedTime >= 1000)
+            {
+                passedTime = 0;
+                prevCounter = counter;
+                counter = 1;
+            }
+            else if (elapsedTime != 0)
+                counter++;
 
             float y = 5;
             float x = 5;
@@ -198,15 +221,6 @@ namespace GoblinXNA.UI
                     throw new GoblinException("You need to add 'DebugFont.spritefont' file to your " +
                         "content directory before you can display debug information");
 
-                passedTime += elapsedTime;
-                if (passedTime >= 1000)
-                {
-                    passedTime = 0;
-                    prevCounter = counter;
-                    counter = 1;
-                }
-                else if (elapsedTime != 0)
-                    counter++;
                 UI2DRenderer.WriteText(new Vector2(x, y), prevCounter + " FPS", State.DebugTextColor, debugFont);
                 y += 20;
             }
@@ -373,7 +387,10 @@ namespace GoblinXNA.UI
             foreach (G2DComponent comp2d in comp2Ds)
                 comp2d.RenderWidget();
 
-            UI2DRenderer.Flush(clear);
+            if (renderRightEye)
+                UI2DRenderer.Flush(clear, -globalUIShift/2);
+            else
+                UI2DRenderer.Flush(clear, globalUIShift/2);
 
             State.DepthBufferEnabled = true;
 

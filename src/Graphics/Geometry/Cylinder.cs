@@ -43,9 +43,9 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A cylinder geometry primitive constructed with PrimitiveMesh
+    /// A cylinder geometry primitive constructed with CustomMesh
     /// </summary>
-    public class Cylinder : Model
+    public class Cylinder : PrimitiveModel
     {
         #region Constructors
 
@@ -63,14 +63,14 @@ namespace GoblinXNA.Graphics.Geometry
         public Cylinder(float bottom, float top, float height, int slices)
             : base(CreateCylinder(bottom, top, height, slices))
         {
-            primitiveShapeParameters = bottom + ", " + top + ", " + height + ", " + slices;
+            customShapeParameters = bottom + ", " + top + ", " + height + ", " + slices;
         }
 
         public Cylinder(params String[] xmlParams)
             : base(CreateCylinder(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]), 
                 float.Parse(xmlParams[2]), int.Parse(xmlParams[3])))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2] + ", "
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2] + ", "
                 + xmlParams[3];
         }
 
@@ -78,7 +78,7 @@ namespace GoblinXNA.Graphics.Geometry
 
         #region Private Static Methods
 
-        private static PrimitiveMesh CreateCylinder(float bottom, float top, float height, int slices)
+        private static CustomMesh CreateCylinder(float bottom, float top, float height, int slices)
         {
             if(slices < 3)
                 throw new ArgumentException("Cannot draw a cylinder with slices less than 3");
@@ -89,7 +89,7 @@ namespace GoblinXNA.Graphics.Geometry
             if (height <= 0)
                 throw new ArgumentException("Height should be greater than zero");
 
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 

@@ -81,6 +81,11 @@ namespace GoblinXNA.Graphics
         String ShaderTechnique { get; set; }
 
         /// <summary>
+        /// Gets or sets a list of after effect shaders to use for rendering this model
+        /// </summary>
+        List<IShader> AfterEffectShaders { get; set; }
+
+        /// <summary>
         /// Gets the minimum bounding box used for display and by the physics engine
         /// </summary>
         BoundingBox MinimumBoundingBox { get; }
@@ -118,11 +123,6 @@ namespace GoblinXNA.Graphics
         /// </summary>
         int TriangleCount { get; }
 
-        /// <summary>
-        /// Gets or sets whether to use the material setting set inside the model file
-        /// </summary>
-        bool UseInternalMaterials { get; set; }
-
         #endregion
 
         #region Methods
@@ -133,7 +133,7 @@ namespace GoblinXNA.Graphics
         void Dispose();
 
         /// <summary>
-        /// Copies only the geometry (Mesh, PrimitiveMesh, AnimatedMesh, 
+        /// Copies only the geometry (Mesh, CustomMesh, AnimatedMesh, 
         /// MinimumBoundingBox, MinimumBoundingSphere, TriangleCount and Transforms)
         /// </summary>
         /// <param name="model">A source model from which to copy</param>

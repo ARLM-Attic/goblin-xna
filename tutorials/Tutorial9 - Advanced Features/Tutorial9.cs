@@ -1,36 +1,3 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Author: Ohan Oda (ohan@cs.columbia.edu)
- * 
- *************************************************************************************/ 
-
-
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -49,6 +16,7 @@ using GoblinXNA.Device.Generic;
 using GoblinXNA.Graphics.Geometry;
 using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Physics;
+using GoblinXNA.Physics.Newton1;
 using GoblinXNA.Sounds;
 using GoblinXNA.UI;
 using GoblinXNA.UI.UI3D;
@@ -71,7 +39,7 @@ namespace Tutorial9___Advanced_Features
         Scene scene;
         int shooterID = 0;
         Material shooterMat;
-        Model boxModel;
+        PrimitiveModel boxModel;
         int collisionCount = 0;
         // A font to render a 3D text
         VectorFont vectorFont;
@@ -108,8 +76,6 @@ namespace Tutorial9___Advanced_Features
             // We will use the Newton physics engine (http://www.newtondynamics.com)
             // for processing the physical simulation
             scene.PhysicsEngine = new NewtonPhysics();
-
-            ((NewtonPhysics)scene.PhysicsEngine).MaxSimulationSubSteps = 5;
 
             // Initialize the XNA audio engine
             Sound.Initialize("Tutorial9");
@@ -219,7 +185,7 @@ namespace Tutorial9___Advanced_Features
 
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
-            lightNode.LightSources.Add(lightSource);
+            lightNode.LightSource = lightSource;
 
             // Add this light node to the root node
             scene.RootNode.AddChild(lightNode);
@@ -253,7 +219,7 @@ namespace Tutorial9___Advanced_Features
         {
             // Create a model of box and sphere
             boxModel = new Box(Vector3.One);
-            Model sphereModel = new Sphere(1f, 20, 20);
+            PrimitiveModel sphereModel = new Sphere(1f, 20, 20);
 
             // Create our ground plane
             GeometryNode groundNode = new GeometryNode("Ground");

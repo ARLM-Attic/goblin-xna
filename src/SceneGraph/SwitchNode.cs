@@ -58,7 +58,7 @@ namespace GoblinXNA.SceneGraph
         public SwitchNode(String name)
             : base(name)
         {
-            switchID = 0;
+            switchID = -1;
             switchChanged = false;
         }
 
@@ -104,6 +104,14 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Override Methods
+
+        public override void AddChild(Node node)
+        {
+            base.AddChild(node);
+
+            if (SwitchID < 0)
+                SwitchID = 0;
+        }
 
         public override Node CloneNode()
         {

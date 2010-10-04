@@ -209,6 +209,9 @@ namespace GoblinXNA.Device.Capture
                                 break;
                         }
 
+                        if (resizer != null)
+                            imageSize = (int)(imageSize * (resizer.ScalingFactor * resizer.ScalingFactor));
+
                         imagePtr = Marshal.AllocHGlobal(imageSize * bpp);
 
                         ReadBmpData(data, imagePtr, imageData, w, h, bpp);

@@ -123,10 +123,10 @@ namespace GoblinXNA.Device.Capture.PointGrey
             cameraModel = flycapInfo.CameraModel;
 
             // Start FlyCapture.
-            if (cameraModel == PGRFlyModule.FlyCaptureCameraModel.FLYCAPTURE_DRAGONFLY2)
+            /*if (cameraModel == PGRFlyModule.FlyCaptureCameraModel.FLYCAPTURE_DRAGONFLY2)
                 ret = PGRFlyDllBridge.flycaptureStart(flycapContext, 
                     PGRFlyModule.FlyCaptureVideoMode.FLYCAPTURE_VIDEOMODE_640x480RGB, frameRate);
-            else
+            else*/
                 ret = PGRFlyDllBridge.flycaptureStart(flycapContext, videoMode, frameRate);
             
             if (ret != 0)

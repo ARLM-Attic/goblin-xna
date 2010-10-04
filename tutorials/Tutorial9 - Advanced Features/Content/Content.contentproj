@@ -34,7 +34,7 @@
     <Reference Include="Microsoft.Xna.Framework.Content.Pipeline.XImporter, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d" />
     <Reference Include="Nuclex.Fonts.Content.TrueTypeImporter, Version=1.0.3554.30260, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\bin\Nuclex.Fonts.Content.TrueTypeImporter.dll</HintPath>
+      <HintPath>..\..\..\dlls\managed\Nuclex.Fonts.Content.TrueTypeImporter.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

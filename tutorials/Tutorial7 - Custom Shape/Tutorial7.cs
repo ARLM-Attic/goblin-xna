@@ -1,35 +1,3 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Author: Ohan Oda (ohan@cs.columbia.edu)
- * 
- *************************************************************************************/ 
-
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -146,7 +114,7 @@ namespace Tutorial7___Custom_Shape
 
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
-            lightNode.LightSources.Add(lightSource);
+            lightNode.LightSource = lightSource;
 
             // Add this light node to the root node
             scene.RootNode.AddChild(lightNode);
@@ -197,7 +165,7 @@ namespace Tutorial7___Custom_Shape
         private void CreateObject()
         {
             // Create a primitive mesh for creating our custom pyramid shape
-            PrimitiveMesh pyramid = new PrimitiveMesh();
+            CustomMesh pyramid = new CustomMesh();
 
             // Even though we really need 5 vertices to create a pyramid shape, since
             // we want to assign different normals for points with same position to have
@@ -302,13 +270,13 @@ namespace Tutorial7___Custom_Shape
             indices[17] = 15;
 
             pyramid.IndexBuffer = new IndexBuffer(graphics.GraphicsDevice, typeof(short), 18, 
-                BufferUsage.None);
+                BufferUsage.WriteOnly);
             pyramid.IndexBuffer.SetData(indices);
 
             pyramid.PrimitiveType = PrimitiveType.TriangleList;
             pyramid.NumberOfPrimitives = 6;
 
-            Model pyramidModel = new Model(pyramid);
+            PrimitiveModel pyramidModel = new PrimitiveModel(pyramid);
 
             GeometryNode pyramidNode = new GeometryNode();
             pyramidNode.Model = pyramidModel;

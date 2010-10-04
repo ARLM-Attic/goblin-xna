@@ -1,35 +1,3 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Author: Ohan Oda (ohan@cs.columbia.edu)
- * 
- *************************************************************************************/ 
-
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -139,12 +107,15 @@ namespace Tutorial2___Simple_Animation
             lightSource2.Specular = new Vector4(0.2f, 0.2f, 0.2f, 1);
 
             // Create a light node to hold the light sources
-            LightNode lightNode = new LightNode();
-            lightNode.LightSources.Add(lightSource1);
-            lightNode.LightSources.Add(lightSource2);
+            LightNode lightNode1 = new LightNode();
+            lightNode1.LightSource = lightSource1;
+
+            LightNode lightNode2 = new LightNode();
+            lightNode2.LightSource = lightSource2;
 
             // Add this light node to the root node
-            scene.RootNode.AddChild(lightNode);
+            scene.RootNode.AddChild(lightNode1);
+            scene.RootNode.AddChild(lightNode2);
         }
 
         private void CreateCamera()
@@ -182,7 +153,7 @@ namespace Tutorial2___Simple_Animation
             shipNode.Model = shipModel;
             // This ship model has material definitions in the model file, so instead
             // of creating a material node for this ship model, we simply use its internal materials
-            shipNode.Model.UseInternalMaterials = true;
+            ((Model)shipNode.Model).UseInternalMaterials = true;
 
             // Create a transform node to define the transformation for the ship
             TransformNode shipTransNode = new TransformNode();

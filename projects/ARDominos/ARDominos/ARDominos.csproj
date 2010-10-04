@@ -66,7 +66,7 @@
   <ItemGroup>
     <Reference Include="DShowNET, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\bin\DShowNET.dll</HintPath>
+      <HintPath>..\..\..\dlls\managed\DShowNET.dll</HintPath>
     </Reference>
     <Reference Include="GoblinXNA, Version=2.7.1.2008, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
@@ -102,19 +102,39 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\..\bin\alvar130.dll">
-      <Link>alvar130.dll</Link>
+    <Content Include="..\..\..\dlls\unmanaged\alvar140.dll">
+      <Link>alvar140.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\..\bin\alvarplatform130.dll">
-      <Link>alvarplatform130.dll</Link>
+    <Content Include="..\..\..\dlls\unmanaged\alvarplatform140.dll">
+      <Link>alvarplatform140.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\..\bin\ALVARWrapper.dll">
+    <Content Include="..\..\..\dlls\unmanaged\ALVARWrapper.dll">
       <Link>ALVARWrapper.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\..\bin\Newton.dll">
+    <Content Include="..\..\..\dlls\unmanaged\cv100.dll">
+      <Link>cv100.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\..\dlls\unmanaged\cvaux100.dll">
+      <Link>cvaux100.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\..\dlls\unmanaged\cvcam100.dll">
+      <Link>cvcam100.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\..\dlls\unmanaged\cxcore100.dll">
+      <Link>cxcore100.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\..\dlls\unmanaged\highgui100.dll">
+      <Link>highgui100.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\..\dlls\unmanaged\Newton.dll">
       <Link>Newton.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

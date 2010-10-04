@@ -77,6 +77,8 @@ namespace GoblinXNA
         private static Texture2D blankTexture;
         private static Matrix viewMatrix;
         private static Matrix projMatrix;
+        private static Matrix viewProjMatrix;
+        private static Matrix viewInverse;
         private static Matrix cameraTransform;
         private static bool canUsePS20;
         private static bool canUsePS30;
@@ -92,7 +94,8 @@ namespace GoblinXNA
 
         private static ShadowMapShader shadowShader;
         private static Color boundingBoxColor;
-        private static IShader boundingBoxShader;
+
+        private static LineManager3D lineManager3D;
 
         private static bool showFPS;
         private static bool showTriangleCount;
@@ -189,13 +192,28 @@ namespace GoblinXNA
         public static Matrix ViewMatrix
         {
             get { return viewMatrix; }
-            internal set { viewMatrix = value; }
+            internal set 
+            { 
+                viewMatrix = value;
+                viewInverse = Matrix.Invert(viewMatrix);
+            }
         }
 
         public static Matrix ProjectionMatrix
         {
             get { return projMatrix; }
             internal set { projMatrix = value; }
+        }
+
+        public static Matrix ViewProjectionMatrix
+        {
+            get { return viewProjMatrix; }
+            internal set { viewProjMatrix = value; }
+        }
+
+        public static Matrix ViewInverseMatrix
+        {
+            get { return viewInverse; }
         }
 
         internal static Matrix CameraTransform
@@ -280,25 +298,13 @@ namespace GoblinXNA
         public static Color BoundingBoxColor
         {
             get { return boundingBoxColor; }
-            set
-            {
-                boundingBoxColor = value;
-                Material tmpMat = new Material();
-                tmpMat.Specular = value.ToVector4();
-                tmpMat.Ambient = value.ToVector4();
-                tmpMat.Diffuse = value.ToVector4();
-                tmpMat.Emissive = value.ToVector4();
-                boundingBoxShader.SetParameters(tmpMat);
-            }
+            set { boundingBoxColor = value; }
         }
 
-        /// <summary>
-        /// Gets or sets the shader used to draw the bounding box of each model for debugging.
-        /// </summary>
-        public static IShader BoundingBoxShader
+        public static LineManager3D LineManager
         {
-            get { return boundingBoxShader; }
-            set { boundingBoxShader = value; }
+            get { return lineManager3D; }
+            set { lineManager3D = value; }
         }
 
         /// <summary>
@@ -330,7 +336,7 @@ namespace GoblinXNA
         }
 
         /// <summary>
-        /// Gets or sets the log levels that will be printed out
+        /// Gets or sets the log levels that will be printed out. Default value is LogLevel.Error.
         /// </summary>
         /// <example>
         /// LogLevel.Log means prints out all log levels including Warning and Error messages.
@@ -439,21 +445,15 @@ namespace GoblinXNA
 
             // bounding box color for drawing 3D models' bounding box
             boundingBoxColor = Color.Red;
-            // the shader used to draw the bounding box
-            boundingBoxShader = new SimpleEffectShader();
-            Material bboxMat = new Material();
-            bboxMat.Ambient = boundingBoxColor.ToVector4();
-            bboxMat.Diffuse = boundingBoxColor.ToVector4();
-            bboxMat.Emissive = boundingBoxColor.ToVector4();
-            bboxMat.Specular = boundingBoxColor.ToVector4();
-            boundingBoxShader.SetParameters(bboxMat);
+            
+            lineManager3D = new LineManager3D();
 
             if (settingFile.Length != 0)
                 LoadSettings(settingFile);
             else
                 WriteSettingTemplate();
 
-            printLevel = Log.LogLevel.Log;
+            printLevel = Log.LogLevel.Error;
             nextNodeID = 0;
 
             showFPS = false;

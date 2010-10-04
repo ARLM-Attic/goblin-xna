@@ -44,9 +44,20 @@ namespace GoblinXNA.SceneGraph
     /// </summary>
     public class BranchNode : Node
     {
+        internal enum ChangeType { Add, Remove}
+
+        internal struct NodeChangeInfo
+        {
+            public Node Node;
+            public ChangeType Type;
+        }
+
         #region Member Fields
         protected List<Node> children;
         protected bool prune;
+
+        // used to guarantee thread-safe addition and removal 
+        internal List<NodeChangeInfo> changeList;
         #endregion
 
         #region Constructors
@@ -58,6 +69,8 @@ namespace GoblinXNA.SceneGraph
         {
             children = new List<Node>();
             prune = false;
+
+            changeList = new List<NodeChangeInfo>();
         }
 
         /// <summary>
@@ -71,6 +84,11 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Gets a list of this node's children.
         /// </summary>
+        /// <remarks>
+        /// You should never add or remove nodes directly from this list since the changes won't
+        /// be reflected in the scene. You should instead use the Add or Remove methods provided
+        /// in this class.
+        /// </remarks>
         /// <returns></returns>
         public virtual List<Node> Children
         {
@@ -90,6 +108,12 @@ namespace GoblinXNA.SceneGraph
             set { prune = value; }
         }
 
+        internal List<NodeChangeInfo> ChangeList
+        {
+            get { return changeList; }
+            set { changeList = value; }
+        }
+
         #endregion
 
         #region Public Methods
@@ -104,16 +128,24 @@ namespace GoblinXNA.SceneGraph
                 throw new GoblinException("Node " + Name + " already has a parent");
             if (children.Contains(node))
                 throw new GoblinException("This child is already added to this node");
+            if (node == this)
+                throw new GoblinException("You cannot add a node to itself");
 
             CheckForLoops(node);
 
-            if (scene != null)
+            if (scene != null && scene.IsStarted)
             {
-                // busy wait if the scene graph is processing
-                while (scene.Processing) { }
+                // at this time, still don't add the node to children to guarantee thread-safe operation
+                // will be actually added during processing the scene graph in Scene class
+                NodeChangeInfo info = new NodeChangeInfo();
+                info.Node = node;
+                info.Type = ChangeType.Add;
+                changeList.Add(info);
             }
-            children.Add(node);
-            //node.Enabled = this.Enabled;
+            // if the scene hasn't started processing the tree yet, then it's safe to add now
+            else
+                children.Add(node);
+            
             node.Parent = this;
             PropagateSceneGraph(node);
         }
@@ -124,15 +156,21 @@ namespace GoblinXNA.SceneGraph
         /// <param name="node">The child to be removed</param>
         public virtual void RemoveChild(Node node)
         {
-            children.Remove(node);
+            if (!children.Contains(node))
+                return;
+
             node.Parent = null;
             node.SceneGraph = null;
             if(node is BranchNode)
                 foreach (Node child in ((BranchNode)node).Children)
                     PropagateSceneGraph(child);
 
-            if (scene != null)
-                scene.RecursivelyRemoveFromRendering(node);
+            // at this time, still don't remove the node from children to guarantee thread-safe operation
+            // will be actually removed during processing the scene graph in Scene class
+            NodeChangeInfo info = new NodeChangeInfo();
+            info.Node = node;
+            info.Type = ChangeType.Remove;
+            changeList.Add(info);
         }
 
         /// <summary>
@@ -142,15 +180,18 @@ namespace GoblinXNA.SceneGraph
         public virtual void RemoveChildAt(int index)
         {
             Node node = children[index];
-            children.Remove(node);
             node.Parent = null;
             node.SceneGraph = null;
             if(node is BranchNode)
                 foreach (Node child in ((BranchNode)node).Children)
                     PropagateSceneGraph(child);
 
-            if (scene != null)
-                scene.RecursivelyRemoveFromRendering(node);
+            // at this time, still don't remove the node from children to guarantee thread-safe operation
+            // will be actually removed during processing the scene graph in Scene class
+            NodeChangeInfo info = new NodeChangeInfo();
+            info.Node = node;
+            info.Type = ChangeType.Remove;
+            changeList.Add(info);
         }
 
         /// <summary>
@@ -169,11 +210,13 @@ namespace GoblinXNA.SceneGraph
                     foreach (Node child in ((BranchNode)node).Children)
                         PropagateSceneGraph(child);
 
-                if (scene != null)
-                    scene.RecursivelyRemoveFromRendering(node);
+                // at this time, still don't remove the node from children to guarantee thread-safe operation
+                // will be actually removed right before processing the scene graph in Scene class
+                NodeChangeInfo info = new NodeChangeInfo();
+                info.Node = node;
+                info.Type = ChangeType.Remove;
+                changeList.Add(info);
             }
-
-            children.Clear();
         }
 
         /// <summary>
@@ -199,34 +242,6 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Override Methods
-
-        public override byte[] Encode()
-        {
-            // 1 byte for prune
-            // child nodes information is not encoded because the scene graph can be reconstructed
-            // with the parent ID information
-
-            // Encodes the base class's data first
-            byte[] data = base.Encode();
-
-            byte[] additionalData = new byte[sizeof(bool)];
-            data[0] = BitConverter.GetBytes(prune)[0];
-
-            return ByteHelper.ConcatenateBytes(data, additionalData);
-        }
-
-        public override int Decode(byte[] data, out int numBytesDecoded)
-        {
-            int bytesDecoded = 0;
-            int parentID = base.Decode(data, out bytesDecoded);
-
-            prune = BitConverter.ToBoolean(data, bytesDecoded);
-            bytesDecoded++;
-
-            numBytesDecoded = bytesDecoded;
-
-            return parentID;
-        }
 
         public override XmlElement Save(XmlDocument xmlDoc)
         {

@@ -79,7 +79,8 @@ namespace GoblinXNA.Graphics.ParticleEffects
             {
                 // Work out how fast we are moving.
                 Vector3 tmp = Vector3.Subtract(newPosition, previousPosition);
-                Vector3 velocity = Vector3Helper.Divide(ref tmp, (float)elapsedTime);
+                Vector3 velocity = new Vector3(); 
+                Vector3.Divide(ref tmp, (float)elapsedTime, out velocity);
 
                 // If we had any time left over that we didn't use during the
                 // previous update, add that to the current elapsed time.

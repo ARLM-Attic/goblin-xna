@@ -96,7 +96,6 @@ namespace GoblinXNA.SceneGraph
         public Vector3 Velocity
         {
             get { return velocity; }
-            internal set { velocity = value; }
         }
 
         public Vector3 Position
@@ -139,7 +138,6 @@ namespace GoblinXNA.SceneGraph
         {
             SoundNode node = (SoundNode)base.CloneNode();
             node.WorldTransformation = worldTransformation;
-            node.Velocity = velocity;
 
             return node;
         }

@@ -62,7 +62,7 @@
     <XnaCompressContent>True</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="GoblinXNA, Version=3.3.17.2010, Culture=neutral, processorArchitecture=x86" />
+    <Reference Include="GoblinXNA, Version=3.9.30.2010, Culture=neutral, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Game, Version=3.1.0.0, Culture=neutral, PublicKeyToken=6d5c3888ef60e27d, processorArchitecture=x86" />
     <Reference Include="mscorlib">

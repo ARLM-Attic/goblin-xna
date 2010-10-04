@@ -46,16 +46,16 @@ using GoblinXNA.Helpers;
 
 namespace Tutorial14___Skinned_Model_Animation
 {
-    public class TexturedLayer : Model
+    public class TexturedLayer : PrimitiveModel
     {
         public TexturedLayer(Vector2 dimension)
             : base(CreateLayer(dimension))
         {
         }
 
-        private static PrimitiveMesh CreateLayer(Vector2 dimension)
+        private static CustomMesh CreateLayer(Vector2 dimension)
         {
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             VertexPositionNormalTexture[] vertices = new VertexPositionNormalTexture[4];
             Vector2 halfExtent = dimension / 2;

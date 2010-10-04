@@ -62,7 +62,7 @@ float specularPower;
 float specularIntensity;
 bool diffuseTexEnabled = false;
 
-
+float4 compoundDiffuseColor;
 
 
 //This function transforms the model to projection space and set up
@@ -97,15 +97,14 @@ VertexShaderOutput BasicVS(
 //back buffer while outputting depth information.
 float4 AmbientPS(PixelShaderInput input) : COLOR
 {
-	
+	compoundDiffuseColor = diffuseColor;
 	if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
-	float4 color = ambientLightColor * diffuseColor + emissiveColor;
-	//color = 0;
-	color.a = 1;
+	float4 color = ambientLightColor * compoundDiffuseColor + emissiveColor;
+	color.a = diffuseColor.a;
 	return color;
 }
 
@@ -130,7 +129,7 @@ float4 CalculateSinglePointLight(Light light, float3 worldPosition, float3 world
      baseIntensity  = saturate(baseIntensity);
      
      float diffuseIntensity = saturate( dot(directionToLight, worldNormal));
-     float4 diffuse = diffuseIntensity * light.color * diffuseColor;
+     float4 diffuse = diffuseIntensity * light.color * compoundDiffuseColor;
 
      //calculate Phong components per-pixel
      float3 reflectionVector = normalize(reflect(-directionToLight, worldNormal));
@@ -151,7 +150,7 @@ float4 CalculateSingleDirectionalLight(Light light, float3 worldPosition, float3
      float3 directionToLight = normalize(lightVector);
      
      float diffuseIntensity = saturate( dot(directionToLight, worldNormal));
-     float4 diffuse = diffuseIntensity * light.color * diffuseColor;
+     float4 diffuse = diffuseIntensity * light.color * compoundDiffuseColor;
 
      //calculate Phong components per-pixel
      float3 reflectionVector = normalize(reflect(-directionToLight, worldNormal));
@@ -194,7 +193,7 @@ float4 CalculateSingleSpotLight(Light light, float3 worldPosition, float3 worldN
      }
      
      float diffuseIntensity = saturate( dot(directionToLight, worldNormal));
-     float4 diffuse = diffuseIntensity * light.color * diffuseColor;
+     float4 diffuse = diffuseIntensity * light.color * compoundDiffuseColor;
 
      //calculate Phong components per-pixel
      float3 reflectionVector = normalize(reflect(-directionToLight, worldNormal));
@@ -212,13 +211,13 @@ float4 CalculateSingleSpotLight(Light light, float3 worldPosition, float3 worldN
 
 float4 MultipleDirectionalLightsPS(PixelShaderInput input) : COLOR
 {
+	compoundDiffuseColor = diffuseColor;
     if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
     float4 color = 0;
-    color.a = 1.0;
 	int i = 0;
 	
     for (; i< numberOfLights; i++)
@@ -228,18 +227,19 @@ float4 MultipleDirectionalLightsPS(PixelShaderInput input) : COLOR
 						diffuseColor, specularColor);
 	}
 	
+	color.a = diffuseColor.a;
 	return color;	
 }
 
 float4 MultiplePointLightsPS(PixelShaderInput input) : COLOR
 {
+	compoundDiffuseColor = diffuseColor;
     if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
     float4 color = 0;
-    color.a = 1.0;
 	int i = 0;
 	
     for (; i< numberOfLights; i++)
@@ -249,18 +249,19 @@ float4 MultiplePointLightsPS(PixelShaderInput input) : COLOR
 						diffuseColor, specularColor);
 	}
 	
+	color.a = diffuseColor.a;
 	return color;	
 }
 
 float4 MultipleSpotLightsPS(PixelShaderInput input) : COLOR
 {
+	compoundDiffuseColor = diffuseColor;
     if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
     float4 color = 0;
-    color.a = 1.0;
 	int i = 0;
 	
     for (; i< numberOfLights; i++)
@@ -270,63 +271,64 @@ float4 MultipleSpotLightsPS(PixelShaderInput input) : COLOR
 						diffuseColor, specularColor);
 	}
 	
+	color.a = diffuseColor.a;
 	return color;	
 }
 
 float4 SingleDirectionalLightsPS(PixelShaderInput input) : COLOR
 {
+	compoundDiffuseColor = diffuseColor;
     if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
     float4 color = 0;
-    color.a = 1.0;
 	int i = 0;
-	
-      
+
 	color += CalculateSingleDirectionalLight(light, 
 						 input.WorldPosition, input.WorldNormal,
 						diffuseColor, specularColor);
 	
-	
+	color.a = diffuseColor.a;
 	return color;	
 }
 
 float4 SinglePointLightsPS(PixelShaderInput input) : COLOR
 {
+	compoundDiffuseColor = diffuseColor;
     if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
     float4 color = 0;
-    color.a = 1.0;
 	int i = 0;
 		
 	color += CalculateSinglePointLight(light, 
 						 input.WorldPosition, input.WorldNormal,
 						diffuseColor, specularColor);
 
+	color.a = diffuseColor.a;
 	return color;	
 }
 
 float4 SingleSpotLightsPS(PixelShaderInput input) : COLOR
 {
+	compoundDiffuseColor = diffuseColor;
     if(diffuseTexEnabled)
     {
-        diffuseColor *= tex2D(diffuseSampler, input.TexCoords);
+        compoundDiffuseColor *= tex2D(diffuseSampler, input.TexCoords);
     }
 	
     float4 color = 0;
-    color.a = 1.0;
 	int i = 0;
 	 
 	color += CalculateSingleSpotLight(light, 
 						 input.WorldPosition, input.WorldNormal,
 						diffuseColor, specularColor);
 
-	
+	color.a = diffuseColor.a;
 	return color;	
 }
 

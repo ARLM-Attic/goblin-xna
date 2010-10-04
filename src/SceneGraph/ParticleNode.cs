@@ -58,6 +58,7 @@ namespace GoblinXNA.SceneGraph
 
         protected List<ParticleEffect> particleEffects;
         protected Matrix worldTransformation;
+        protected Matrix markerTransform;
         protected bool isRendered;
         protected bool shouldRender;
 
@@ -80,6 +81,7 @@ namespace GoblinXNA.SceneGraph
         {
             particleEffects = new List<ParticleEffect>();
             worldTransformation = Matrix.Identity;
+            markerTransform = Matrix.Identity;
             UpdateHandler = null;
             isRendered = false;
             shouldRender = false;
@@ -133,6 +135,12 @@ namespace GoblinXNA.SceneGraph
             set { shouldRender = value; }
         }
 
+        public Matrix MarkerTransformation
+        {
+            get { return markerTransform; }
+            internal set { markerTransform = value; }
+        }
+
         #endregion
 
         #region Internal Methods
@@ -159,7 +167,8 @@ namespace GoblinXNA.SceneGraph
                 if (effect.Enabled)
                 {
                     effect.Shader.SetParameters(effect);
-                    effect.Render();
+                    if(markerTransform.M44 == 1)
+                        effect.Render(markerTransform);
                 }
         }
         #endregion

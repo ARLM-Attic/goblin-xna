@@ -54,25 +54,7 @@ namespace GoblinXNA.Helpers
         /// <returns>The x, y, and z dimension of a bounding box stored in Vector3 class</returns>
         public static Vector3 GetDimensions(BoundingBox box)
         {
-            if (box.Equals(new BoundingBox()))
-                return new Vector3();
-
-            Vector3[] corners = box.GetCorners();
-
-            Vector3 origin = corners[0];
-            float x = 0, y = 0, z = 0;
-
-            for (int i = 1; i < corners.Length; i++)
-            {
-                if ((corners[i].X == origin.X) && (corners[i].Y == origin.Y))
-                    z = Math.Abs(origin.Z - corners[i].Z);
-                else if ((corners[i].Z == origin.Z) && (corners[i].Y == origin.Y))
-                    x = Math.Abs(origin.X - corners[i].X);
-                else if ((corners[i].X == origin.X) && (corners[i].Z == origin.Z))
-                    y = Math.Abs(origin.Y - corners[i].Y);
-            }
-
-            return Vector3Helper.Get(x, y, z);
+            return (box.Max - box.Min);
         }
 
         /// <summary>
@@ -107,48 +89,6 @@ namespace GoblinXNA.Helpers
             return normal;
         }
 
-        /// <summary>
-        /// Adds two Vector3 object.
-        /// </summary>
-        /// <param name="a"></param>
-        /// <param name="b"></param>
-        /// <returns></returns>
-        public static Vector3 Add(ref Vector3 a, ref Vector3 b)
-        {
-            Vector3 result = new Vector3();
-            result.X = a.X + b.X;
-            result.Y = a.Y + b.Y;
-            result.Z = a.Z + b.Z;
-            return result;
-        }
-
-        public static Vector3 Multiply(ref Vector3 a, ref Vector3 b)
-        {
-            Vector3 result = new Vector3();
-            result.X = a.X * b.X;
-            result.Y = a.Y * b.Y;
-            result.Z = a.Z * b.Z;
-            return result;
-        }
-
-        public static Vector3 Multiply(ref Vector3 a, float scale)
-        {
-            Vector3 result = new Vector3();
-            result.X = a.X * scale;
-            result.Y = a.Y * scale;
-            result.Z = a.Z * scale;
-            return result;
-        }
-
-        public static Vector3 Divide(ref Vector3 a, float scale)
-        {
-            Vector3 result = new Vector3();
-            result.X = a.X / scale;
-            result.Y = a.Y / scale;
-            result.Z = a.Z / scale;
-            return result;
-        }
-
         public static Vector3 Get(float x, float y, float z)
         {
             Vector3 result = new Vector3();
@@ -163,10 +103,28 @@ namespace GoblinXNA.Helpers
         /// </summary>
         /// <param name="v3"></param>
         /// <returns></returns>
+        public static float[] ToFloats(ref Vector3 v3)
+        {
+            float[] floats = { v3.X, v3.Y, v3.Z };
+            return floats;
+        }
+
         public static float[] ToFloats(Vector3 v3)
         {
             float[] floats = { v3.X, v3.Y, v3.Z };
             return floats;
+        }
+
+        public static Vector3 FromFloats(float[] values)
+        {
+            return new Vector3(values[0], values[1], values[2]);
+        }
+
+        public static void FromFloats(float[] values, out Vector3 vec3)
+        {
+            vec3.X = values[0];
+            vec3.Y = values[1];
+            vec3.Z = values[2];
         }
 
         public static Vector3 FromString(String strVal)
@@ -209,6 +167,116 @@ namespace GoblinXNA.Helpers
             float yaw = -(float)Math.Asin(mat.M13);
 
             return new Vector3(pitch, yaw, roll);
+        }
+
+        /// <summary>
+        /// Returns Euler angles that point from one point to another.
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="location"></param>
+        /// <remarks>
+        /// http://www.innovativegames.net/blog/blog/2009/03/18/matrices-quaternions-and-euler-angle-vectors/
+        /// </remarks>
+        /// <returns></returns>
+        public static Vector3 AngleTo(Vector3 from, Vector3 location)
+        {
+            Vector3 angle = new Vector3();
+            Vector3 v3 = Vector3.Normalize(location - from);
+
+            angle.X = (float)Math.Asin(v3.Y);
+            angle.Y = (float)Math.Atan2((double)-v3.X, (double)-v3.Z);
+
+            return angle;
+        }
+
+        /// <summary>
+        /// Converts a Quaternion to Euler angles (X = Yaw, Y = Pitch, Z = Roll)
+        /// </summary>
+        /// <param name="rotation"></param>
+        /// <remarks>
+        /// http://www.innovativegames.net/blog/blog/2009/03/18/matrices-quaternions-and-euler-angle-vectors/
+        /// </remarks>
+        /// <returns></returns>
+        public static Vector3 QuaternionToEulerAngleVector3(Quaternion rotation)
+        {
+            Vector3 rotationaxes = new Vector3();
+            Vector3 forward = Vector3.Transform(Vector3.Forward, rotation);
+            Vector3 up = Vector3.Transform(Vector3.Up, rotation);
+
+            rotationaxes = AngleTo(new Vector3(), forward);
+
+            if (rotationaxes.X == MathHelper.PiOver2)
+            {
+                rotationaxes.Y = (float)Math.Atan2((double)up.X, (double)up.Z);
+                rotationaxes.Z = 0;
+            }
+            else if (rotationaxes.X == -MathHelper.PiOver2)
+            {
+                rotationaxes.Y = (float)Math.Atan2((double)-up.X, (double)-up.Z);
+                rotationaxes.Z = 0;
+            }
+            else
+            {
+                up = Vector3.Transform(up, Matrix.CreateRotationY(-rotationaxes.Y));
+                up = Vector3.Transform(up, Matrix.CreateRotationX(-rotationaxes.X));
+
+                rotationaxes.Z = (float)Math.Atan2((double)-up.Z, (double)up.Y);
+            }
+
+            return rotationaxes;
+        }
+
+        /// <summary>
+        /// Converts a Rotation Matrix to a quaternion, then into a Vector3 containing
+        /// Euler angles (X: Pitch, Y: Yaw, Z: Roll)
+        /// </summary>
+        /// <param name="Rotation"></param>
+        /// <remarks>
+        /// http://www.innovativegames.net/blog/blog/2009/03/18/matrices-quaternions-and-euler-angle-vectors/
+        /// </remarks>
+        /// <returns></returns>
+        public static Vector3 MatrixToEulerAngleVector3(Matrix Rotation)
+        {
+            Vector3 translation, scale;
+            Quaternion rotation;
+
+            Rotation.Decompose(out scale, out rotation, out translation);
+
+            Vector3 eulerVec = QuaternionToEulerAngleVector3(rotation);
+
+            return eulerVec;
+        }
+
+        /// <summary>
+        /// Converts Euler angles from radian format to degree format.
+        /// </summary>
+        /// <param name="Vector"></param>
+        /// <remarks>
+        /// http://www.innovativegames.net/blog/blog/2009/03/18/matrices-quaternions-and-euler-angle-vectors/
+        /// </remarks>
+        /// <returns></returns>
+        public static Vector3 RadiansToDegrees(Vector3 Vector)
+        {
+            return new Vector3(
+                MathHelper.ToDegrees(Vector.X),
+                MathHelper.ToDegrees(Vector.Y),
+                MathHelper.ToDegrees(Vector.Z));
+        }
+
+        /// <summary>
+        /// Converts Euler angles from degree format to radian format.
+        /// </summary>
+        /// <param name="Vector"></param>
+        /// <remarks>
+        /// http://www.innovativegames.net/blog/blog/2009/03/18/matrices-quaternions-and-euler-angle-vectors/
+        /// </remarks>
+        /// <returns></returns>
+        public static Vector3 DegreesToRadians(Vector3 Vector)
+        {
+            return new Vector3(
+                MathHelper.ToRadians(Vector.X),
+                MathHelper.ToRadians(Vector.Y),
+                MathHelper.ToRadians(Vector.Z));
         }
     }
 }

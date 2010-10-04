@@ -42,9 +42,9 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.Graphics.Geometry
 {
     /// <summary>
-    /// A chamfer cylinder geometry primitive constructed with PrimitiveMesh
+    /// A chamfer cylinder geometry primitive constructed with CustomMesh
     /// </summary>
-    public class ChamferCylinder : Model
+    public class ChamferCylinder : PrimitiveModel
     {
         #region Constructors
 
@@ -58,21 +58,21 @@ namespace GoblinXNA.Graphics.Geometry
         public ChamferCylinder(float radius, float height, int slices) :
             base(CreateChamferCylinder(radius, height, slices))
         {
-            primitiveShapeParameters = radius + ", " + height + ", " + slices;
+            customShapeParameters = radius + ", " + height + ", " + slices;
         }
 
         public ChamferCylinder(params String[] xmlParams)
             : base(CreateChamferCylinder(float.Parse(xmlParams[0]), float.Parse(xmlParams[1]),
                 int.Parse(xmlParams[2])))
         {
-            primitiveShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
+            customShapeParameters = xmlParams[0] + ", " + xmlParams[1] + ", " + xmlParams[2];
         }
 
         #endregion
 
         #region Private Static Methods
 
-        private static PrimitiveMesh CreateChamferCylinder(float radius, float height, int slices)
+        private static CustomMesh CreateChamferCylinder(float radius, float height, int slices)
         {
             if(slices < 5)
                 throw new ArgumentException("Cannot draw a capsule with slices less than 5");
@@ -83,7 +83,7 @@ namespace GoblinXNA.Graphics.Geometry
             if (height <= 0)
                 throw new ArgumentException("height should be greater than zero");
 
-            PrimitiveMesh mesh = new PrimitiveMesh();
+            CustomMesh mesh = new CustomMesh();
 
             List<VertexPositionNormal> vertices = new List<VertexPositionNormal>();
 

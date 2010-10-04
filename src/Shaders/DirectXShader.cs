@@ -83,9 +83,10 @@ namespace GoblinXNA.Shaders
         private List<LightSource> spotLightSources;
 
         private int maxNumLightsPerPass;
-        private Material material;
         private bool is_3_0;
         private bool forcePS20;
+
+        private Vector3 cameraPos;
 
         /// <summary>
         /// Creates a DirectX shader that uses 'DirectXShader.fx' shader file. 
@@ -131,6 +132,19 @@ namespace GoblinXNA.Shaders
             get { return 1000; }
         }
 
+        private void GetMinimumParameters()
+        {
+            world = effect.Parameters["world"];
+            viewProj = effect.Parameters["viewProjection"];
+            worldForNormal = effect.Parameters["worldForNormal"];
+            cameraPosition = effect.Parameters["cameraPosition"];
+
+            lights = effect.Parameters["lights"];
+            light = effect.Parameters["light"];
+            ambientLightColor = effect.Parameters["ambientLightColor"];
+            numberOfLights = effect.Parameters["numberOfLights"];
+        }
+
         protected override void GetParameters()
         {
             //Binding the effect parameters in to Effect File;
@@ -158,20 +172,35 @@ namespace GoblinXNA.Shaders
 
         public override void SetParameters(Material material)
         {
-            this.material = material;
-            emissiveColor.SetValue(material.Emissive);
-            diffuseColor.SetValue(material.Diffuse);
-            specularColor.SetValue(material.Specular);
-            specularPower.SetValue(material.SpecularPower);
-            if (material.HasTexture)
+            if (material.InternalEffect != null)
             {
-                diffuseTexEnabled.SetValue(true);
-                diffuseTexture.SetValue(material.Texture);
+                effect = material.InternalEffect;
+                GetMinimumParameters();
+                cameraPosition.SetValue(cameraPos);
             }
             else
             {
-                diffuseTexEnabled.SetValue(false);
+                emissiveColor.SetValue(material.Emissive);
+                diffuseColor.SetValue(material.Diffuse);
+                specularColor.SetValue(material.Specular);
+                specularPower.SetValue(material.SpecularPower);
+                if (material.HasTexture)
+                {
+                    diffuseTexEnabled.SetValue(true);
+                    diffuseTexture.SetValue(material.Texture);
+                }
+                else
+                {
+                    diffuseTexEnabled.SetValue(false);
+                }
             }
+        }
+
+        public override void SetParameters(CameraNode camera)
+        {
+            cameraPos = camera.WorldTransformation.Translation;
+
+            cameraPosition.SetValue(cameraPos);
         }
 
         public override void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
@@ -193,22 +222,19 @@ namespace GoblinXNA.Shaders
                     ambientSet = true;
                 }
 
-                foreach (LightSource light in lNode.LightSources)
-                {
-                    // skip the light source if not enabled
-                    if (!light.Enabled)
-                        continue;
+                // skip the light source if not enabled
+                if (!lNode.LightSource.Enabled)
+                    continue;
 
-                    LightSource source = new LightSource(light);
-                    if (light.Type != LightType.Directional)
-                        source.Position = ((Matrix)(lNode.WorldTransformation *
-                            Matrix.CreateTranslation(light.Position))).Translation;
-                    if (light.Type != LightType.Point)
-                        source.Direction = ((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                LightSource source = new LightSource(lNode.LightSource);
+                if (lNode.LightSource.Type != LightType.Directional)
+                    source.Position = ((Matrix)(lNode.WorldTransformation *
+                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                if (lNode.LightSource.Type != LightType.Point)
+                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
+                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
 
-                    lightSources.Add(source);
-                }
+                lightSources.Add(source);
             }
 
             // Next, traverse the global lights in normal order
@@ -222,22 +248,19 @@ namespace GoblinXNA.Shaders
                     ambientSet = true;
                 }
 
-                foreach (LightSource light in lNode.LightSources)
-                {
-                    // skip the light source if not enabled
-                    if (!light.Enabled)
-                        continue;
+                // skip the light source if not enabled
+                if (!lNode.LightSource.Enabled)
+                    continue;
 
-                    LightSource source = new LightSource(light);
-                    if (light.Type != LightType.Directional)
-                        source.Position = ((Matrix)(lNode.WorldTransformation *
-                            Matrix.CreateTranslation(light.Position))).Translation;
-                    if (light.Type != LightType.Point)
-                        source.Direction = ((Matrix)(Matrix.CreateTranslation(light.Direction) *
-                            MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                LightSource source = new LightSource(lNode.LightSource);
+                if (lNode.LightSource.Type != LightType.Directional)
+                    source.Position = ((Matrix)(lNode.WorldTransformation *
+                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                if (lNode.LightSource.Type != LightType.Point)
+                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
+                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
 
-                    lightSources.Add(source);
-                }
+                lightSources.Add(source);
             }
 
             dirLightSources.Clear();
@@ -267,8 +290,7 @@ namespace GoblinXNA.Shaders
                 throw new GoblinException("renderDelegate is null");
 
             world.SetValue(worldMatrix);
-            cameraPosition.SetValue(Vector3.Transform(new Vector3(), Matrix.Invert(State.ViewMatrix)));
-            viewProj.SetValue(State.ViewMatrix * State.ProjectionMatrix);
+            viewProj.SetValue(State.ViewProjectionMatrix);
             worldForNormal.SetValue(Matrix.Transpose(Matrix.Invert(worldMatrix)));
 
             // Start shader
@@ -298,7 +320,6 @@ namespace GoblinXNA.Shaders
 
                 State.Device.RenderState.AlphaBlendEnable = true;
                 State.Device.RenderState.DepthBufferWriteEnable = false;
-               // System.Diagnostics.Debug.Assert(false);
 
                 if (is_3_0)
                 {
