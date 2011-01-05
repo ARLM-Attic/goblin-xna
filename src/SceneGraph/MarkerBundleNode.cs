@@ -76,7 +76,7 @@ namespace GoblinXNA.SceneGraph
         /// <param name="markerConfigs">A list of configs that specify the fiducial marker 
         /// (can be either an array or a single marker) to look for</param>
         public MarkerBundleNode(String name, IMarkerTracker tracker, 
-            List<MarkerNode> supportingMarkerNodes, params string[] markerConfigs)
+            List<MarkerNode> supportingMarkerNodes, params object[] markerConfigs)
             : base(name, tracker, markerConfigs)
         {
             supportingMarkers = new List<RelativeMarker>();

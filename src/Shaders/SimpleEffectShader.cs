@@ -120,6 +120,12 @@ namespace GoblinXNA.Shaders
             set;
         }
 
+        public bool UseVertexColor
+        {
+            get { return basicEffect.VertexColorEnabled; }
+            set { basicEffect.VertexColorEnabled = value; }
+        }
+
         /// <summary>
         /// Indicates whether to prefer using per-pixel lighting if applicable.
         /// </summary>

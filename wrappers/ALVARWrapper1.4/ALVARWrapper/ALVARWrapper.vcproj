@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\Program Files (x86)\Alvar 1.3.0\include&quot;;&quot;C:\Program Files (x86)\Alvar 1.3.0\include\pro&quot;;&quot;C:\Program Files (x86)\Alvar 1.3.0\include\platform&quot;;&quot;C:\Program Files (x86)\OpenCV\cxcore\include&quot;;&quot;C:\Program Files (x86)\OpenCV\cv\include&quot;"
+				AdditionalIncludeDirectories="&quot;D:\Program Files\AlvarPro 1.4.0\include&quot;;&quot;D:\Program Files\AlvarPro 1.4.0\include\pro&quot;;&quot;D:\Program Files\AlvarPro 1.4.0\include\platform&quot;;&quot;C:\Program Files (x86)\OpenCV\cv\include&quot;;&quot;C:\Program Files (x86)\OpenCV\cxcore\include&quot;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -59,8 +59,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="alvar130.lib alvarplatform130.lib cxcore.lib"
-				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Alvar 1.3.0\bin\msvc90&quot;;&quot;C:\Program Files (x86)\OpenCV\lib&quot;"
+				AdditionalDependencies="alvar140.lib alvarplatform140.lib cxcore.lib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\OpenCV\lib&quot;;&quot;D:\Program Files\Alvar 1.4.0\bin\msvc90&quot;"
 				GenerateDebugInformation="true"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"

@@ -223,8 +223,8 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("optimize", optimize.ToString());
-            xmlNode.SetAttribute("maxDropouts", maxDropouts.ToString());
+            xmlNode.SetAttribute("Optimize", optimize.ToString());
+            xmlNode.SetAttribute("MaxDropouts", maxDropouts.ToString());
             if (smooth)
                 xmlNode.AppendChild(smoother.Save(xmlDoc));
             if (predict)
@@ -237,10 +237,10 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("optimize"))
-                optimize = bool.Parse(xmlNode.GetAttribute("optimize"));
-            if (xmlNode.HasAttribute("maxDropouts"))
-                maxDropouts = int.Parse(xmlNode.GetAttribute("maxDropouts"));
+            if (xmlNode.HasAttribute("Optimize"))
+                optimize = bool.Parse(xmlNode.GetAttribute("Optimize"));
+            if (xmlNode.HasAttribute("MaxDropouts"))
+                maxDropouts = int.Parse(xmlNode.GetAttribute("MaxDropouts"));
             foreach (XmlElement xmlChild in xmlNode.ChildNodes)
             {
                 Type classType = Type.GetType(xmlChild.Name);

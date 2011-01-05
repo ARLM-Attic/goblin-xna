@@ -286,7 +286,7 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("stereo", "" + isStereo);
+            xmlNode.SetAttribute("Stereo", "" + isStereo);
 
             xmlNode.AppendChild(camera.Save(xmlDoc));
 
@@ -297,8 +297,8 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("stereo"))
-                isStereo = bool.Parse(xmlNode.GetAttribute("stereo"));
+            if (xmlNode.HasAttribute("Stereo"))
+                isStereo = bool.Parse(xmlNode.GetAttribute("Stereo"));
 
             camera = (Camera)Activator.CreateInstance(Type.GetType(xmlNode.FirstChild.Name));
             camera.Load((XmlElement)xmlNode.FirstChild);

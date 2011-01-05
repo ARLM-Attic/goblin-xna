@@ -852,15 +852,15 @@ namespace GoblinXNA.Graphics
                 throw new GoblinException("ResourceName must be specified in order to " +
                     "save this model information to an XML file");
 
-            xmlNode.SetAttribute("resourceName", resourceName);
+            xmlNode.SetAttribute("ResourceName", resourceName);
             if (modelLoaderName.Length == 0)
                 throw new GoblinException("ModelLoaderName must be specified");
 
-            xmlNode.SetAttribute("modelLoaderName", modelLoaderName);
+            xmlNode.SetAttribute("ModelLoaderName", modelLoaderName);
 
-            xmlNode.SetAttribute("shaderName", shaderName);
+            xmlNode.SetAttribute("ShaderName", shaderName);
             if (technique.Length > 0)
-                xmlNode.SetAttribute("shaderTechniqueName", technique);
+                xmlNode.SetAttribute("ShaderTechniqueName", technique);
 
             return xmlNode;
         }
@@ -869,33 +869,33 @@ namespace GoblinXNA.Graphics
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("enabled", enabled.ToString());
-            xmlNode.SetAttribute("useLighting", useLighting.ToString());
-            xmlNode.SetAttribute("castShadow", castShadow.ToString());
-            xmlNode.SetAttribute("receiveShadow", receiveShadow.ToString());
-            xmlNode.SetAttribute("showBoundingBox", showBoundingBox.ToString());
-            xmlNode.SetAttribute("useInternalMaterials", useInternalMaterials.ToString());
-            xmlNode.SetAttribute("offsetToOrigin", offsetToOrigin.ToString());
+            xmlNode.SetAttribute("Enabled", enabled.ToString());
+            xmlNode.SetAttribute("UseLighting", useLighting.ToString());
+            xmlNode.SetAttribute("CastShadow", castShadow.ToString());
+            xmlNode.SetAttribute("ReceiveShadow", receiveShadow.ToString());
+            xmlNode.SetAttribute("ShowBoundingBox", showBoundingBox.ToString());
+            xmlNode.SetAttribute("UseInternalMaterials", useInternalMaterials.ToString());
+            xmlNode.SetAttribute("OffsetToOrigin", offsetToOrigin.ToString());
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("enabled"))
-                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
-            if (xmlNode.HasAttribute("useLighting"))
-                useLighting = bool.Parse(xmlNode.GetAttribute("useLighting"));
-            if (xmlNode.HasAttribute("castShadow"))
-                castShadow = bool.Parse(xmlNode.GetAttribute("castShadow"));
-            if (xmlNode.HasAttribute("receiveShadow"))
-                receiveShadow = bool.Parse(xmlNode.GetAttribute("receiveShadow"));
-            if (xmlNode.HasAttribute("showBoundingBox"))
-                showBoundingBox = bool.Parse(xmlNode.GetAttribute("showBoundingBox"));
-            if (xmlNode.HasAttribute("useInternalMaterials"))
-                useInternalMaterials = bool.Parse(xmlNode.GetAttribute("useInternalMaterials"));
-            if (xmlNode.HasAttribute("offsetToOrigin"))
-                offsetToOrigin = bool.Parse(xmlNode.GetAttribute("offsetToOrigin"));
+            if (xmlNode.HasAttribute("Enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
+            if (xmlNode.HasAttribute("UseLighting"))
+                useLighting = bool.Parse(xmlNode.GetAttribute("UseLighting"));
+            if (xmlNode.HasAttribute("CastShadow"))
+                castShadow = bool.Parse(xmlNode.GetAttribute("CastShadow"));
+            if (xmlNode.HasAttribute("ReceiveShadow"))
+                receiveShadow = bool.Parse(xmlNode.GetAttribute("ReceiveShadow"));
+            if (xmlNode.HasAttribute("ShowBoundingBox"))
+                showBoundingBox = bool.Parse(xmlNode.GetAttribute("ShowBoundingBox"));
+            if (xmlNode.HasAttribute("UseInternalMaterials"))
+                useInternalMaterials = bool.Parse(xmlNode.GetAttribute("UseInternalMaterials"));
+            if (xmlNode.HasAttribute("OffsetToOrigin"))
+                offsetToOrigin = bool.Parse(xmlNode.GetAttribute("OffsetToOrigin"));
         }
 
         #endregion

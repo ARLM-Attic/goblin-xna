@@ -37,6 +37,8 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 using GoblinXNA.Physics;
+using GoblinXNA.Helpers;
+using System.Xml;
 
 namespace GoblinXNA.Physics.Havok
 {
@@ -104,7 +106,11 @@ namespace GoblinXNA.Physics.Havok
         public HavokPhysics.MotionType MotionType
         {
             get { return motionType; }
-            set { motionType = value; }
+            set 
+            { 
+                motionType = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -114,7 +120,11 @@ namespace GoblinXNA.Physics.Havok
         public HavokPhysics.CollidableQualityType QualityType
         {
             get { return qualityType; }
-            set { qualityType = value; }
+            set 
+            { 
+                qualityType = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -123,7 +133,11 @@ namespace GoblinXNA.Physics.Havok
         public float Friction
         {
             get { return friction; }
-            set { friction = value; }
+            set 
+            { 
+                friction = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -132,7 +146,11 @@ namespace GoblinXNA.Physics.Havok
         public float Restitution
         {
             get { return restitution; }
-            set { restitution = value; }
+            set 
+            { 
+                restitution = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -141,7 +159,11 @@ namespace GoblinXNA.Physics.Havok
         public float AllowedPenetrationDepth
         {
             get { return allowedPenetrationDepth; }
-            set { allowedPenetrationDepth = value; }
+            set 
+            { 
+                allowedPenetrationDepth = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -150,7 +172,11 @@ namespace GoblinXNA.Physics.Havok
         public float MaxLinearVelocity
         {
             get { return maxLinearVelocity; }
-            set { maxLinearVelocity = value; }
+            set 
+            {
+                maxLinearVelocity = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -159,7 +185,11 @@ namespace GoblinXNA.Physics.Havok
         public float MaxAngularVelocity
         {
             get { return maxAngularVelocity; }
-            set { maxAngularVelocity = value; }
+            set 
+            { 
+                maxAngularVelocity = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -168,7 +198,11 @@ namespace GoblinXNA.Physics.Havok
         public float ConvexRadius
         {
             get { return convexRadius; }
-            set { convexRadius = value; }
+            set 
+            { 
+                convexRadius = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -178,7 +212,11 @@ namespace GoblinXNA.Physics.Havok
         public float GravityFactor
         {
             get { return gravityFactor; }
-            set { gravityFactor = value; }
+            set 
+            { 
+                gravityFactor = value;
+                modified = true;
+            }
         }
 
         /// <summary>
@@ -270,6 +308,67 @@ namespace GoblinXNA.Physics.Havok
                 if (value)
                     motionType = HavokPhysics.MotionType.MOTION_KEYFRAMED;
             }
+        }
+
+        #endregion
+
+        #region Overriden Methods
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            xmlNode.SetAttribute("MotionType", motionType.ToString());
+            xmlNode.SetAttribute("QualityType", qualityType.ToString());
+            xmlNode.SetAttribute("Friction", friction.ToString());
+            xmlNode.SetAttribute("Restitution", restitution.ToString());
+            xmlNode.SetAttribute("AllowedPenetrationDepth", allowedPenetrationDepth.ToString());
+            xmlNode.SetAttribute("MaxLinearVelocity", maxLinearVelocity.ToString());
+            xmlNode.SetAttribute("MaxAngularVelocity", maxAngularVelocity.ToString());
+            xmlNode.SetAttribute("ConvexRadius", convexRadius.ToString());
+            xmlNode.SetAttribute("GravityFactor", gravityFactor.ToString());
+            xmlNode.SetAttribute("IsPhantom", isPhantom.ToString());
+
+            if (contactCallback != null)
+                xmlNode.SetAttribute("ContactCallback", contactCallback.Method.Name);
+            if (collisionStartCallback != null)
+                xmlNode.SetAttribute("CollisionStartCallback", collisionStartCallback.Method.Name);
+            if (collisionEndCallback != null)
+                xmlNode.SetAttribute("CollisionEndCallback", collisionEndCallback.Method.Name);
+            if (phantomEnterCallback != null)
+                xmlNode.SetAttribute("PhantomEnterCallback", phantomEnterCallback.Method.Name);
+            if (phantomLeaveCallback != null)
+                xmlNode.SetAttribute("PhantomEndCallback", phantomEnterCallback.Method.Name);
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("MotionType"))
+                motionType = (HavokPhysics.MotionType)Enum.Parse(typeof(HavokPhysics.MotionType),
+                    xmlNode.GetAttribute("MotionType"));
+            if (xmlNode.HasAttribute("QualityType"))
+                qualityType = (HavokPhysics.CollidableQualityType)Enum.Parse(
+                    typeof(HavokPhysics.CollidableQualityType), xmlNode.GetAttribute("QualityType"));
+            if (xmlNode.HasAttribute("Friction"))
+                friction = float.Parse(xmlNode.GetAttribute("Friction"));
+            if (xmlNode.HasAttribute("Restitution"))
+                restitution = float.Parse(xmlNode.GetAttribute("Restitution"));
+            if (xmlNode.HasAttribute("AllowedPenetrationDepth"))
+                allowedPenetrationDepth = float.Parse(xmlNode.GetAttribute("AllowedPenetrationDepth"));
+            if (xmlNode.HasAttribute("MaxLinearVelocity"))
+                maxLinearVelocity = float.Parse(xmlNode.GetAttribute("MaxLinearVelocity"));
+            if (xmlNode.HasAttribute("MaxAngularVelocity"))
+                maxAngularVelocity = float.Parse(xmlNode.GetAttribute("MaxAngularVelocity"));
+            if (xmlNode.HasAttribute("ConvexRadius"))
+                convexRadius = float.Parse(xmlNode.GetAttribute("ConvexRadius"));
+            if (xmlNode.HasAttribute("GravityFactor"))
+                gravityFactor = float.Parse(xmlNode.GetAttribute("GravityFactor"));
+            if (xmlNode.HasAttribute("IsPhantom"))
+                isPhantom = bool.Parse(xmlNode.GetAttribute("IsPhantom"));
         }
 
         #endregion

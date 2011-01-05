@@ -363,34 +363,34 @@ namespace GoblinXNA.Graphics
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("lightType", lightType.ToString());
-            xmlNode.SetAttribute("enabled", enabled.ToString());
-            xmlNode.SetAttribute("diffuse", diffuse.ToString());
-            xmlNode.SetAttribute("specular", specular.ToString());
+            xmlNode.SetAttribute("LightType", lightType.ToString());
+            xmlNode.SetAttribute("Enabled", enabled.ToString());
+            xmlNode.SetAttribute("Diffuse", diffuse.ToString());
+            xmlNode.SetAttribute("Specular", specular.ToString());
 
             if (lightType == LightType.Point)
             {
-                xmlNode.SetAttribute("position", position.ToString());
-                xmlNode.SetAttribute("attenuation0", attenuation0.ToString());
-                xmlNode.SetAttribute("attenuation1", attenuation1.ToString());
-                xmlNode.SetAttribute("attenuation2", attenuation2.ToString());
-                xmlNode.SetAttribute("range", range.ToString());
+                xmlNode.SetAttribute("Position", position.ToString());
+                xmlNode.SetAttribute("Attenuation0", attenuation0.ToString());
+                xmlNode.SetAttribute("Attenuation1", attenuation1.ToString());
+                xmlNode.SetAttribute("Attenuation2", attenuation2.ToString());
+                xmlNode.SetAttribute("Range", range.ToString());
             }
             else if (lightType == LightType.Directional)
             {
-                xmlNode.SetAttribute("direction", direction.ToString());
+                xmlNode.SetAttribute("Direction", direction.ToString());
             }
             else
             {
-                xmlNode.SetAttribute("position", position.ToString());
-                xmlNode.SetAttribute("direction", direction.ToString());
-                xmlNode.SetAttribute("attenuation0", attenuation0.ToString());
-                xmlNode.SetAttribute("attenuation1", attenuation1.ToString());
-                xmlNode.SetAttribute("attenuation2", attenuation2.ToString());
-                xmlNode.SetAttribute("range", range.ToString());
-                xmlNode.SetAttribute("falloff", falloff.ToString());
-                xmlNode.SetAttribute("innerConeAngle", innerConeAngle.ToString());
-                xmlNode.SetAttribute("outerConeAngle", outerConeAngle.ToString());
+                xmlNode.SetAttribute("Position", position.ToString());
+                xmlNode.SetAttribute("Direction", direction.ToString());
+                xmlNode.SetAttribute("Attenuation0", attenuation0.ToString());
+                xmlNode.SetAttribute("Attenuation1", attenuation1.ToString());
+                xmlNode.SetAttribute("Attenuation2", attenuation2.ToString());
+                xmlNode.SetAttribute("Range", range.ToString());
+                xmlNode.SetAttribute("Falloff", falloff.ToString());
+                xmlNode.SetAttribute("InnerConeAngle", innerConeAngle.ToString());
+                xmlNode.SetAttribute("OuterConeAngle", outerConeAngle.ToString());
             }
 
             return xmlNode;
@@ -398,53 +398,53 @@ namespace GoblinXNA.Graphics
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("lightType"))
-                lightType = (LightType)Enum.Parse(typeof(LightType), xmlNode.GetAttribute("lightType"));
-            if (xmlNode.HasAttribute("enabled"))
-                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
-            if (xmlNode.HasAttribute("diffuse"))
-                diffuse = Vector4Helper.FromString(xmlNode.GetAttribute("diffuse"));
-            if (xmlNode.HasAttribute("specular"))
-                specular = Vector4Helper.FromString(xmlNode.GetAttribute("specular"));
+            if (xmlNode.HasAttribute("LightType"))
+                lightType = (LightType)Enum.Parse(typeof(LightType), xmlNode.GetAttribute("LightType"));
+            if (xmlNode.HasAttribute("Enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
+            if (xmlNode.HasAttribute("Diffuse"))
+                diffuse = Vector4Helper.FromString(xmlNode.GetAttribute("Diffuse"));
+            if (xmlNode.HasAttribute("Specular"))
+                specular = Vector4Helper.FromString(xmlNode.GetAttribute("Specular"));
 
             if (lightType == LightType.Point)
             {
-                if (xmlNode.HasAttribute("position"))
-                    position = Vector3Helper.FromString(xmlNode.GetAttribute("position"));
-                if (xmlNode.HasAttribute("attenuation0"))
-                    attenuation0 = float.Parse(xmlNode.GetAttribute("attenuation0"));
-                if (xmlNode.HasAttribute("attenuation1"))
-                    attenuation1 = float.Parse(xmlNode.GetAttribute("attenuation1"));
-                if (xmlNode.HasAttribute("attenuation2"))
-                    attenuation2 = float.Parse(xmlNode.GetAttribute("attenuation2"));
-                if (xmlNode.HasAttribute("range"))
-                    range = float.Parse(xmlNode.GetAttribute("range"));
+                if (xmlNode.HasAttribute("Position"))
+                    position = Vector3Helper.FromString(xmlNode.GetAttribute("Position"));
+                if (xmlNode.HasAttribute("Attenuation0"))
+                    attenuation0 = float.Parse(xmlNode.GetAttribute("Attenuation0"));
+                if (xmlNode.HasAttribute("Attenuation1"))
+                    attenuation1 = float.Parse(xmlNode.GetAttribute("Attenuation1"));
+                if (xmlNode.HasAttribute("Attenuation2"))
+                    attenuation2 = float.Parse(xmlNode.GetAttribute("Attenuation2"));
+                if (xmlNode.HasAttribute("Range"))
+                    range = float.Parse(xmlNode.GetAttribute("Range"));
             }
             else if (lightType == LightType.Directional)
             {
-                if (xmlNode.HasAttribute("direction"))
-                    direction = Vector3Helper.FromString(xmlNode.GetAttribute("direction"));
+                if (xmlNode.HasAttribute("Direction"))
+                    direction = Vector3Helper.FromString(xmlNode.GetAttribute("Direction"));
             }
             else
             {
-                if (xmlNode.HasAttribute("position"))
-                    position = Vector3Helper.FromString(xmlNode.GetAttribute("position"));
-                if (xmlNode.HasAttribute("direction"))
-                    direction = Vector3Helper.FromString(xmlNode.GetAttribute("direction"));
-                if (xmlNode.HasAttribute("attenuation0"))
-                    attenuation0 = float.Parse(xmlNode.GetAttribute("attenuation0"));
-                if (xmlNode.HasAttribute("attenuation1"))
-                    attenuation1 = float.Parse(xmlNode.GetAttribute("attenuation1"));
-                if (xmlNode.HasAttribute("attenuation2"))
-                    attenuation2 = float.Parse(xmlNode.GetAttribute("attenuation2"));
-                if (xmlNode.HasAttribute("range"))
-                    range = float.Parse(xmlNode.GetAttribute("range"));
-                if (xmlNode.HasAttribute("falloff"))
-                    falloff = float.Parse(xmlNode.GetAttribute("falloff"));
-                if (xmlNode.HasAttribute("innerConeAngle"))
-                    innerConeAngle = float.Parse(xmlNode.GetAttribute("innerConeAngle"));
-                if (xmlNode.HasAttribute("outerConeAngle"))
-                    outerConeAngle = float.Parse(xmlNode.GetAttribute("outerConeAngle"));
+                if (xmlNode.HasAttribute("Position"))
+                    position = Vector3Helper.FromString(xmlNode.GetAttribute("Position"));
+                if (xmlNode.HasAttribute("Direction"))
+                    direction = Vector3Helper.FromString(xmlNode.GetAttribute("Direction"));
+                if (xmlNode.HasAttribute("Attenuation0"))
+                    attenuation0 = float.Parse(xmlNode.GetAttribute("Attenuation0"));
+                if (xmlNode.HasAttribute("Attenuation1"))
+                    attenuation1 = float.Parse(xmlNode.GetAttribute("Attenuation1"));
+                if (xmlNode.HasAttribute("Attenuation2"))
+                    attenuation2 = float.Parse(xmlNode.GetAttribute("Attenuation2"));
+                if (xmlNode.HasAttribute("Range"))
+                    range = float.Parse(xmlNode.GetAttribute("Range"));
+                if (xmlNode.HasAttribute("Falloff"))
+                    falloff = float.Parse(xmlNode.GetAttribute("Falloff"));
+                if (xmlNode.HasAttribute("InnerConeAngle"))
+                    innerConeAngle = float.Parse(xmlNode.GetAttribute("InnerConeAngle"));
+                if (xmlNode.HasAttribute("OuterConeAngle"))
+                    outerConeAngle = float.Parse(xmlNode.GetAttribute("OuterConeAngle"));
             }
         }
 

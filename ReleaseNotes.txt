@@ -1,5 +1,44 @@
 Goblin XNA Release Notes
 
+Version 3.5.1 (1/04/11)
+
+
+Updates:
+
+1, Updated the user manual to version 3.5.1
+
+2. Added RenderLeftView property to indicate whether the scene graph is currently rendering the left eye view in
+   stereo mode. (Note: This property is always true if you're not using stereo mode)
+
+
+Bug Fixes:
+
+1. Fixed a transformation problem when repeatedly adding and removing a GeometryNode to a physics engine by setting
+   GeometryNode.AddToPhysicsEngine to true and false in turns.
+
+2. Fixed model offset problem when IModel.OffsetToOrigin is set to true. It was offseting to the opposite direction.
+
+3. Fixed AABB and CollisionMesh line drawings in AR. I forgot to multiply the marker transforms after changing to
+   LineShader based line drawing.
+
+4. Fixed DeviceEnumerator to properly dispose additionalDevices and additional6DOFDevices list when Dispose() is 
+   called. 
+
+
+Changes:
+
+1. Updated SceneGraphDisplay code for line drawing using LineShader. 
+
+2. Modified NewtonPhysics not to redundantly re-calculate the collision shape when only the transform is modified by
+   TransformNode (the collision shape is re-calculated if the scaling changes, but not translation or rotation).
+
+3. Updated the frustum culling for stereoscropic view to cull geometries that are outside of each eye independently. 
+   It was rendering geometries that are within either eye's view for both eyes before, but it's optimized now.
+
+4. Capitalized the attribute names when saving and loading scene graph nodes. 
+
+
+
 Version 3.5 (10/01/10)
 
 

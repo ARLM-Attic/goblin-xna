@@ -73,6 +73,11 @@ namespace GoblinXNA.Network
         bool Ordered { get; set; }
 
         /// <summary>
+        /// Gets or sets the channel used to transfer this network object.
+        /// </summary>
+        //int Channel { get; set; }
+
+        /// <summary>
         /// Gets or sets the frequency to send information in terms of Hz. For example,
         /// 2 Hz means send twice per second, and 60 Hz means send 60 times per second.
         /// </summary>

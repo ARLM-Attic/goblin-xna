@@ -171,11 +171,11 @@ namespace GoblinXNA.SceneGraph
 
             XmlElement networkNode = xmlDoc.CreateElement(System.ComponentModel.TypeDescriptor.GetClassName(this));
 
-            networkNode.SetAttribute("reliable", reliable.ToString());
-            networkNode.SetAttribute("ordered", ordered.ToString());
-            networkNode.SetAttribute("hold", hold.ToString());
-            networkNode.SetAttribute("sendFrequencyInHertz", sendFrequencyInHertz.ToString());
-            networkNode.SetAttribute("requiresPrecision", requiresPrecision.ToString());
+            networkNode.SetAttribute("Reliable", reliable.ToString());
+            networkNode.SetAttribute("Ordered", ordered.ToString());
+            networkNode.SetAttribute("Hold", hold.ToString());
+            networkNode.SetAttribute("SendFrequencyInHertz", sendFrequencyInHertz.ToString());
+            networkNode.SetAttribute("RequiresPrecision", requiresPrecision.ToString());
 
             xmlNode.AppendChild(networkNode);
 
@@ -192,16 +192,16 @@ namespace GoblinXNA.SceneGraph
 
             XmlElement networkNode = (XmlElement)xmlNode.LastChild;
 
-            if (networkNode.HasAttribute("reliable"))
-                reliable = bool.Parse(networkNode.GetAttribute("reliable"));
-            if (networkNode.HasAttribute("ordered"))
-                ordered = bool.Parse(networkNode.GetAttribute("ordered"));
-            if (networkNode.HasAttribute("hold"))
-                hold = bool.Parse(networkNode.GetAttribute("hold"));
-            if (networkNode.HasAttribute("sendFrequencyInHertz"))
-                sendFrequencyInHertz = int.Parse(networkNode.GetAttribute("sendFrequencyInHertz"));
-            if (networkNode.HasAttribute("requiresPrecision"))
-                requiresPrecision = bool.Parse(networkNode.GetAttribute("requiresPrecision"));
+            if (networkNode.HasAttribute("Reliable"))
+                reliable = bool.Parse(networkNode.GetAttribute("Reliable"));
+            if (networkNode.HasAttribute("Ordered"))
+                ordered = bool.Parse(networkNode.GetAttribute("Ordered"));
+            if (networkNode.HasAttribute("Hold"))
+                hold = bool.Parse(networkNode.GetAttribute("Hold"));
+            if (networkNode.HasAttribute("SendFrequencyInHertz"))
+                sendFrequencyInHertz = int.Parse(networkNode.GetAttribute("SendFrequencyInHertz"));
+            if (networkNode.HasAttribute("RequiresPrecision"))
+                requiresPrecision = bool.Parse(networkNode.GetAttribute("RequiresPrecision"));
         }
 
         #endregion

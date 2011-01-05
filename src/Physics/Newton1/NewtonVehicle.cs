@@ -452,12 +452,12 @@ namespace GoblinXNA.Physics.Newton1
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("pickable", pickable.ToString());
-            xmlNode.SetAttribute("collidable", collidable.ToString());
-            xmlNode.SetAttribute("interactable", interactable.ToString());
-            xmlNode.SetAttribute("applyGravity", applyGravity.ToString());
-            xmlNode.SetAttribute("manipulatable", manipulatable.ToString());
-            xmlNode.SetAttribute("neverDeactivate", neverDeactivate.ToString());
+            xmlNode.SetAttribute("Pickable", pickable.ToString());
+            xmlNode.SetAttribute("Collidable", collidable.ToString());
+            xmlNode.SetAttribute("Interactable", interactable.ToString());
+            xmlNode.SetAttribute("ApplyGravity", applyGravity.ToString());
+            xmlNode.SetAttribute("Manipulatable", manipulatable.ToString());
+            xmlNode.SetAttribute("NeverDeactivate", neverDeactivate.ToString());
 
             return xmlNode;
         }

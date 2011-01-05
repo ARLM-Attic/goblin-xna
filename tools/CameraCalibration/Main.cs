@@ -131,7 +131,7 @@ namespace CameraCalibration
         private void SetupCalibration()
         {
             captureDevice = new DirectShowCapture();
-            captureDevice.InitVideoCapture(1, FrameRate._30Hz, Resolution._640x480,
+            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
 
             // Add this video capture device to the scene so that it can be used for

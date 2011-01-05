@@ -51,6 +51,30 @@ namespace GoblinXNA.Sounds
 
         #region Properties
 
+        /// <summary>
+        /// Gets the audio engine.
+        /// </summary>
+        public static AudioEngine AudioEngine
+        {
+            get { return audioEngine; }
+        }
+
+        /// <summary>
+        /// Gets the wave bank.
+        /// </summary>
+        public static WaveBank WaveBank
+        {
+            get { return waveBank; }
+        }
+
+        /// <summary>
+        /// Gets the sound bank.
+        /// </summary>
+        public static SoundBank SoundBank
+        {
+            get { return soundBank; }
+        }
+
         #endregion
 
         #region Public Static Methods

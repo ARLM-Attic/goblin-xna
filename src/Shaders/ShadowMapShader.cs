@@ -39,7 +39,7 @@ namespace GoblinXNA.Shaders
         /// <summary>
         /// Restrict near and far plane for much better depth resolution!
         /// </summary>
-        internal float
+        protected float
             shadowNearPlane = 1.0f,//1.0f,//2.0f,
             shadowFarPlane = 1.0f * 28;//42.0f;//32.0f;//16.0f;//6.0f;
 
@@ -47,7 +47,7 @@ namespace GoblinXNA.Shaders
         /// Virtual point light parameters for directional shadow map lighting.
         /// Used to create a point light position for the directional light.
         /// </summary>
-        internal float
+        protected float
             virtualLightDistance = 24,
             virtualVisibleRange = 23.5f;
 
@@ -90,19 +90,19 @@ namespace GoblinXNA.Shaders
         /// <summary>
         /// Compare depth bias
         /// </summary>
-        internal float compareDepthBias = 0.00025f;
+        protected float compareDepthBias = 0.00025f;
 
         /// <summary>
         /// Tex extra scale
         /// </summary>
         /// <returns>1.0f</returns>
-        internal float texExtraScale = 1.0f;//1.0015f;//1.0075f;
+        protected float texExtraScale = 1.0f;//1.0015f;//1.0075f;
 
         /// <summary>
         /// Shadow map depth bias value
         /// </summary>
         /// <returns>+</returns>
-        internal float shadowMapDepthBiasValue = 0.00025f;
+        protected float shadowMapDepthBiasValue = 0.00025f;
 
         /// <summary>
         /// The matrix to convert proj screen coordinates in the -1..1 range
@@ -113,12 +113,12 @@ namespace GoblinXNA.Shaders
         /// <summary>
         /// Used matrices for the light casting the shadows.
         /// </summary>
-        internal Matrix lightProjectionMatrix, lightViewMatrix;
+        protected Matrix lightProjectionMatrix, lightViewMatrix;
 
         /// <summary>
         /// Additional effect handles
         /// </summary>
-        private EffectParameter
+        protected EffectParameter
             shadowTexTransform,
             worldViewProjLight,
             nearPlane,
@@ -211,18 +211,6 @@ namespace GoblinXNA.Shaders
             if (shadowDistanceFadeoutTexture != null)
                 shadowDistanceFadeoutTexture.SetValue(
                     new Texture("ShadowDistanceFadeoutMap").XnaTexture);
-        } // GetParameters()
-        #endregion
-
-        #region Update parameters
-        /// <summary>
-        /// Update parameters
-        /// </summary>
-        public override void SetParameters(Material material)
-        {
-            // Can't set parameters if loading failed!
-            if (effect == null)
-                return;
 
             shadowNearPlane = 1.0f;
             shadowFarPlane = 6.25f * 28 * 1.25f * 8;
@@ -244,8 +232,6 @@ namespace GoblinXNA.Shaders
                 shadowMapDepthBiasValue = 0.0035f;//0.0025f;
             } // else
 
-            base.SetParameters(material);
-
             // Set all extra parameters for this shader
             depthBias.SetValue(compareDepthBias);
             shadowMapDepthBias.SetValue(shadowMapDepthBiasValue);
@@ -253,7 +239,10 @@ namespace GoblinXNA.Shaders
                 new Vector2(texelWidth, texelHeight));
             nearPlane.SetValue(shadowNearPlane);
             farPlane.SetValue(shadowFarPlane);
-        } // UpdateShadowParameters()
+        } // GetParameters()
+        #endregion
+
+        #region Update parameters
 
         public override void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
         {

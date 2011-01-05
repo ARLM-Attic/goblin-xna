@@ -903,88 +903,88 @@ namespace GoblinXNA.Graphics.ParticleEffects
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("enabled", enabled.ToString());
-            xmlNode.SetAttribute("textureName", textureName);
-            xmlNode.SetAttribute("maxParticles", maxParticles.ToString());
-            xmlNode.SetAttribute("duration", duration.TotalMilliseconds.ToString());
-            xmlNode.SetAttribute("durationRandomness", durationRandomness.ToString());
-            xmlNode.SetAttribute("emitterVelocitySensitivity", emitterVelocitySensitivity.ToString());
-            xmlNode.SetAttribute("minHorizontalVelocity", minHorizontalVelocity.ToString());
-            xmlNode.SetAttribute("maxHorizontalVelocity", maxHorizontalVelocity.ToString());
-            xmlNode.SetAttribute("minVerticalVelocity", minVerticalVelocity.ToString());
-            xmlNode.SetAttribute("maxVerticalVelocity", maxVerticalVelocity.ToString());
-            xmlNode.SetAttribute("gravity", gravity.ToString());
-            xmlNode.SetAttribute("endVelocity", endVelocity.ToString());
-            xmlNode.SetAttribute("minColor", minColor.ToString());
-            xmlNode.SetAttribute("maxColor", maxColor.ToString());
-            xmlNode.SetAttribute("minRotateSpeed", minRotateSpeed.ToString());
-            xmlNode.SetAttribute("maxRotateSpeed", maxRotateSpeed.ToString());
-            xmlNode.SetAttribute("minStartSize", minStartSize.ToString());
-            xmlNode.SetAttribute("maxStartSize", maxStartSize.ToString());
-            xmlNode.SetAttribute("minEndSize", minEndSize.ToString());
-            xmlNode.SetAttribute("maxEndSize", maxEndSize.ToString());
-            xmlNode.SetAttribute("sourceBlend", sourceBlend.ToString());
-            xmlNode.SetAttribute("destinationBlend", destinationBlend.ToString());
-            xmlNode.SetAttribute("drawOrder", drawOrder.ToString());
-            xmlNode.SetAttribute("shader", TypeDescriptor.GetClassName(shader));
+            xmlNode.SetAttribute("Enabled", enabled.ToString());
+            xmlNode.SetAttribute("TextureName", textureName);
+            xmlNode.SetAttribute("MaxParticles", maxParticles.ToString());
+            xmlNode.SetAttribute("Duration", duration.TotalMilliseconds.ToString());
+            xmlNode.SetAttribute("DurationRandomness", durationRandomness.ToString());
+            xmlNode.SetAttribute("EmitterVelocitySensitivity", emitterVelocitySensitivity.ToString());
+            xmlNode.SetAttribute("MinHorizontalVelocity", minHorizontalVelocity.ToString());
+            xmlNode.SetAttribute("MaxHorizontalVelocity", maxHorizontalVelocity.ToString());
+            xmlNode.SetAttribute("MinVerticalVelocity", minVerticalVelocity.ToString());
+            xmlNode.SetAttribute("MaxVerticalVelocity", maxVerticalVelocity.ToString());
+            xmlNode.SetAttribute("Gravity", gravity.ToString());
+            xmlNode.SetAttribute("EndVelocity", endVelocity.ToString());
+            xmlNode.SetAttribute("MinColor", minColor.ToString());
+            xmlNode.SetAttribute("MaxColor", maxColor.ToString());
+            xmlNode.SetAttribute("MinRotateSpeed", minRotateSpeed.ToString());
+            xmlNode.SetAttribute("MaxRotateSpeed", maxRotateSpeed.ToString());
+            xmlNode.SetAttribute("MinStartSize", minStartSize.ToString());
+            xmlNode.SetAttribute("MaxStartSize", maxStartSize.ToString());
+            xmlNode.SetAttribute("MinEndSize", minEndSize.ToString());
+            xmlNode.SetAttribute("MaxEndSize", maxEndSize.ToString());
+            xmlNode.SetAttribute("SourceBlend", sourceBlend.ToString());
+            xmlNode.SetAttribute("DestinationBlend", destinationBlend.ToString());
+            xmlNode.SetAttribute("DrawOrder", drawOrder.ToString());
+            xmlNode.SetAttribute("Shader", TypeDescriptor.GetClassName(shader));
             if (shaderTechnique.Length > 0)
-                xmlNode.SetAttribute("shaderTechnique", shaderTechnique);
+                xmlNode.SetAttribute("ShaderTechnique", shaderTechnique);
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("enabled"))
-                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
-            if (xmlNode.HasAttribute("textureName"))
-                textureName = xmlNode.GetAttribute("textureName");
-            if (xmlNode.HasAttribute("maxParticles"))
-                MaxParticles = int.Parse(xmlNode.GetAttribute("maxParticles"));
-            if (xmlNode.HasAttribute("duration"))
-                duration = TimeSpan.FromMilliseconds(double.Parse(xmlNode.GetAttribute("duration")));
-            if (xmlNode.HasAttribute("durationRandomness"))
-                durationRandomness = float.Parse(xmlNode.GetAttribute("durationRandomness"));
-            if (xmlNode.HasAttribute("emitterVelocitySensitivity"))
-                emitterVelocitySensitivity = float.Parse(xmlNode.GetAttribute("emitterVelocitySensitivity"));
-            if (xmlNode.HasAttribute("minHorizontalVelocity"))
-                minHorizontalVelocity = float.Parse(xmlNode.GetAttribute("minHorizontalVelocity"));
-            if (xmlNode.HasAttribute("maxHorizontalVelocity"))
-                maxHorizontalVelocity = float.Parse(xmlNode.GetAttribute("maxHorizontalVelocity"));
-            if (xmlNode.HasAttribute("minVerticalVelocity"))
-                minVerticalVelocity = float.Parse(xmlNode.GetAttribute("minVerticalVelocity"));
-            if (xmlNode.HasAttribute("maxVerticalVelocity"))
-                maxVerticalVelocity = float.Parse(xmlNode.GetAttribute("maxVerticalVelocity"));
-            if (xmlNode.HasAttribute("gravity"))
-                gravity = Vector3Helper.FromString(xmlNode.GetAttribute("gravity"));
-            if (xmlNode.HasAttribute("endVelocity"))
-                endVelocity = float.Parse(xmlNode.GetAttribute("endVelocity"));
-            if (xmlNode.HasAttribute("minColor"))
-                minColor = ColorHelper.FromString(xmlNode.GetAttribute("minColor"));
-            if (xmlNode.HasAttribute("maxColor"))
-                maxColor = ColorHelper.FromString(xmlNode.GetAttribute("maxColor"));
-            if (xmlNode.HasAttribute("minRotateSpeed"))
-                minRotateSpeed = float.Parse(xmlNode.GetAttribute("minRotateSpeed"));
-            if (xmlNode.HasAttribute("maxRotateSpeed"))
-                maxRotateSpeed = float.Parse(xmlNode.GetAttribute("maxRotateSpeed"));
-            if (xmlNode.HasAttribute("minStartSize"))
-                minStartSize = float.Parse(xmlNode.GetAttribute("minStartSize"));
-            if (xmlNode.HasAttribute("maxStartSize"))
-                maxStartSize = float.Parse(xmlNode.GetAttribute("maxStartSize"));
-            if (xmlNode.HasAttribute("minEndSize"))
-                minEndSize = float.Parse(xmlNode.GetAttribute("minEndSize"));
-            if (xmlNode.HasAttribute("maxEndSize"))
-                maxEndSize = float.Parse(xmlNode.GetAttribute("maxEndSize"));
-            if (xmlNode.HasAttribute("sourceBlend"))
-                sourceBlend = (Blend)Enum.Parse(typeof(Blend), xmlNode.GetAttribute("sourceBlend"));
-            if (xmlNode.HasAttribute("destinationBlend"))
-                destinationBlend = (Blend)Enum.Parse(typeof(Blend), xmlNode.GetAttribute("destinationBlend"));
-            if (xmlNode.HasAttribute("drawOrder"))
-                drawOrder = int.Parse(xmlNode.GetAttribute("drawOrder"));
-            if (xmlNode.HasAttribute("shader"))
-                shader = (IShader)Activator.CreateInstance(Type.GetType(xmlNode.GetAttribute("shader")));
-            if (xmlNode.HasAttribute("shaderTechnique"))
-                shaderTechnique = xmlNode.GetAttribute("shaderTechnique");
+            if (xmlNode.HasAttribute("Enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
+            if (xmlNode.HasAttribute("TextureName"))
+                textureName = xmlNode.GetAttribute("TextureName");
+            if (xmlNode.HasAttribute("MaxParticles"))
+                MaxParticles = int.Parse(xmlNode.GetAttribute("MaxParticles"));
+            if (xmlNode.HasAttribute("Duration"))
+                duration = TimeSpan.FromMilliseconds(double.Parse(xmlNode.GetAttribute("Duration")));
+            if (xmlNode.HasAttribute("DurationRandomness"))
+                durationRandomness = float.Parse(xmlNode.GetAttribute("DurationRandomness"));
+            if (xmlNode.HasAttribute("EmitterVelocitySensitivity"))
+                emitterVelocitySensitivity = float.Parse(xmlNode.GetAttribute("EmitterVelocitySensitivity"));
+            if (xmlNode.HasAttribute("MinHorizontalVelocity"))
+                minHorizontalVelocity = float.Parse(xmlNode.GetAttribute("MinHorizontalVelocity"));
+            if (xmlNode.HasAttribute("MaxHorizontalVelocity"))
+                maxHorizontalVelocity = float.Parse(xmlNode.GetAttribute("MaxHorizontalVelocity"));
+            if (xmlNode.HasAttribute("MinVerticalVelocity"))
+                minVerticalVelocity = float.Parse(xmlNode.GetAttribute("MinVerticalVelocity"));
+            if (xmlNode.HasAttribute("MaxVerticalVelocity"))
+                maxVerticalVelocity = float.Parse(xmlNode.GetAttribute("MaxVerticalVelocity"));
+            if (xmlNode.HasAttribute("Gravity"))
+                gravity = Vector3Helper.FromString(xmlNode.GetAttribute("Gravity"));
+            if (xmlNode.HasAttribute("EndVelocity"))
+                endVelocity = float.Parse(xmlNode.GetAttribute("EndVelocity"));
+            if (xmlNode.HasAttribute("MinColor"))
+                minColor = ColorHelper.FromString(xmlNode.GetAttribute("MinColor"));
+            if (xmlNode.HasAttribute("MaxColor"))
+                maxColor = ColorHelper.FromString(xmlNode.GetAttribute("MaxColor"));
+            if (xmlNode.HasAttribute("MinRotateSpeed"))
+                minRotateSpeed = float.Parse(xmlNode.GetAttribute("MinRotateSpeed"));
+            if (xmlNode.HasAttribute("MaxRotateSpeed"))
+                maxRotateSpeed = float.Parse(xmlNode.GetAttribute("MaxRotateSpeed"));
+            if (xmlNode.HasAttribute("MinStartSize"))
+                minStartSize = float.Parse(xmlNode.GetAttribute("MinStartSize"));
+            if (xmlNode.HasAttribute("MaxStartSize"))
+                maxStartSize = float.Parse(xmlNode.GetAttribute("MaxStartSize"));
+            if (xmlNode.HasAttribute("MinEndSize"))
+                minEndSize = float.Parse(xmlNode.GetAttribute("MinEndSize"));
+            if (xmlNode.HasAttribute("MaxEndSize"))
+                maxEndSize = float.Parse(xmlNode.GetAttribute("MaxEndSize"));
+            if (xmlNode.HasAttribute("SourceBlend"))
+                sourceBlend = (Blend)Enum.Parse(typeof(Blend), xmlNode.GetAttribute("SourceBlend"));
+            if (xmlNode.HasAttribute("DestinationBlend"))
+                destinationBlend = (Blend)Enum.Parse(typeof(Blend), xmlNode.GetAttribute("DestinationBlend"));
+            if (xmlNode.HasAttribute("DrawOrder"))
+                drawOrder = int.Parse(xmlNode.GetAttribute("DrawOrder"));
+            if (xmlNode.HasAttribute("Shader"))
+                shader = (IShader)Activator.CreateInstance(Type.GetType(xmlNode.GetAttribute("Shader")));
+            if (xmlNode.HasAttribute("ShaderTechnique"))
+                shaderTechnique = xmlNode.GetAttribute("ShaderTechnique");
         }
 
         #endregion

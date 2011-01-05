@@ -686,6 +686,9 @@ namespace SceneGraphDisplay
         /// </summary>
         public void UpdatePickedObjectDrawing()
         {
+            if (State.LineManager == null)
+                throw new GoblinException("You need to initialize State.LineManager");
+
             if (CurrentPickedGeometryNode != null)
             {
                 CurrentPickedGeometryNode.ShowBoundingVolume = true;
@@ -703,33 +706,19 @@ namespace SceneGraphDisplay
                 Vector3 maxMinY = (new Vector3(max.X, min.Y, max.Z));
                 Vector3 maxMinZ = (new Vector3(max.X, max.Y, min.Z));
 
-                VertexPositionColor[] verts = new VertexPositionColor[8];
-                verts[0] = new VertexPositionColor(min, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[1] = new VertexPositionColor(max, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[2] = new VertexPositionColor(minMaxX, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[3] = new VertexPositionColor(minMaxY, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[4] = new VertexPositionColor(minMaxZ, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[5] = new VertexPositionColor(maxMinX, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[6] = new VertexPositionColor(maxMinY, Microsoft.Xna.Framework.Graphics.Color.White);
-                verts[7] = new VertexPositionColor(maxMinZ, Microsoft.Xna.Framework.Graphics.Color.White);
-
-                short[] indecies = new short[24];
-
-                indecies[0] = 0; indecies[1] = 2;
-                indecies[2] = 0; indecies[3] = 3;
-                indecies[4] = 0; indecies[5] = 4;
-                indecies[6] = 1; indecies[7] = 5;
-                indecies[8] = 1; indecies[9] = 6;
-                indecies[10] = 1; indecies[11] = 7;
-                indecies[12] = 3; indecies[13] = 5;
-                indecies[14] = 3; indecies[15] = 7;
-                indecies[16] = 4; indecies[17] = 5;
-                indecies[18] = 4; indecies[19] = 6;
-                indecies[20] = 2; indecies[21] = 6;
-                indecies[22] = 2; indecies[23] = 7;
-
-                State.BoundingBoxShader.Render(CurrentPickedGeometryNode.WorldTransformation, "",
-                    delegate { State.Device.DrawUserIndexedPrimitives<VertexPositionColor>(PrimitiveType.LineList, verts, 0, 8, indecies, 0, 12); });
+                Microsoft.Xna.Framework.Graphics.Color color = Microsoft.Xna.Framework.Graphics.Color.Red;
+                State.LineManager.AddLine(min, minMaxX, color);
+                State.LineManager.AddLine(min, minMaxY, color);
+                State.LineManager.AddLine(min, minMaxZ, color);
+                State.LineManager.AddLine(max, maxMinX, color);
+                State.LineManager.AddLine(max, maxMinY, color);
+                State.LineManager.AddLine(max, maxMinZ, color);
+                State.LineManager.AddLine(minMaxY, maxMinX, color);
+                State.LineManager.AddLine(minMaxY, maxMinZ, color);
+                State.LineManager.AddLine(minMaxZ, maxMinX, color);
+                State.LineManager.AddLine(minMaxZ, maxMinY, color);
+                State.LineManager.AddLine(minMaxX, maxMinY, color);
+                State.LineManager.AddLine(minMaxX, maxMinZ, color);
             }
         }
 

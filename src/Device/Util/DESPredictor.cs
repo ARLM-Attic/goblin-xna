@@ -231,34 +231,34 @@ namespace GoblinXNA.Device.Util
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("transAlpha", transAlpha.ToString());
-            xmlNode.SetAttribute("rotAlpha", rotAlpha.ToString());
-            xmlNode.SetAttribute("delta", delta.ToString());
+            xmlNode.SetAttribute("TransAlpha", transAlpha.ToString());
+            xmlNode.SetAttribute("RotAlpha", rotAlpha.ToString());
+            xmlNode.SetAttribute("Delta", delta.ToString());
 
             if (transThreshold != -1)
-                xmlNode.SetAttribute("transThreshold", transThreshold.ToString());
+                xmlNode.SetAttribute("TransThreshold", transThreshold.ToString());
             if (rotThreshold != -1)
-                xmlNode.SetAttribute("rotThreshold", rotThreshold.ToString());
+                xmlNode.SetAttribute("RotThreshold", rotThreshold.ToString());
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("transAlpha"))
-                transAlpha = float.Parse(xmlNode.GetAttribute("transAlpha"));
-            if (xmlNode.HasAttribute("rotAlpha"))
-                rotAlpha = float.Parse(xmlNode.GetAttribute("rotAlpha"));
-            if (xmlNode.HasAttribute("delta"))
-                delta = int.Parse(xmlNode.GetAttribute("delta"));
+            if (xmlNode.HasAttribute("TransAlpha"))
+                transAlpha = float.Parse(xmlNode.GetAttribute("TransAlpha"));
+            if (xmlNode.HasAttribute("RotAlpha"))
+                rotAlpha = float.Parse(xmlNode.GetAttribute("RotAlpha"));
+            if (xmlNode.HasAttribute("Delta"))
+                delta = int.Parse(xmlNode.GetAttribute("Delta"));
 
             if (transAlpha <= 0 || transAlpha >= 1 || rotAlpha <= 0 || rotAlpha >= 1)
-                throw new GoblinException("alpha value has to be between 0.0f and 1.0f excluding 0 and 1");
+                throw new GoblinException("Alpha value has to be between 0.0f and 1.0f excluding 0 and 1");
 
-            if (xmlNode.HasAttribute("transThreshold"))
-                transThreshold = float.Parse(xmlNode.GetAttribute("transThreshold"));
-            if (xmlNode.HasAttribute("rotThreshold"))
-                rotThreshold = float.Parse(xmlNode.GetAttribute("rotThreshold"));
+            if (xmlNode.HasAttribute("TransThreshold"))
+                transThreshold = float.Parse(xmlNode.GetAttribute("TransThreshold"));
+            if (xmlNode.HasAttribute("RotThreshold"))
+                rotThreshold = float.Parse(xmlNode.GetAttribute("RotThreshold"));
         }
 
         #endregion

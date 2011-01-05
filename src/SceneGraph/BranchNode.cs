@@ -125,11 +125,13 @@ namespace GoblinXNA.SceneGraph
         public virtual void AddChild(Node node)
         {
             if (node.Parent != null)
-                throw new GoblinException("Node " + Name + " already has a parent");
+                throw new GoblinException(node.Name + " already has a parent");
             if (children.Contains(node))
                 throw new GoblinException("This child is already added to this node");
             if (node == this)
                 throw new GoblinException("You cannot add a node to itself");
+            if (node.Parent == this)
+                throw new GoblinException(Name + " already has " + node.Name + " as child");
 
             CheckForLoops(node);
 
@@ -248,7 +250,7 @@ namespace GoblinXNA.SceneGraph
             XmlElement xmlNode = base.Save(xmlDoc);
 
             if (prune)
-                xmlNode.SetAttribute("prune", prune.ToString());
+                xmlNode.SetAttribute("Prune", prune.ToString());
 
             return xmlNode;
         }
@@ -257,8 +259,8 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("prune"))
-                prune = bool.Parse(xmlNode.GetAttribute("prune"));
+            if (xmlNode.HasAttribute("Prune"))
+                prune = bool.Parse(xmlNode.GetAttribute("Prune"));
         }
 
         public override void Dispose()

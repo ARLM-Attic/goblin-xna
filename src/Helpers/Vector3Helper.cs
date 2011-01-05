@@ -139,6 +139,18 @@ namespace GoblinXNA.Helpers
             return vec3;
         }
 
+        public static Vector3 FromCommaSeparatedString(String strVal)
+        {
+            Vector3 vec3 = Vector3.Zero;
+
+            String[] vals = strVal.Split(',');
+            vec3.X = float.Parse(vals[0]);
+            vec3.Y = float.Parse(vals[1]);
+            vec3.Z = float.Parse(vals[2]);
+
+            return vec3;
+        }
+
         /// <summary>
         /// http://www.codeguru.com/forum/archive/index.php/t-329530.html
         /// 

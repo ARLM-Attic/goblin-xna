@@ -751,6 +751,21 @@ namespace GoblinXNA.Physics.Newton1
             Vector3 scale;
             newTransform.Decompose(out scale, out rot, out trans);
 
+            Matrix startTransform = Matrix.CreateFromQuaternion(rot);
+            if (physObj.Shape == ShapeType.Capsule ||
+                physObj.Shape == ShapeType.Cone ||
+                physObj.Shape == ShapeType.Cylinder ||
+                physObj.Shape == ShapeType.ChamferCylinder)
+                startTransform *= Matrix.CreateRotationZ(MathHelper.PiOver2);
+            startTransform.Translation = trans;
+
+            // if none of the physics properties are modified, then we only need to set the transform
+            if (!physObj.Modified && scaleTable[body].Equals(scale))
+            {
+                SetTransform(physObj, startTransform);
+                return;
+            }
+
             if (!scaleTable[body].Equals(scale) || physObj.ShapeModified)
             {
                 IntPtr collision = GetNewtonCollision(physObj, scale);
@@ -766,14 +781,6 @@ namespace GoblinXNA.Physics.Newton1
 
             // rigidbody is dynamic if and only if mass is non zero, otherwise static
             bool isDynamic = (physObj.Mass != 0.0f && physObj.Interactable);
-
-            Matrix startTransform = Matrix.CreateFromQuaternion(rot);
-            if (physObj.Shape == ShapeType.Capsule ||
-                physObj.Shape == ShapeType.Cone ||
-                physObj.Shape == ShapeType.Cylinder ||
-                physObj.Shape == ShapeType.ChamferCylinder)
-                startTransform *= Matrix.CreateRotationZ(MathHelper.PiOver2);
-            startTransform.Translation = trans;
 
             physObj.PhysicsWorldTransform = newTransform;
 

@@ -284,39 +284,39 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("translation", translation.ToString());
-            xmlNode.SetAttribute("rotation", rotation.ToString());
-            xmlNode.SetAttribute("fieldOfViewY", "" + fieldOfView);
-            xmlNode.SetAttribute("aspectRatio", "" + aspectRatio);
-            xmlNode.SetAttribute("zNearPlane", "" + zNearPlane);
-            xmlNode.SetAttribute("zFarPlane", "" + zFarPlane);
-            xmlNode.SetAttribute("viewMatrix", "" + view.ToString());
-            xmlNode.SetAttribute("projectionMatrix", "" + projection.ToString());
+            xmlNode.SetAttribute("Translation", translation.ToString());
+            xmlNode.SetAttribute("Rotation", rotation.ToString());
+            xmlNode.SetAttribute("FieldOfViewY", "" + fieldOfView);
+            xmlNode.SetAttribute("AspectRatio", "" + aspectRatio);
+            xmlNode.SetAttribute("ZNearPlane", "" + zNearPlane);
+            xmlNode.SetAttribute("ZFarPlane", "" + zFarPlane);
+            xmlNode.SetAttribute("ViewMatrix", "" + view.ToString());
+            xmlNode.SetAttribute("ProjectionMatrix", "" + projection.ToString());
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("translation"))
-                translation = Vector3Helper.FromString(xmlNode.GetAttribute("translation"));
-            if (xmlNode.HasAttribute("rotation"))
+            if (xmlNode.HasAttribute("Translation"))
+                translation = Vector3Helper.FromString(xmlNode.GetAttribute("Translation"));
+            if (xmlNode.HasAttribute("Rotation"))
             {
-                Vector4 vec4 = Vector4Helper.FromString(xmlNode.GetAttribute("rotation"));
+                Vector4 vec4 = Vector4Helper.FromString(xmlNode.GetAttribute("Rotation"));
                 rotation = new Quaternion(vec4.X, vec4.Y, vec4.Z, vec4.W);
             }
-            if (xmlNode.HasAttribute("fieldOfViewY"))
-                fieldOfView = float.Parse(xmlNode.GetAttribute("fieldOfViewY"));
-            if (xmlNode.HasAttribute("aspectRatio"))
-                aspectRatio = float.Parse(xmlNode.GetAttribute("aspectRatio"));
-            if (xmlNode.HasAttribute("zNearPlane"))
-                zNearPlane = float.Parse(xmlNode.GetAttribute("zNearPlane"));
-            if (xmlNode.HasAttribute("zFarPlane"))
-                zFarPlane = float.Parse(xmlNode.GetAttribute("zFarPlane"));
-            if (xmlNode.HasAttribute("viewMatrix"))
-                view = MatrixHelper.FromString(xmlNode.GetAttribute("viewMatrix"));
-            if (xmlNode.HasAttribute("projectionMatrix"))
-                projection = MatrixHelper.FromString(xmlNode.GetAttribute("projectionMatrix"));
+            if (xmlNode.HasAttribute("FieldOfViewY"))
+                fieldOfView = float.Parse(xmlNode.GetAttribute("FieldOfViewY"));
+            if (xmlNode.HasAttribute("AspectRatio"))
+                aspectRatio = float.Parse(xmlNode.GetAttribute("AspectRatio"));
+            if (xmlNode.HasAttribute("ZNearPlane"))
+                zNearPlane = float.Parse(xmlNode.GetAttribute("ZNearPlane"));
+            if (xmlNode.HasAttribute("ZFarPlane"))
+                zFarPlane = float.Parse(xmlNode.GetAttribute("ZFarPlane"));
+            if (xmlNode.HasAttribute("ViewMatrix"))
+                view = MatrixHelper.FromString(xmlNode.GetAttribute("ViewMatrix"));
+            if (xmlNode.HasAttribute("ProjectionMatrix"))
+                projection = MatrixHelper.FromString(xmlNode.GetAttribute("ProjectionMatrix"));
         }
 
         #endregion

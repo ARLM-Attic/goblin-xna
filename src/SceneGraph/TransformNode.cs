@@ -398,19 +398,19 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("readonly", isReadOnly.ToString());
-            xmlNode.SetAttribute("useUserDefinedTransform", useUserDefinedTransform.ToString());
+            xmlNode.SetAttribute("Readonly", isReadOnly.ToString());
+            xmlNode.SetAttribute("UseUserDefinedTransform", useUserDefinedTransform.ToString());
 
             if (useUserDefinedTransform)
             {
-                xmlNode.SetAttribute("worldTransform", worldTransformation.ToString());
+                xmlNode.SetAttribute("WorldTransform", worldTransformation.ToString());
             }
             else
             {
-                xmlNode.SetAttribute("preTranslation", preTranslation.ToString());
-                xmlNode.SetAttribute("scale", scaling.ToString());
-                xmlNode.SetAttribute("postTranslation", postTranslation.ToString());
-                xmlNode.SetAttribute("rotation", rotation.ToString());
+                xmlNode.SetAttribute("PreTranslation", preTranslation.ToString());
+                xmlNode.SetAttribute("Scale", scaling.ToString());
+                xmlNode.SetAttribute("PostTranslation", postTranslation.ToString());
+                xmlNode.SetAttribute("Rotation", rotation.ToString());
             }
 
             return xmlNode;
@@ -420,27 +420,27 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("readonly"))
-                isReadOnly = bool.Parse(xmlNode.GetAttribute("readonly"));
-            if (xmlNode.HasAttribute("useUserDefinedTransform"))
-                useUserDefinedTransform = bool.Parse(xmlNode.GetAttribute("useUserDefinedTransform"));
+            if (xmlNode.HasAttribute("Readonly"))
+                isReadOnly = bool.Parse(xmlNode.GetAttribute("Readonly"));
+            if (xmlNode.HasAttribute("UseUserDefinedTransform"))
+                useUserDefinedTransform = bool.Parse(xmlNode.GetAttribute("UseUserDefinedTransform"));
 
             if (useUserDefinedTransform)
             {
-                if (xmlNode.HasAttribute("worldTransform"))
-                    worldTransformation = MatrixHelper.FromString(xmlNode.GetAttribute("worldTransform"));
+                if (xmlNode.HasAttribute("WorldTransform"))
+                    worldTransformation = MatrixHelper.FromString(xmlNode.GetAttribute("WorldTransform"));
             }
             else
             {
-                if(xmlNode.HasAttribute("preTranslation"))
-                    preTranslation = Vector3Helper.FromString(xmlNode.GetAttribute("preTranslation"));
-                if (xmlNode.HasAttribute("scale"))
-                    scaling = Vector3Helper.FromString(xmlNode.GetAttribute("scale"));
-                if (xmlNode.HasAttribute("postTranslation"))
-                    postTranslation = Vector3Helper.FromString(xmlNode.GetAttribute("postTranslation"));
-                if (xmlNode.HasAttribute("rotation"))
+                if(xmlNode.HasAttribute("PreTranslation"))
+                    preTranslation = Vector3Helper.FromString(xmlNode.GetAttribute("PreTranslation"));
+                if (xmlNode.HasAttribute("Scale"))
+                    scaling = Vector3Helper.FromString(xmlNode.GetAttribute("Scale"));
+                if (xmlNode.HasAttribute("PostTranslation"))
+                    postTranslation = Vector3Helper.FromString(xmlNode.GetAttribute("PostTranslation"));
+                if (xmlNode.HasAttribute("Rotation"))
                 {
-                    Vector4 vec4 = Vector4Helper.FromString(xmlNode.GetAttribute("rotation"));
+                    Vector4 vec4 = Vector4Helper.FromString(xmlNode.GetAttribute("Rotation"));
                     rotation = new Quaternion(vec4.X, vec4.Y, vec4.Z, vec4.W);
                 }
             }

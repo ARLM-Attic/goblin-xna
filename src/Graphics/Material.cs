@@ -228,34 +228,34 @@ namespace GoblinXNA.Graphics
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("diffuseColor", diffuseColor.ToString());
-            xmlNode.SetAttribute("ambientColor", ambientColor.ToString());
-            xmlNode.SetAttribute("specularColor", specularColor.ToString());
-            xmlNode.SetAttribute("specularPower", specularPower.ToString());
-            xmlNode.SetAttribute("emissiveColor", emissiveColor.ToString());
+            xmlNode.SetAttribute("DiffuseColor", diffuseColor.ToString());
+            xmlNode.SetAttribute("AmbientColor", ambientColor.ToString());
+            xmlNode.SetAttribute("SpecularColor", specularColor.ToString());
+            xmlNode.SetAttribute("SpecularPower", specularPower.ToString());
+            xmlNode.SetAttribute("EmissiveColor", emissiveColor.ToString());
 
             if (texture != null)
-                xmlNode.SetAttribute("textureName", texture.Name);
+                xmlNode.SetAttribute("TextureName", texture.Name);
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("diffuseColor"))
-                diffuseColor = Vector4Helper.FromString(xmlNode.GetAttribute("diffuseColor"));
-            if (xmlNode.HasAttribute("ambientColor"))
-                ambientColor = Vector4Helper.FromString(xmlNode.GetAttribute("ambientColor"));
-            if (xmlNode.HasAttribute("specularColor"))
-                specularColor = Vector4Helper.FromString(xmlNode.GetAttribute("specularColor"));
-            if (xmlNode.HasAttribute("specularPower"))
-                specularPower = float.Parse(xmlNode.GetAttribute("specularPower"));
-            if (xmlNode.HasAttribute("emissiveColor"))
-                emissiveColor = Vector4Helper.FromString(xmlNode.GetAttribute("emissiveColor"));
+            if (xmlNode.HasAttribute("DiffuseColor"))
+                diffuseColor = Vector4Helper.FromString(xmlNode.GetAttribute("DiffuseColor"));
+            if (xmlNode.HasAttribute("AmbientColor"))
+                ambientColor = Vector4Helper.FromString(xmlNode.GetAttribute("AmbientColor"));
+            if (xmlNode.HasAttribute("SpecularColor"))
+                specularColor = Vector4Helper.FromString(xmlNode.GetAttribute("SpecularColor"));
+            if (xmlNode.HasAttribute("SpecularPower"))
+                specularPower = float.Parse(xmlNode.GetAttribute("SpecularPower"));
+            if (xmlNode.HasAttribute("EmissiveColor"))
+                emissiveColor = Vector4Helper.FromString(xmlNode.GetAttribute("EmissiveColor"));
 
-            if (xmlNode.HasAttribute("textureName"))
+            if (xmlNode.HasAttribute("TextureName"))
             {
-                String textureName = xmlNode.GetAttribute("textureName");
+                String textureName = xmlNode.GetAttribute("TextureName");
                 texture = State.Content.Load<Texture2D>(textureName);
             }
         }

@@ -226,11 +226,7 @@ namespace GoblinXNA.Physics
         public virtual bool Pickable
         {
             get { return pickable; }
-            set
-            {
-                pickable = value;
-                modified = true;
-            }
+            set { pickable = value; }
         }
 
         public virtual bool Collidable
@@ -357,85 +353,85 @@ namespace GoblinXNA.Physics
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("pickable", pickable.ToString());
-            xmlNode.SetAttribute("collidable", collidable.ToString());
-            xmlNode.SetAttribute("interactable", interactable.ToString());
-            xmlNode.SetAttribute("applyGravity", applyGravity.ToString());
-            xmlNode.SetAttribute("manipulatable", manipulatable.ToString());
-            xmlNode.SetAttribute("neverDeactivate", neverDeactivate.ToString());
+            xmlNode.SetAttribute("Pickable", pickable.ToString());
+            xmlNode.SetAttribute("Collidable", collidable.ToString());
+            xmlNode.SetAttribute("Interactable", interactable.ToString());
+            xmlNode.SetAttribute("ApplyGravity", applyGravity.ToString());
+            xmlNode.SetAttribute("Manipulatable", manipulatable.ToString());
+            xmlNode.SetAttribute("NeverDeactivate", neverDeactivate.ToString());
 
             if(collisionGroupID != 0)
-                xmlNode.SetAttribute("collisionGroupID", collisionGroupID.ToString());
+                xmlNode.SetAttribute("CollisionGroupID", collisionGroupID.ToString());
             if (materialName.Length > 0)
-                xmlNode.SetAttribute("materialName", materialName);
-            xmlNode.SetAttribute("mass", mass.ToString());
-            xmlNode.SetAttribute("shapeType", shape.ToString());
+                xmlNode.SetAttribute("MaterialName", materialName);
+            xmlNode.SetAttribute("Mass", mass.ToString());
+            xmlNode.SetAttribute("ShapeType", shape.ToString());
             if (shapeData.Count > 0)
             {
                 String shapeDataStr = "" + shapeData[0];
                 for (int i = 1; i < shapeData.Count; ++i)
                     shapeDataStr += ", " + shapeData[i];
-                xmlNode.SetAttribute("shapeData", shapeDataStr);
+                xmlNode.SetAttribute("ShapeData", shapeDataStr);
             }
 
             if (!momentOfInertia.Equals(Vector3.Zero))
-                xmlNode.SetAttribute("momentOfInertia", momentOfInertia.ToString());
+                xmlNode.SetAttribute("MomentOfInertia", momentOfInertia.ToString());
             if (!centerOfMass.Equals(Vector3.Zero))
-                xmlNode.SetAttribute("centerOfMass", centerOfMass.ToString());
+                xmlNode.SetAttribute("CenterOfMass", centerOfMass.ToString());
             if (!initialLinearVelocity.Equals(Vector3.Zero))
-                xmlNode.SetAttribute("initialLinearVelocity", initialLinearVelocity.ToString());
+                xmlNode.SetAttribute("InitialLinearVelocity", initialLinearVelocity.ToString());
             if (!initialAngularVelocity.Equals(Vector3.Zero))
-                xmlNode.SetAttribute("initialAngularVelocity", initialAngularVelocity.ToString());
+                xmlNode.SetAttribute("InitialAngularVelocity", initialAngularVelocity.ToString());
             if (linearDamping != 0)
-                xmlNode.SetAttribute("linearDamping", linearDamping.ToString());
+                xmlNode.SetAttribute("LinearDamping", linearDamping.ToString());
             if (!angularDamping.Equals(-Vector3.One))
-                xmlNode.SetAttribute("angularDamping", angularDamping.ToString());
+                xmlNode.SetAttribute("AngularDamping", angularDamping.ToString());
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("pickable"))
-                pickable = bool.Parse(xmlNode.GetAttribute("pickable"));
-            if (xmlNode.HasAttribute("collidable"))
-                collidable = bool.Parse(xmlNode.GetAttribute("collidable"));
-            if (xmlNode.HasAttribute("interactable"))
-                interactable = bool.Parse(xmlNode.GetAttribute("interactable"));
-            if (xmlNode.HasAttribute("applyGravity"))
-                applyGravity = bool.Parse(xmlNode.GetAttribute("applyGravity"));
-            if (xmlNode.HasAttribute("manipulatable"))
-                manipulatable = bool.Parse(xmlNode.GetAttribute("manipulatable"));
-            if (xmlNode.HasAttribute("neverDeactivate"))
-                neverDeactivate = bool.Parse(xmlNode.GetAttribute("neverDeactivate"));
+            if (xmlNode.HasAttribute("Pickable"))
+                pickable = bool.Parse(xmlNode.GetAttribute("Pickable"));
+            if (xmlNode.HasAttribute("Collidable"))
+                collidable = bool.Parse(xmlNode.GetAttribute("Collidable"));
+            if (xmlNode.HasAttribute("Interactable"))
+                interactable = bool.Parse(xmlNode.GetAttribute("Interactable"));
+            if (xmlNode.HasAttribute("ApplyGravity"))
+                applyGravity = bool.Parse(xmlNode.GetAttribute("ApplyGravity"));
+            if (xmlNode.HasAttribute("Manipulatable"))
+                manipulatable = bool.Parse(xmlNode.GetAttribute("Manipulatable"));
+            if (xmlNode.HasAttribute("NeverDeactivate"))
+                neverDeactivate = bool.Parse(xmlNode.GetAttribute("NeverDeactivate"));
 
-            if (xmlNode.HasAttribute("collisionGroupID"))
-                collisionGroupID = int.Parse(xmlNode.GetAttribute("collisionGroupID"));
-            if (xmlNode.HasAttribute("materialName"))
-                materialName = xmlNode.GetAttribute("materialName");
-            if (xmlNode.HasAttribute("mass"))
-                mass = float.Parse(xmlNode.GetAttribute("mass"));
-            if(xmlNode.HasAttribute("shapeType"))
-                shape = (ShapeType)Enum.Parse(typeof(ShapeType), xmlNode.GetAttribute("shapeType"));
-            if (xmlNode.HasAttribute("shapeData"))
+            if (xmlNode.HasAttribute("CollisionGroupID"))
+                collisionGroupID = int.Parse(xmlNode.GetAttribute("CollisionGroupID"));
+            if (xmlNode.HasAttribute("MaterialName"))
+                materialName = xmlNode.GetAttribute("MaterialName");
+            if (xmlNode.HasAttribute("Mass"))
+                mass = float.Parse(xmlNode.GetAttribute("Mass"));
+            if(xmlNode.HasAttribute("ShapeType"))
+                shape = (ShapeType)Enum.Parse(typeof(ShapeType), xmlNode.GetAttribute("ShapeType"));
+            if (xmlNode.HasAttribute("ShapeData"))
             {
-                String[] shapeDataStrs = xmlNode.GetAttribute("shapeData").Split(',');
+                String[] shapeDataStrs = xmlNode.GetAttribute("ShapeData").Split(',');
                 foreach (String data in shapeDataStrs)
                     shapeData.Add(float.Parse(data));
             }
 
-            if (xmlNode.HasAttribute("momentOfInertia"))
-                momentOfInertia = Vector3Helper.FromString(xmlNode.GetAttribute("momentOfInertia"));
-            if (xmlNode.HasAttribute("centerOfMass"))
-                centerOfMass = Vector3Helper.FromString(xmlNode.GetAttribute("centerOfMass"));
-            if (xmlNode.HasAttribute("initialLinearVelocity"))
-                initialLinearVelocity = Vector3Helper.FromString(xmlNode.GetAttribute("initialLinearVelocity"));
-            if (xmlNode.HasAttribute("initialAngularVelocity"))
-                initialAngularVelocity = Vector3Helper.FromString(xmlNode.GetAttribute("initialAngularVelocity"));
-            if(xmlNode.HasAttribute("linearDamping"))
-                linearDamping = float.Parse(xmlNode.GetAttribute("linearDamping"));
-            if (xmlNode.HasAttribute("angularDamping"))
-                angularDamping = Vector3Helper.FromString(xmlNode.GetAttribute("angularDamping"));
+            if (xmlNode.HasAttribute("MomentOfInertia"))
+                momentOfInertia = Vector3Helper.FromString(xmlNode.GetAttribute("MomentOfInertia"));
+            if (xmlNode.HasAttribute("CenterOfMass"))
+                centerOfMass = Vector3Helper.FromString(xmlNode.GetAttribute("CenterOfMass"));
+            if (xmlNode.HasAttribute("InitialLinearVelocity"))
+                initialLinearVelocity = Vector3Helper.FromString(xmlNode.GetAttribute("InitialLinearVelocity"));
+            if (xmlNode.HasAttribute("InitialAngularVelocity"))
+                initialAngularVelocity = Vector3Helper.FromString(xmlNode.GetAttribute("InitialAngularVelocity"));
+            if(xmlNode.HasAttribute("LinearDamping"))
+                linearDamping = float.Parse(xmlNode.GetAttribute("LinearDamping"));
+            if (xmlNode.HasAttribute("AngularDamping"))
+                angularDamping = Vector3Helper.FromString(xmlNode.GetAttribute("AngularDamping"));
         }
 
         #endregion

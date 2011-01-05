@@ -188,8 +188,8 @@ namespace GoblinXNA.SceneGraph
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
             if (name.Length > 0)
-                xmlNode.SetAttribute("name", name);
-            xmlNode.SetAttribute("enabled", enabled.ToString());
+                xmlNode.SetAttribute("Name", name);
+            xmlNode.SetAttribute("Enabled", enabled.ToString());
 
             return xmlNode;
         }
@@ -200,10 +200,10 @@ namespace GoblinXNA.SceneGraph
         /// <param name="xmlNode"></param>
         public virtual void Load(XmlElement xmlNode)
         {
-            if(xmlNode.HasAttribute("name"))
-                name = xmlNode.GetAttribute("name");
-            if(xmlNode.HasAttribute("enabled"))
-                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
+            if(xmlNode.HasAttribute("Name"))
+                name = xmlNode.GetAttribute("Name");
+            if(xmlNode.HasAttribute("Enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
         }
 
         /// <summary>

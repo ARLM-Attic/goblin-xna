@@ -38,6 +38,7 @@ using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA.Graphics;
+using System.Xml;
 
 namespace GoblinXNA.Graphics
 {
@@ -135,6 +136,51 @@ namespace GoblinXNA.Graphics
             {
                 envMap = value;
                 hasChanged = true;
+            }
+        }
+
+        #endregion
+
+        #region Overriden Methods
+
+        public override XmlElement Save(XmlDocument xmlDoc)
+        {
+            XmlElement xmlNode = base.Save(xmlDoc);
+
+            if (normalMapTexture != null)
+                xmlNode.SetAttribute("NormalMapTextureName", normalMapTexture.Name);
+
+            xmlNode.SetAttribute("FresnelBias", fresnelBias.ToString());
+            xmlNode.SetAttribute("FresnelPower", fresnelPower.ToString());
+            xmlNode.SetAttribute("ReflectionAmount", reflectAmount.ToString());
+
+            if (envMap != null)
+                xmlNode.SetAttribute("EnvironmentMapTextureName", envMap.Name);
+
+            return xmlNode;
+        }
+
+        public override void Load(XmlElement xmlNode)
+        {
+            base.Load(xmlNode);
+
+            if (xmlNode.HasAttribute("NormalMapTextureName"))
+            {
+                String normalMapTextureName = xmlNode.GetAttribute("NormalMapTextureName");
+                normalMapTexture = State.Content.Load<Texture2D>(normalMapTextureName);
+            }
+
+            if (xmlNode.HasAttribute("FresnelBias"))
+                fresnelBias = float.Parse(xmlNode.GetAttribute("FresnelBias"));
+            if (xmlNode.HasAttribute("FresnelPower"))
+                fresnelPower = float.Parse(xmlNode.GetAttribute("FresnelPower"));
+            if (xmlNode.HasAttribute("ReflectionAmount"))
+                reflectAmount = float.Parse(xmlNode.GetAttribute("ReflectionAmount"));
+
+            if (xmlNode.HasAttribute("EnvironmentMapTextureName"))
+            {
+                String envMapName = xmlNode.GetAttribute("EnvironmentMapTextureName");
+                envMap = State.Content.Load<TextureCube>(envMapName);
             }
         }
 

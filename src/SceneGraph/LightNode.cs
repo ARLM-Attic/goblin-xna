@@ -176,8 +176,8 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("global", global.ToString());
-            xmlNode.SetAttribute("ambientLightColor", ambientLightColor.ToString());
+            xmlNode.SetAttribute("Global", global.ToString());
+            xmlNode.SetAttribute("AmbientLightColor", ambientLightColor.ToString());
 
             xmlNode.AppendChild(lightSource.Save(xmlDoc));
 
@@ -188,10 +188,10 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("global"))
-                global = bool.Parse(xmlNode.GetAttribute("global"));
-            if (xmlNode.HasAttribute("ambientLightColor"))
-                ambientLightColor = Vector4Helper.FromString(xmlNode.GetAttribute("ambientLightColor"));
+            if (xmlNode.HasAttribute("Global"))
+                global = bool.Parse(xmlNode.GetAttribute("Global"));
+            if (xmlNode.HasAttribute("AmbientLightColor"))
+                ambientLightColor = Vector4Helper.FromString(xmlNode.GetAttribute("AmbientLightColor"));
 
             XmlElement lightSourceXml = (XmlElement)xmlNode.ChildNodes[0];
             lightSource = (LightSource)Activator.CreateInstance(

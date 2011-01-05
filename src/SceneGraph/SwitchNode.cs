@@ -125,7 +125,7 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("switchID", switchID.ToString());
+            xmlNode.SetAttribute("SwitchID", switchID.ToString());
 
             return xmlNode;
         }
@@ -134,8 +134,8 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("switchID"))
-                switchID = int.Parse(xmlNode.GetAttribute("switchID"));
+            if (xmlNode.HasAttribute("SwitchID"))
+                switchID = int.Parse(xmlNode.GetAttribute("SwitchID"));
         }
 
         #endregion

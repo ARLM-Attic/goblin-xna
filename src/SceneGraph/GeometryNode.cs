@@ -333,8 +333,9 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("occluder", isOccluder.ToString());
-            xmlNode.SetAttribute("addToPhysicsEngine", addToPhysicsEngine.ToString());
+            xmlNode.SetAttribute("Occluder", isOccluder.ToString());
+            xmlNode.SetAttribute("IgnoreDepth", ignoreDepth.ToString());
+            xmlNode.SetAttribute("AddToPhysicsEngine", addToPhysicsEngine.ToString());
 
             if (model != null)
             {
@@ -352,33 +353,35 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("occluder"))
-                isOccluder = bool.Parse(xmlNode.GetAttribute("occluder"));
-            if (xmlNode.HasAttribute("addToPhysicsEngine"))
-                AddToPhysicsEngine = bool.Parse(xmlNode.GetAttribute("addToPhysicsEngine"));
+            if (xmlNode.HasAttribute("Occluder"))
+                isOccluder = bool.Parse(xmlNode.GetAttribute("Occluder"));
+            if (xmlNode.HasAttribute("IgnoreDepth"))
+                ignoreDepth = bool.Parse(xmlNode.GetAttribute("IgnoreDepth"));
+            if (xmlNode.HasAttribute("AddToPhysicsEngine"))
+                AddToPhysicsEngine = bool.Parse(xmlNode.GetAttribute("AddToPhysicsEngine"));
 
             int i = 0;
             if (xmlNode.ChildNodes[i].Name.Equals("ModelCreationInfo"))
             {
                 XmlElement modelInfo = (XmlElement)xmlNode.ChildNodes[i];
-                if (modelInfo.HasAttribute("resourceName"))
+                if (modelInfo.HasAttribute("ResourceName"))
                 {
-                    if (!modelInfo.HasAttribute("modelLoaderName"))
-                        throw new GoblinException("modelLoaderName attribute is required if " +
-                            "resourceName attribute is specified");
+                    if (!modelInfo.HasAttribute("ModelLoaderName"))
+                        throw new GoblinException("ModelLoaderName attribute is required if " +
+                            "ResourceName attribute is specified");
 
-                    String assetName = Path.ChangeExtension(modelInfo.GetAttribute("resourceName"), null);
+                    String assetName = Path.ChangeExtension(modelInfo.GetAttribute("ResourceName"), null);
                     IModelLoader loader = (IModelLoader)Activator.CreateInstance(Type.GetType(
-                        modelInfo.GetAttribute("modelLoaderName")));
+                        modelInfo.GetAttribute("ModelLoaderName")));
                     model = (IModel)loader.Load("", assetName);
                 }
                 else
                 {
-                    if (!modelInfo.HasAttribute("customShapeParameters"))
-                        throw new GoblinException("customShapeParameters attribute must be " +
-                            "specified if resourceName is not specified");
+                    if (!modelInfo.HasAttribute("CustomShapeParameters"))
+                        throw new GoblinException("CustomShapeParameters attribute must be " +
+                            "specified if ResourceName is not specified");
 
-                    String[] primShapeParams = modelInfo.GetAttribute("customShapeParameters").Split(',');
+                    String[] primShapeParams = modelInfo.GetAttribute("CustomShapeParameters").Split(',');
                     model = (IModel)Activator.CreateInstance(Type.GetType(xmlNode.ChildNodes[i + 1].Name),
                         primShapeParams);
                 }

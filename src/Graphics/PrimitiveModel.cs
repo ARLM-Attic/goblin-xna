@@ -57,6 +57,7 @@ namespace GoblinXNA.Graphics
         protected bool useLighting;
         protected bool castShadow;
         protected bool receiveShadow;
+        protected bool useVertexColor;
 
         protected CustomMesh customMesh;
         protected BoundingBox boundingBox;
@@ -118,6 +119,7 @@ namespace GoblinXNA.Graphics
             castShadow = false;
             receiveShadow = false;
             showBoundingBox = false;
+            useVertexColor = false;
             technique = "";
 
             CalculateMinimumBoundingBox();
@@ -165,6 +167,21 @@ namespace GoblinXNA.Graphics
         {
             get { return receiveShadow; }
             set { receiveShadow = value; }
+        }
+        
+        /// <summary>
+        /// Gets or sets whether to use the vertex color instead of material information to
+        /// render this model.
+        /// </summary>
+        public bool UseVertexColor
+        {
+            get { return useVertexColor; }
+            set 
+            { 
+                useVertexColor = value;
+                if (shader is SimpleEffectShader)
+                    ((SimpleEffectShader)shader).UseVertexColor = value;
+            }
         }
 
         public IShader Shader
@@ -341,7 +358,7 @@ namespace GoblinXNA.Graphics
                 boundingBox = BoundingBox.CreateFromPoints(vertices);
                 boundingSphere = BoundingSphere.CreateFromPoints(vertices);
                 if(offsetTransform.Equals(Matrix.Identity))
-                    offsetTransform.Translation = (boundingBox.Min + boundingBox.Max) / 2;
+                    offsetTransform.Translation = -(boundingBox.Min + boundingBox.Max) / 2;
             }
         }
 
@@ -537,11 +554,11 @@ namespace GoblinXNA.Graphics
             if (customShapeParameters.Length == 0)
                 throw new GoblinException("CustomShapeParameters must be specified");
 
-            xmlNode.SetAttribute("customShapeParameters", customShapeParameters);
+            xmlNode.SetAttribute("CustomShapeParameters", customShapeParameters);
 
-            xmlNode.SetAttribute("shaderName", shaderName);
+            xmlNode.SetAttribute("ShaderName", shaderName);
             if (technique.Length > 0)
-                xmlNode.SetAttribute("shaderTechniqueName", technique);
+                xmlNode.SetAttribute("ShaderTechniqueName", technique);
 
             return xmlNode;
         }
@@ -550,30 +567,30 @@ namespace GoblinXNA.Graphics
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("enabled", enabled.ToString());
-            xmlNode.SetAttribute("useLighting", useLighting.ToString());
-            xmlNode.SetAttribute("castShadow", castShadow.ToString());
-            xmlNode.SetAttribute("receiveShadow", receiveShadow.ToString());
-            xmlNode.SetAttribute("showBoundingBox", showBoundingBox.ToString());
-            xmlNode.SetAttribute("offsetToOrigin", offsetToOrigin.ToString());
+            xmlNode.SetAttribute("Enabled", enabled.ToString());
+            xmlNode.SetAttribute("UseLighting", useLighting.ToString());
+            xmlNode.SetAttribute("CastShadow", castShadow.ToString());
+            xmlNode.SetAttribute("ReceiveShadow", receiveShadow.ToString());
+            xmlNode.SetAttribute("ShowBoundingBox", showBoundingBox.ToString());
+            xmlNode.SetAttribute("OffsetToOrigin", offsetToOrigin.ToString());
 
             return xmlNode;
         }
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("enabled"))
-                enabled = bool.Parse(xmlNode.GetAttribute("enabled"));
-            if (xmlNode.HasAttribute("useLighting"))
-                useLighting = bool.Parse(xmlNode.GetAttribute("useLighting"));
-            if (xmlNode.HasAttribute("castShadow"))
-                castShadow = bool.Parse(xmlNode.GetAttribute("castShadow"));
-            if (xmlNode.HasAttribute("receiveShadow"))
-                receiveShadow = bool.Parse(xmlNode.GetAttribute("receiveShadow"));
-            if (xmlNode.HasAttribute("showBoundingBox"))
-                showBoundingBox = bool.Parse(xmlNode.GetAttribute("showBoundingBox"));
-            if (xmlNode.HasAttribute("offsetToOrigin"))
-                offsetToOrigin = bool.Parse(xmlNode.GetAttribute("offsetToOrigin"));
+            if (xmlNode.HasAttribute("Enabled"))
+                enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
+            if (xmlNode.HasAttribute("UseLighting"))
+                useLighting = bool.Parse(xmlNode.GetAttribute("UseLighting"));
+            if (xmlNode.HasAttribute("CastShadow"))
+                castShadow = bool.Parse(xmlNode.GetAttribute("CastShadow"));
+            if (xmlNode.HasAttribute("ReceiveShadow"))
+                receiveShadow = bool.Parse(xmlNode.GetAttribute("ReceiveShadow"));
+            if (xmlNode.HasAttribute("ShowBoundingBox"))
+                showBoundingBox = bool.Parse(xmlNode.GetAttribute("ShowBoundingBox"));
+            if (xmlNode.HasAttribute("OffsetToOrigin"))
+                offsetToOrigin = bool.Parse(xmlNode.GetAttribute("OffsetToOrigin"));
         }
 
         #endregion

@@ -62,9 +62,9 @@ namespace GoblinXNA.SceneGraph
     {
         #region Delegates
 
-        public delegate void RenderBeforeUI(bool leftView);
+        public delegate void RenderBeforeUI(bool leftView, bool renderUI);
 
-        public delegate void RenderAfterUI(bool leftView);
+        public delegate void RenderAfterUI(bool leftView, bool renderUI);
 
         #endregion
 
@@ -872,6 +872,14 @@ namespace GoblinXNA.SceneGraph
             set { uiRenderer.GlobalUIShift = value; }
         }
 
+        /// <summary>
+        /// Gets whether the scene graph is currently rendering the left eye view when in stereo mode.
+        /// </summary>
+        public bool RenderLeftView
+        {
+            get { return renderLeftView; }
+        }
+
         #endregion
 
         #region Internal Properties
@@ -938,8 +946,12 @@ namespace GoblinXNA.SceneGraph
                 return true;
 
             if (cameraNode.Stereo)
-                return cameraNode.RightBoundingFrustum.Intersects(boundingVolume) ||
-                    cameraNode.LeftBoundingFrustum.Intersects(boundingVolume);
+            {
+                if (renderLeftView)
+                    return cameraNode.LeftBoundingFrustum.Intersects(boundingVolume);
+                else
+                    return cameraNode.RightBoundingFrustum.Intersects(boundingVolume);
+            }
             else
                 return cameraNode.BoundingFrustum.Intersects(boundingVolume);
         }
@@ -1082,7 +1094,7 @@ namespace GoblinXNA.SceneGraph
 
                     if (gNode.Model != null && gNode.Model.OffsetToOrigin)
                     {
-                        Vector3 offset = gNode.Model.OffsetTransform.Translation;
+                        Vector3 offset = -gNode.Model.OffsetTransform.Translation;
 
                         Matrix.CreateTranslation(ref offset, out tmpMat1);
                         tmpMat2 = gNode.WorldTransformation;
@@ -1101,7 +1113,14 @@ namespace GoblinXNA.SceneGraph
                 if(gNode.PhysicsStateChanged && physicsEngine != null)
                 {
                     if (gNode.AddToPhysicsEngine)
+                    {
+                        tmpMat1 = gNode.Physics.InitialWorldTransform;
+                        Matrix.Multiply(ref parentTransformation, ref tmpMat1, out tmpMat2);
+                        gNode.Physics.CompoundInitialWorldTransform = tmpMat2;
+                        gNode.WorldTransformation = tmpMat2;
+
                         physicsEngine.AddPhysicsObject(gNode.Physics);
+                    }
                     else
                         physicsEngine.RemovePhysicsObject(gNode.Physics);
 
@@ -2040,27 +2059,35 @@ namespace GoblinXNA.SceneGraph
 
             if (!worldTransform.Equals(Matrix.Identity))
             {
-                tmpMat1 = Matrix.CreateTranslation(minMaxX);
+                Matrix.CreateTranslation(ref min, out tmpMat1);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                min = tmpMat1.Translation;
+
+                Matrix.CreateTranslation(ref max, out tmpMat1);
+                Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                max = tmpMat1.Translation;
+
+                Matrix.CreateTranslation(ref minMaxX, out tmpMat1);
                 Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
                 minMaxX = tmpMat1.Translation;
 
-                tmpMat1 = Matrix.CreateTranslation(minMaxY);
+                Matrix.CreateTranslation(ref minMaxY, out tmpMat1);
                 Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
                 minMaxY = tmpMat1.Translation;
 
-                tmpMat1 = Matrix.CreateTranslation(minMaxZ);
+                Matrix.CreateTranslation(ref minMaxZ, out tmpMat1);
                 Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
                 minMaxZ = tmpMat1.Translation;
 
-                tmpMat1 = Matrix.CreateTranslation(maxMinX);
+                Matrix.CreateTranslation(ref maxMinX, out tmpMat1);
                 Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
                 maxMinX = tmpMat1.Translation;
 
-                tmpMat1 = Matrix.CreateTranslation(maxMinY);
+                Matrix.CreateTranslation(ref maxMinY, out tmpMat1);
                 Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
                 maxMinY = tmpMat1.Translation;
 
-                tmpMat1 = Matrix.CreateTranslation(maxMinZ);
+                Matrix.CreateTranslation(ref maxMinZ, out tmpMat1);
                 Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
                 maxMinZ = tmpMat1.Translation;
             }
@@ -2090,8 +2117,9 @@ namespace GoblinXNA.SceneGraph
             if (collisionMesh == null)
                 return;
 
+            bool multiply = (!worldTransform.Equals(Matrix.Identity));
+
             int count = 0;
-            int indiceCount = 0;
             foreach(List<Vector3> polygonVerts in collisionMesh)
                 count += polygonVerts.Count;
 
@@ -2099,7 +2127,16 @@ namespace GoblinXNA.SceneGraph
             count = 0;
             for (int i = 0; i < collisionMesh.Count; i++)
                 for (int j = 0; j < collisionMesh[i].Count; j++)
-                    verts[count++] = collisionMesh[i][j];
+                {
+                    if (multiply)
+                    {
+                        tmpMat1 = Matrix.CreateTranslation(collisionMesh[i][j]);
+                        Matrix.Multiply(ref tmpMat1, ref worldTransform, out tmpMat1);
+                        verts[count++] = tmpMat1.Translation;
+                    }
+                    else
+                        verts[count++] = collisionMesh[i][j];
+                }
 
             count = 0;
             int initCount = 0;
@@ -2292,12 +2329,24 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Only renders the 3D scene. Unlike the Draw function, this function doesn't perform physics
-        /// update or scene graph updates. It simply renders the 3D scene. This method is useful when you
-        /// need to render the scene more than once (e.g., when rendering multiple viewport or stereoscopic
-        /// view).
+        /// Only renders the 3D scene and the 2DUIs. Unlike the Draw function, this function 
+        /// doesn't perform physics update or scene graph updates. It simply renders 
+        /// the 3D scene. This method is useful when you need to render the scene more than once 
+        /// (e.g., when rendering multiple viewport or stereoscopic view).
         /// </summary>
         public virtual void RenderScene()
+        {
+            this.RenderScene(true);
+        }
+
+        /// <summary>
+        /// Only renders the 3D scene (and the 2DUIs if 'renderUI' is true). Unlike the Draw function, 
+        /// this function doesn't perform physics update or scene graph updates. It simply renders 
+        /// the 3D scene. This method is useful when you need to render the scene more than once 
+        /// (e.g., when rendering multiple viewport or stereoscopic view).
+        /// <param name="renderUI">Whether to renderUI</param>
+        /// </summary>
+        public virtual void RenderScene(bool renderUI)
         {
             if (cameraNode.Stereo)
             {
@@ -2333,7 +2382,7 @@ namespace GoblinXNA.SceneGraph
             State.LineManager.Render();
 
             if (renderBeforeUI != null)
-                renderBeforeUI(renderLeftView);
+                renderBeforeUI(renderLeftView, renderUI);
 
             if (cameraNode.Stereo)
             {
@@ -2342,11 +2391,11 @@ namespace GoblinXNA.SceneGraph
                 else
                     uiRenderer.Draw(0, true, true);
             }
-            else
+            else if(renderUI)
                 uiRenderer.Draw(uiElapsedTime, true, false);
 
             if (renderAfterUI != null)
-                renderAfterUI(renderLeftView);
+                renderAfterUI(renderLeftView, renderUI);
 
             if (cameraNode.Stereo)
                 renderLeftView = !renderLeftView;

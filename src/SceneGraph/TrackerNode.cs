@@ -173,7 +173,7 @@ namespace GoblinXNA.SceneGraph
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
-            xmlNode.SetAttribute("deviceIdentifier", deviceIdentifier);
+            xmlNode.SetAttribute("DeviceIdentifier", deviceIdentifier);
             if (smooth)
                 xmlNode.AppendChild(smoother.Save(xmlDoc));
             if (predict)
@@ -186,8 +186,8 @@ namespace GoblinXNA.SceneGraph
         {
             base.Load(xmlNode);
 
-            if (xmlNode.HasAttribute("deviceIdentifier"))
-                deviceIdentifier = xmlNode.GetAttribute("deviceIdentifier");
+            if (xmlNode.HasAttribute("DeviceIdentifier"))
+                deviceIdentifier = xmlNode.GetAttribute("DeviceIdentifier");
 
             if (!InputMapper.Instance.Contains6DOFInputDevice(deviceIdentifier))
                 throw new GoblinException(deviceIdentifier + " is not recognized. Only 6DOF devices " +

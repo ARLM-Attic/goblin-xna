@@ -57,6 +57,9 @@ namespace GoblinXNA.Device
         protected Dictionary<String, InputDevice> additionalDevices;
         protected Dictionary<String, InputDevice_6DOF> additional6DOFDevices;
 
+        protected bool updating;
+        protected bool enumerateLater;
+
         /// <summary>
         /// Creates a device enumerator and enumerates all of the available input devices
         /// </summary>
@@ -71,6 +74,8 @@ namespace GoblinXNA.Device
             available6DOFDevices = new Dictionary<String, InputDevice_6DOF>();
             additionalDevices = new Dictionary<string, InputDevice>();
             additional6DOFDevices = new Dictionary<string, InputDevice_6DOF>();
+            updating = false;
+            enumerateLater = false;
             Reenumerate();
         }
 
@@ -109,29 +114,34 @@ namespace GoblinXNA.Device
         /// </remarks>
         public void Reenumerate()
         {
-            availableDevices.Clear();
-            available6DOFDevices.Clear();
+            if (!updating)
+            {
+                availableDevices.Clear();
+                available6DOFDevices.Clear();
 
-            // Add all of the non-6DOF input devices if available
-            MouseInput mouseInput = MouseInput.Instance;
-            if (mouseInput.IsAvailable)
-                availableDevices.Add(mouseInput.Identifier, mouseInput);
+                // Add all of the non-6DOF input devices if available
+                MouseInput mouseInput = MouseInput.Instance;
+                if (mouseInput.IsAvailable)
+                    availableDevices.Add(mouseInput.Identifier, mouseInput);
 
-            KeyboardInput keyboardInput = KeyboardInput.Instance;
-            if (keyboardInput.IsAvailable)
-                availableDevices.Add(keyboardInput.Identifier, keyboardInput);
+                KeyboardInput keyboardInput = KeyboardInput.Instance;
+                if (keyboardInput.IsAvailable)
+                    availableDevices.Add(keyboardInput.Identifier, keyboardInput);
 
-            GenericInput genericInput = GenericInput.Instance;
-            if(genericInput.IsAvailable)
-                available6DOFDevices.Add(genericInput.Identifier, genericInput);
+                GenericInput genericInput = GenericInput.Instance;
+                if (genericInput.IsAvailable)
+                    available6DOFDevices.Add(genericInput.Identifier, genericInput);
 
-            foreach (InputDevice device in additionalDevices.Values)
-                if (device.IsAvailable)
-                    availableDevices.Add(device.Identifier, device);
+                foreach (InputDevice device in additionalDevices.Values)
+                    if (device.IsAvailable)
+                        availableDevices.Add(device.Identifier, device);
 
-            foreach (InputDevice_6DOF device in additional6DOFDevices.Values)
-                if (device.IsAvailable)
-                    available6DOFDevices.Add(device.Identifier, device);
+                foreach (InputDevice_6DOF device in additional6DOFDevices.Values)
+                    if (device.IsAvailable)
+                        available6DOFDevices.Add(device.Identifier, device);
+            }
+            else
+                enumerateLater = true;
         }
 
         /// <summary>
@@ -141,17 +151,29 @@ namespace GoblinXNA.Device
         /// <param name="deviceActive"></param>
         public void Update(GameTime gameTime, bool deviceActive)
         {
+            updating = true;
+
             foreach (InputDevice inputDevice in availableDevices.Values)
                 inputDevice.Update(gameTime, deviceActive);
 
             foreach (InputDevice_6DOF inputDevice6DOF in available6DOFDevices.Values)
                 inputDevice6DOF.Update(gameTime, deviceActive);
+
+            updating = false;
+
+            if (enumerateLater)
+            {
+                Reenumerate();
+                enumerateLater = false;
+            }
         }
 
         public void Dispose()
         {
             availableDevices.Clear();
             available6DOFDevices.Clear();
+            additionalDevices.Clear();
+            additional6DOFDevices.Clear();
         }
     }
 }
