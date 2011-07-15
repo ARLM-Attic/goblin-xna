@@ -1,5 +1,5 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+﻿/************************************************************************************ 
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,8 +59,6 @@ namespace GoblinXNA.Device.Capture
     /// </remarks>
     public class DirectShowCapture : ISampleGrabberCB, IVideoCapture
     {
-        public delegate bool ImageReadyCallback(IntPtr image, int[] background);
-
         private enum PlaybackState
         {
             Stopped,
@@ -205,9 +203,6 @@ namespace GoblinXNA.Device.Capture
             get { return SpriteEffects.FlipVertically; }
         }
 
-        /// <summary>
-        /// Sets the callback function to be called when a new image becomes ready.
-        /// </summary>
         public ImageReadyCallback CaptureCallback
         {
             set { imageReadyCallback = value; }

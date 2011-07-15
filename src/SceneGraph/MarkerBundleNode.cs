@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -116,6 +116,20 @@ namespace GoblinXNA.SceneGraph
             set { autoReconfigure = value; }
         }
 
+        public override int MaxDropouts
+        {
+            get
+            {
+                return base.MaxDropouts;
+            }
+            set
+            {
+                base.MaxDropouts = value;
+                foreach (RelativeMarker marker in supportingMarkers)
+                    marker.Node.MaxDropouts = value;
+            }
+        }
+
         #endregion
 
         #region Overridden Methods
@@ -183,7 +197,6 @@ namespace GoblinXNA.SceneGraph
                 {
                     if (maxDropouts < 0)
                     {
-
                         worldTransformation = prevMatrix;
                         found = false;
                     }
@@ -206,6 +219,9 @@ namespace GoblinXNA.SceneGraph
                             worldTransformation = MatrixHelper.Empty;
                         }
                     }
+
+                    if (smooth)
+                        smoother.ResetHistory();
                 }
             }
         }

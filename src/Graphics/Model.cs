@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,6 @@ namespace GoblinXNA.Graphics
         protected bool receiveShadow;
 
         protected ModelMeshCollection mesh;
-        protected List<ModelMesh> animatedMesh;
 
         protected BoundingBox boundingBox;
         protected BoundingSphere boundingSphere;
@@ -72,7 +71,7 @@ namespace GoblinXNA.Graphics
         protected String technique;
         protected List<IShader> afterEffectShaders;
         protected Matrix[] transforms;
-        protected Matrix[] animationTransforms;
+        protected Dictionary<string, Matrix> animationTransforms;
         protected List<Vector3> vertices;
         protected List<int> indices;
         protected bool useInternalMaterials;
@@ -98,30 +97,22 @@ namespace GoblinXNA.Graphics
 
         #region Constructors
 
-        public Model() : this(null, null, null) { }
+        public Model() : this(null, null) { }
 
         /// <summary>
         /// Creates a model with information loaded from a model file
         /// </summary>
         /// <param name="transforms">Transforms applied to each model meshes</param>
         /// <param name="mesh">A collection of model meshes</param>
-        /// <param name="animatedMesh">
-        /// A list of animated model meshes that can be transformed by the user
-        /// </param>
-        public Model(Matrix[] transforms, ModelMeshCollection mesh, List<ModelMesh> animatedMesh)
+        public Model(Matrix[] transforms, ModelMeshCollection mesh)
         {
             this.transforms = transforms;
             this.mesh = mesh;
-            this.animatedMesh = animatedMesh;
-            if (animatedMesh != null)
-            {
-                animationTransforms = new Matrix[animatedMesh.Count];
-                for (int i = 0; i < animationTransforms.Length; i++)
-                    animationTransforms[i] = Matrix.Identity;
-            }
 
             offsetTransform = Matrix.Identity;
             offsetToOrigin = false;
+
+            animationTransforms = new Dictionary<string, Matrix>();
 
             vertices = new List<Vector3>();
             indices = new List<int>();
@@ -176,7 +167,14 @@ namespace GoblinXNA.Graphics
         public virtual bool UseInternalMaterials
         {
             get { return useInternalMaterials; }
-            set { useInternalMaterials = value; }
+            set 
+            { 
+                useInternalMaterials = value;
+
+                if (shader is IAlphaBlendable)
+                    foreach (ModelMesh modelMesh in this.mesh)
+                        ((IAlphaBlendable)shader).SetOriginalAlphas(modelMesh.Effects);
+            }
         }
 
         /// <summary>
@@ -235,14 +233,6 @@ namespace GoblinXNA.Graphics
         public virtual PrimitiveType PrimitiveType
         {
             get { return PrimitiveType.TriangleList; }
-        }
-
-        /// <summary>
-        /// Gets a list of model meshes that can be transformed by the user.
-        /// </summary>
-        public virtual List<ModelMesh> AnimatedMesh
-        {
-            get { return animatedMesh; }
         }
 
         /// <summary>
@@ -527,13 +517,6 @@ namespace GoblinXNA.Graphics
             Model srcModel = (Model)model;
             vertices.AddRange(((IPhysicsMeshProvider)model).Vertices);
             indices.AddRange(((IPhysicsMeshProvider)model).Indices);
-            animatedMesh = srcModel.AnimatedMesh;
-            if (animatedMesh != null)
-            {
-                animationTransforms = new Matrix[animatedMesh.Count];
-                for (int i = 0; i < animationTransforms.Length; i++)
-                    animationTransforms[i] = Matrix.Identity;
-            }
 
             triangleCount = srcModel.TriangleCount;
             boundingBox = srcModel.MinimumBoundingBox;
@@ -544,17 +527,14 @@ namespace GoblinXNA.Graphics
         /// <summary>
         /// Updates the transforms of any animated meshes.
         /// </summary>
-        /// <param name="animationTransforms">
-        /// An array of transforms applied to each AnimatedMesh model mesh
-        /// </param>
-        public virtual void UpdateAnimationTransforms(Matrix[] animationTransforms)
+        /// <param name="meshName"></param>
+        /// <param name="animationTransform"></param>
+        public virtual void UpdateAnimationTransforms(string meshName, Matrix animationTransform)
         {
-            if (animationTransforms.Length != this.animationTransforms.Length)
-                throw new GoblinException("Number of animation transforms need to match number " +
-                    "of animdatedMesh: animatedMesh.Count = " + animatedMesh.Count);
-
-            for (int i = 0; i < animationTransforms.Length; i++)
-                this.animationTransforms[i] = animationTransforms[i];
+            if (animationTransforms.ContainsKey(meshName))
+                animationTransforms[meshName] = animationTransform;
+            else
+                animationTransforms.Add(meshName, animationTransform);
         }
 
         /// <summary>
@@ -582,93 +562,56 @@ namespace GoblinXNA.Graphics
                 }
             }
 
-            // Render the actual model
-            foreach (ModelMesh modelMesh in this.mesh)
-            {
-                // Skip animated mesh
-                if (animatedMesh != null && animatedMesh.Contains(modelMesh))
-                    continue;
-
-                Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
-
-                if (UseInternalMaterials && (shader is IAlphaBlendable))
-                    ((IAlphaBlendable)shader).SetOriginalAlphas(modelMesh.Effects);
-
-                foreach (ModelMeshPart part in modelMesh.MeshParts)
+            Effect prevEffect = null;
+            shader.Render(
+                Matrix.Identity,
+                technique,
+                delegate
                 {
-                    if (UseInternalMaterials)
-                    {
-                        material.InternalEffect = part.Effect;
-                        shader.SetParameters(material);
-                    }
 
-                    shader.Render(
-                        tmpMat1,
-                        (UseInternalMaterials) ? part.Effect.CurrentTechnique.Name : technique,
-                        delegate
-                        {
-                            State.Device.Vertices[0].SetSource(
-                                modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
-                            State.Device.Indices = modelMesh.IndexBuffer;
-                            State.Device.VertexDeclaration = part.VertexDeclaration;
-                            State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-
-                        });
-
-                    foreach (IShader afterEffect in afterEffectShaders)
-                    {
-                        if (UseInternalMaterials)
-                            afterEffect.SetParameters(material);
-
-                        afterEffect.Render(
-                            tmpMat1,
-                            "",
-                            delegate
-                            {
-                                State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                    part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-
-                            });
-                    }
-                }
-
-            }
-
-            if (animatedMesh != null)
-            {
-                Matrix worldMatrix;
-
-                int counter = 0;
-                foreach (ModelMesh modelMesh in animatedMesh)
+                // Render the actual model
+                foreach (ModelMesh modelMesh in this.mesh)
                 {
-                    worldMatrix = animationTransforms[counter++] * transforms[modelMesh.ParentBone.Index] *
-                        renderMatrix;
+                    State.Device.Indices = modelMesh.IndexBuffer;
+                    Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
+                    if (animationTransforms.Count > 0 && animationTransforms.ContainsKey(modelMesh.Name))
+                        tmpMat1 = animationTransforms[modelMesh.Name] * tmpMat1;
 
-                    if (UseInternalMaterials && (shader is IAlphaBlendable))
-                        ((IAlphaBlendable)shader).SetOriginalAlphas(modelMesh.Effects);
-
+                    shader.WorldTransform = tmpMat1;
+                    shader.CurrentEffect.CommitChanges();
                     foreach (ModelMeshPart part in modelMesh.MeshParts)
                     {
                         if (UseInternalMaterials)
                         {
-                            material.InternalEffect = part.Effect;
-                            shader.SetParameters(material);
+                            if (prevEffect != part.Effect)
+                            {
+                                material.InternalEffect = part.Effect;
+                                shader.SetParameters(material);
+                                shader.WorldTransform = tmpMat1;
+                                prevEffect = part.Effect;
+                                shader.CurrentEffect.CommitChanges();
+                            }
                         }
 
-                        shader.Render(
-                            worldMatrix,
-                            (UseInternalMaterials) ? part.Effect.CurrentTechnique.Name : technique,
-                            delegate
-                            {
-                                State.Device.Vertices[0].SetSource(
-                                    modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
-                                State.Device.Indices = modelMesh.IndexBuffer;
-                                State.Device.VertexDeclaration = part.VertexDeclaration;
-                                State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                    part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
+                        State.Device.Vertices[0].SetSource(
+                            modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
+                        
+                        State.Device.VertexDeclaration = part.VertexDeclaration;
+                        State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
+                            part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
 
-                            });
+                    }
+                }
+            });
+
+            if (afterEffectShaders.Count > 0)
+            {
+                foreach (ModelMesh modelMesh in this.mesh)
+                {
+                    foreach (ModelMeshPart part in modelMesh.MeshParts)
+                    {
+                        State.Device.Indices = modelMesh.IndexBuffer;
+                        Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
 
                         foreach (IShader afterEffect in afterEffectShaders)
                         {
@@ -723,7 +666,7 @@ namespace GoblinXNA.Graphics
         {
             vertices.Clear();
             mesh = null;
-            animatedMesh = null;
+            animationTransforms.Clear();
 
             if (shader != null)
                 shader.Dispose();
@@ -745,11 +688,9 @@ namespace GoblinXNA.Graphics
 
             foreach (ModelMesh modelMesh in this.mesh)
             {
-                // Skip animated mesh
-                if (animatedMesh != null && animatedMesh.Contains(modelMesh))
-                    continue;
-
                 Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
+                if (animationTransforms.Count > 0 && animationTransforms.ContainsKey(modelMesh.Name))
+                    tmpMat1 = animationTransforms[modelMesh.Name] * tmpMat1;
 
                 State.ShadowShader.UpdateCalcShadowWorldMatrix(tmpMat1);
 
@@ -761,28 +702,6 @@ namespace GoblinXNA.Graphics
                     State.Device.VertexDeclaration = part.VertexDeclaration;
                     State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
                         part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-                }
-            }
-
-            if (animatedMesh != null)
-            {
-                int counter = 0;
-                foreach (ModelMesh modelMesh in animatedMesh)
-                {
-                    Matrix.Multiply(ref animationTransforms[counter++], ref transforms[modelMesh.ParentBone.Index], out tmpMat1);
-                    Matrix.Multiply(ref tmpMat1, ref renderMatrix, out tmpMat2);
-
-                    State.ShadowShader.UpdateCalcShadowWorldMatrix(tmpMat2);
-
-                    foreach (ModelMeshPart part in modelMesh.MeshParts)
-                    {
-                        State.Device.Vertices[0].SetSource(
-                            modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
-                        State.Device.Indices = modelMesh.IndexBuffer;
-                        State.Device.VertexDeclaration = part.VertexDeclaration;
-                        State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                            part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-                    }
                 }
             }
         }
@@ -803,11 +722,10 @@ namespace GoblinXNA.Graphics
 
             foreach (ModelMesh modelMesh in this.mesh)
             {
-                // Skip animated mesh
-                if (animatedMesh != null && animatedMesh.Contains(modelMesh))
-                    continue;
-
                 Matrix.Multiply(ref transforms[modelMesh.ParentBone.Index], ref renderMatrix, out tmpMat1);
+                if (animationTransforms.Count > 0 && animationTransforms.ContainsKey(modelMesh.Name))
+                    tmpMat1 = animationTransforms[modelMesh.Name] * tmpMat1;
+
                 State.ShadowShader.UpdateGenerateShadowWorldMatrix(tmpMat1);
 
                 foreach (ModelMeshPart part in modelMesh.MeshParts)
@@ -818,28 +736,6 @@ namespace GoblinXNA.Graphics
                     State.Device.VertexDeclaration = part.VertexDeclaration;
                     State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
                         part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-                }
-            }
-
-            if (animatedMesh != null)
-            {
-                int counter = 0;
-                foreach (ModelMesh modelMesh in animatedMesh)
-                {
-                    Matrix.Multiply(ref animationTransforms[counter++], ref transforms[modelMesh.ParentBone.Index], out tmpMat1);
-                    Matrix.Multiply(ref tmpMat1, ref renderMatrix, out tmpMat2);
-
-                    State.ShadowShader.UpdateGenerateShadowWorldMatrix(tmpMat2);
-
-                    foreach (ModelMeshPart part in modelMesh.MeshParts)
-                    {
-                        State.Device.Vertices[0].SetSource(
-                            modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
-                        State.Device.Indices = modelMesh.IndexBuffer;
-                        State.Device.VertexDeclaration = part.VertexDeclaration;
-                        State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                            part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-                    }
                 }
             }
         }

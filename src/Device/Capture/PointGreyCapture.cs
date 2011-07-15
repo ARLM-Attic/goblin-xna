@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -69,6 +69,8 @@ namespace GoblinXNA.Device.Capture
         private FrameRate frameRate;
         private ImageFormat format;
         private IResizer resizer;
+
+        private ImageReadyCallback imageReadyCallback;
 
         /// <summary>
         /// Used to count the number of times it failed to capture an image
@@ -149,6 +151,11 @@ namespace GoblinXNA.Device.Capture
         public SpriteEffects RenderFormat
         {
             get { return SpriteEffects.None; }
+        }
+
+        public ImageReadyCallback CaptureCallback
+        {
+            set { imageReadyCallback = value; }
         }
 
         /// <summary>
@@ -318,7 +325,11 @@ namespace GoblinXNA.Device.Capture
                         }
                     }
 
-                    if (returnImage != null)
+                    bool replaceBackground = false;
+                    if (imageReadyCallback != null)
+                        replaceBackground = imageReadyCallback(imagePtr, returnImage);
+
+                    if (!replaceBackground && (returnImage != null))
                     {
                         int index = 0;
                         for (int i = 0; i < flyImage.iRows; i++)

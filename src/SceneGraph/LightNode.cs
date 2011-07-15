@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ using GoblinXNA.Helpers;
 namespace GoblinXNA.SceneGraph
 {
     /// <summary>
-    /// A scene graph node that holds a collection of light sources.
+    /// A scene graph node that holds a light source.
     /// </summary>
     public class LightNode : Node
     {
@@ -60,7 +60,7 @@ namespace GoblinXNA.SceneGraph
 
         #region Constructors
         /// <summary>
-        /// Creates a node that can hold multiple light sources.
+        /// Creates a node that can hold a light source.
         /// </summary>
         /// <param name="name">The name of this light node</param>
         public LightNode(String name)
@@ -82,7 +82,7 @@ namespace GoblinXNA.SceneGraph
         #region Properties
 
         /// <summary>
-        /// Gets or sets a list of light sources associated with this node
+        /// Gets or sets a light source associated with this node
         /// </summary>
         public LightSource LightSource
         {
@@ -96,9 +96,10 @@ namespace GoblinXNA.SceneGraph
 
         /// <summary>
         /// Gets or sets whether this light is a global light source. If set to true, then no 
-        /// matter where in the scene graph this light node exists, all of its light sources 
-        /// will affect all objects in the scene graph. If set to false, then all of this node's 
-        /// light sources will affect only this node's children. The default value is true.
+        /// matter where in the scene graph this light node exists, the light source associated
+        /// with this node will affect all objects in the scene graph. If set to false, then this node's
+        /// light source will affect only this node's siblings and siblings children. The default 
+        /// value is true.
         /// </summary>
         public bool Global
         {
@@ -161,7 +162,10 @@ namespace GoblinXNA.SceneGraph
         #endregion
 
         #region Overriden Methods
-
+        /// <summary>
+        /// Clones this light node.
+        /// </summary>
+        /// <returns></returns>
         public override Node CloneNode()
         {
             LightNode clone = (LightNode)base.CloneNode();

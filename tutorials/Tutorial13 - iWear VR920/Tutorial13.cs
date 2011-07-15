@@ -1,3 +1,35 @@
+/************************************************************************************ 
+ * Copyright (c) 2008-2011, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/
+
 //#define USE_ARTAG
 
 using System;
@@ -7,12 +39,9 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
 
 using GoblinXNA;
 using GoblinXNA.Graphics;
@@ -68,6 +97,8 @@ namespace Tutorial13___iWear_VR920
         /// </summary>
         protected override void Initialize()
         {
+            base.Initialize();
+
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
@@ -132,9 +163,7 @@ namespace Tutorial13___iWear_VR920
                 rightViewport.Height = State.Height;
                 rightViewport.MinDepth = State.Device.Viewport.MinDepth;
                 rightViewport.MaxDepth = State.Device.Viewport.MaxDepth;
-            }
-
-            base.Initialize();
+            }     
         }
 
         private void HandleKeyPressEvent(Keys key, KeyModifier modifier)
@@ -156,10 +185,10 @@ namespace Tutorial13___iWear_VR920
         {
             StereoCamera camera = new StereoCamera();
             camera.Translation = new Vector3(0, 0, 0);
-            camera.FieldOfViewY = (float)Math.PI / 4;
             // For stereo camera, you need to setup the interpupillary distance which is the distance
             // between the left and right eyes
-            camera.InterpupillaryDistance = 19.31f;
+            camera.InterpupillaryDistance = 1.45f;
+            camera.FocalLength = 40;
             CameraNode cameraNode = new CameraNode(camera);
 
             scene.RootNode.AddChild(cameraNode);
@@ -203,7 +232,7 @@ namespace Tutorial13___iWear_VR920
             if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
                 captureDevice2 = new DirectShowCapture();
-                captureDevice2.InitVideoCapture(1, FrameRate._30Hz, Resolution._640x480,
+                captureDevice2.InitVideoCapture(2, FrameRate._30Hz, Resolution._640x480,
                     ImageFormat.R8G8B8_24, false);
 
                 scene.AddVideoCaptureDevice(captureDevice2);
@@ -422,7 +451,6 @@ namespace Tutorial13___iWear_VR920
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            iTracker.Update(gameTime, true);
             base.Update(gameTime);
         }
 

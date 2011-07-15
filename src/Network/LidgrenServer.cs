@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,7 @@ namespace GoblinXNA.Network
 
         protected NetConnection prevSender;
         protected Dictionary<String, NetConnection> clients;
+        protected List<NetConnection> clientList; // same as clients, but just an IList implmentation
         protected int sequenceChannel;
         protected bool useSequencedInsteadOfOrdered;
 
@@ -170,6 +171,7 @@ namespace GoblinXNA.Network
             approveList = new Dictionary<string, string>();
             prevSender = null;
             clients = new Dictionary<string, NetConnection>();
+            clientList = new List<NetConnection>();
 
             // Create a net configuration
             netConfig = new NetPeerConfiguration(appName);
@@ -242,7 +244,7 @@ namespace GoblinXNA.Network
                     }
                 }
                 else
-                    netServer.SendMessage(om, clients.Values, deliverMethod, channel);
+                    netServer.SendMessage(om, clientList, deliverMethod, channel);
             }
         }
 
@@ -334,6 +336,7 @@ namespace GoblinXNA.Network
                             byte[] size = BitConverter.GetBytes((short)data.Length);
                             messages.Add(ByteHelper.ConcatenateBytes(size, data));
                             clients.Add(msg.SenderEndpoint.ToString(), msg.SenderConnection);
+                            clientList.Add(msg.SenderConnection);
                             approveList.Remove(msg.SenderEndpoint.ToString());
                             if (msg.SenderConnection != null)
                                 prevSender = clients[msg.SenderEndpoint.ToString()];
@@ -342,6 +345,7 @@ namespace GoblinXNA.Network
                         }
                         else if (status == NetConnectionStatus.Disconnected)
                         {
+                            clientList.Remove(clients[msg.SenderEndpoint.ToString()]);
                             clients.Remove(msg.SenderEndpoint.ToString());
                             if (ClientDisconnected != null)
                                 ClientDisconnected(msg.SenderEndpoint.ToString());
@@ -350,7 +354,7 @@ namespace GoblinXNA.Network
                         break;
                     case NetIncomingMessageType.Data:
                         byte[] content = new byte[msg.LengthBytes];
-                        msg.Read(content, 0, msg.LengthBytes);
+                        msg.ReadBytes(content, 0, msg.LengthBytes);
                         messages.Add(content);
                         if (msg.SenderConnection != null)
                             prevSender = clients[msg.SenderEndpoint.ToString()];

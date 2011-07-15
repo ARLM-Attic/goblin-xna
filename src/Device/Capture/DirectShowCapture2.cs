@@ -1,5 +1,5 @@
-/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+﻿/************************************************************************************ 
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,6 @@
  * 
  * ===================================================================================
  * Authors: Ohan Oda (ohan@cs.columbia.edu) 
- *          Mike Sorvillo
  * 
  *************************************************************************************/
 
@@ -57,8 +56,6 @@ namespace GoblinXNA.Device.Capture
     /// </summary>
     public class DirectShowCapture2 : IVideoCapture
     {
-        public delegate bool ImageReadyCallback(IntPtr image, int[] background);
-
         #region Member Fields
 
         /// <summary>

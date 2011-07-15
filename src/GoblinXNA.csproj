@@ -98,6 +98,7 @@
     <Compile Include="Device\Capture\IResizer.cs" />
     <Compile Include="Device\Capture\IVideoCapture.cs" />
     <Compile Include="Device\Capture\NullCapture.cs" />
+    <Compile Include="Device\Capture\OpenCVCapture.cs" />
     <Compile Include="Device\Capture\PointGreyCapture.cs" />
     <Compile Include="Device\Capture\PointGrey\PGRFlyCapture.cs" />
     <Compile Include="Device\Capture\PointGrey\PGRFlyDllBridge.cs" />
@@ -114,13 +115,15 @@
     <Compile Include="Device\InterSense\InterSenseSocket.cs" />
     <Compile Include="Device\InterSense\InterSenseStation.cs" />
     <Compile Include="Device\InterSense\ISDllBridge.cs" />
-    <Compile Include="Device\IReconfigurable.cs" />
     <Compile Include="Device\iWear\iWearDllBridge.cs" />
     <Compile Include="Device\iWear\iWearTracker.cs" />
     <Compile Include="Device\Util\DESPredictor.cs" />
     <Compile Include="Device\Util\IPredictor.cs" />
     <Compile Include="Device\Util\ISmoother.cs" />
     <Compile Include="Device\Vision\ALVARDllBridge.cs" />
+    <Compile Include="Device\Vision\CvDllBridge.cs" />
+    <Compile Include="Device\Vision\CxcoreDllBridge.cs" />
+    <Compile Include="Device\Vision\HighguiDllBridge.cs" />
     <Compile Include="Device\Vision\Marker\ALVARMarkerTracker.cs" />
     <Compile Include="Device\Vision\Marker\IMarkerTracker.cs" />
     <Compile Include="Device\Vision\Marker\MarkerException.cs" />
@@ -128,6 +131,7 @@
     <Compile Include="GoblinEnums.cs" />
     <Compile Include="GoblinException.cs" />
     <Compile Include="Graphics\Environment.cs" />
+    <Compile Include="Graphics\Billboard.cs" />
     <Compile Include="Graphics\Geometry\Capsule.cs" />
     <Compile Include="Graphics\Geometry\ChamferCylinder.cs" />
     <Compile Include="Graphics\Geometry\Cylinder.cs">

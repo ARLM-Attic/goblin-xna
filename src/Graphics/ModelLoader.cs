@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,7 @@ namespace GoblinXNA.Graphics
                 Matrix[] transforms = new Matrix[xnaModel.Bones.Count];
                 xnaModel.CopyAbsoluteBoneTransformsTo(transforms);
 
-                IModel model = new Model(transforms, xnaModel.Meshes, null);
+                IModel model = new Model(transforms, xnaModel.Meshes);
                 return model;
             }
             else

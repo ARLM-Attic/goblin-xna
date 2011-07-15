@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -148,25 +148,7 @@ namespace GoblinXNA.Device.Util
             this.transThreshold = transThreshold;
             this.rotThreshold = rotThreshold;
 
-            transSt = new Vector3();
-            transPrevSt = new Vector3();
-            transBt = new Vector3();
-            transPrevBt = new Vector3();
-            tmpTrans = new Vector3();
-
-            rotSt = Quaternion.Identity;
-            rotPrevSt = Quaternion.Identity;
-            rotBt = Quaternion.Identity;
-            rotPrevBt = Quaternion.Identity;
-            tmpRot = Quaternion.Identity;
-
-            prevRawP = new Vector3();
-            prevRawQ = Quaternion.Identity;
-
-            prevComputedMat = Matrix.Identity;
-
-            initialized = false;
-            restartCount = 0;
+            ResetHistory();
         }
 
         #endregion
@@ -266,6 +248,29 @@ namespace GoblinXNA.Device.Util
                 // return unfiltered matrix since can not smooth yet
                 Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
             }
+        }
+
+        public virtual void ResetHistory()
+        {
+            transSt = new Vector3();
+            transPrevSt = new Vector3();
+            transBt = new Vector3();
+            transPrevBt = new Vector3();
+            tmpTrans = new Vector3();
+
+            rotSt = Quaternion.Identity;
+            rotPrevSt = Quaternion.Identity;
+            rotBt = Quaternion.Identity;
+            rotPrevBt = Quaternion.Identity;
+            tmpRot = Quaternion.Identity;
+
+            prevRawP = new Vector3();
+            prevRawQ = Quaternion.Identity;
+
+            prevComputedMat = Matrix.Identity;
+
+            initialized = false;
+            restartCount = 0;
         }
 
         public virtual XmlElement Save(XmlDocument xmlDoc)

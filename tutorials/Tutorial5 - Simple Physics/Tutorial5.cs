@@ -1,13 +1,46 @@
+/************************************************************************************ 
+ * Copyright (c) 2008-2011, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/
+
+// When you use Havok physics, make sure to add HavokWrapper.dll to your solution and make
+// the "Copy to Output" option "Copy if Newer". 
+//#define USE_HAVOK
+
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
 
 using GoblinXNA;
 using GoblinXNA.SceneGraph;
@@ -16,13 +49,20 @@ using GoblinXNA.Device.Generic;
 using GoblinXNA.Graphics.Geometry;
 using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Physics;
+#if USE_HAVOK
+using GoblinXNA.Physics.Havok;
+#else
 using GoblinXNA.Physics.Newton1;
+#endif
 
 namespace Tutorial5___Simple_Physics
 {
     /// <summary>
     /// This tutorial demonstrates how to perform physical simulation using the wrapped Netwon
-    /// physics library with our Geometry nodes. 
+    /// physics library or wrapped Havok physics library with our Geometry nodes. To switch to
+    /// Havok physics, please uncomment the very first line of this file #define USE_HAVOK.
+    /// When you use Havok physics, make sure to add HavokWrapper.dll to your solution and make
+    /// the "Copy to Output" option "Copy if Newer". 
     /// </summary>
     public class Tutorial5 : Microsoft.Xna.Framework.Game
     {
@@ -46,6 +86,8 @@ namespace Tutorial5___Simple_Physics
         /// </summary>
         protected override void Initialize()
         {
+            base.Initialize();
+
             // Display the mouse cursor
             this.IsMouseVisible = true;
 
@@ -59,10 +101,23 @@ namespace Tutorial5___Simple_Physics
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
             scene.BackgroundColor = Color.CornflowerBlue;
 
+#if USE_HAVOK
+            // Define the havok physics settings
+            HavokPhysics.WorldCinfo info = new HavokPhysics.WorldCinfo()
+            {
+                Gravity = 30,
+                HavokSimulationType = HavokPhysics.SimulationType.SIMULATION_TYPE_CONTINUOUS,
+                CollisionTolerance = 0.05f
+            };
+
+            // Use the havok physics engine to perform physics simulation
+            scene.PhysicsEngine = new HavokPhysics(info);
+#else
             // We will use the Newton physics engine (http://www.newtondynamics.com)
             // for processing the physical simulation
             scene.PhysicsEngine = new NewtonPhysics();
             scene.PhysicsEngine.Gravity = 30;
+#endif
 
             // Set up the lights used in the scene
             CreateLights();
@@ -83,8 +138,6 @@ namespace Tutorial5___Simple_Physics
             // Show some debug information
             State.ShowFPS = true;
             State.ShowTriangleCount = true;
-
-            base.Initialize();
         }
 
         private void MouseClickHandler(int button, Point mouseLocation)

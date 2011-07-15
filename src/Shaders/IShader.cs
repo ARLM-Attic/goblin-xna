@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -105,6 +105,11 @@ namespace GoblinXNA.Shaders
         /// Gets or sets the current material used for this shader
         /// </summary>
         Material CurrentMaterial { get; }
+
+        /// <summary>
+        /// Sets the world transform
+        /// </summary>
+        Matrix WorldTransform { set; }
 
         /// <summary>
         /// Renders a 3D mesh provided in the renderDelegate function with the specified

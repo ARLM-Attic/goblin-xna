@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,15 +59,10 @@ namespace GoblinXNA.Shaders
     {
         #region Member Fields
 
-        private Matrix worldMatrix;
-        private Matrix viewMatrix;
-        private Matrix projectionMatrix;
         private BasicEffect basicEffect;
         private List<LightSource> lightSources;
         private Vector3 ambientLight;
-        private float[] originalAlphas;
-        private bool originalSet;
-        private int alphaIndexer;
+        private Dictionary<Effect, float> originalAlphas; 
 
         #region Temporary Variables
 
@@ -90,16 +85,10 @@ namespace GoblinXNA.Shaders
             if (!State.Initialized)
                 throw new GoblinException("Goblin XNA needs to be initialized first using State.InitGoblin(..)");
 
-            worldMatrix = Matrix.Identity;
-            projectionMatrix = State.ProjectionMatrix;
-            viewMatrix = State.ViewMatrix;
-
             basicEffect = new BasicEffect(State.Device, null);
             lightSources = new List<LightSource>();
             ambientLight = Vector3.Zero;
-
-            originalSet = false;
-            alphaIndexer = 0;
+            originalAlphas = new Dictionary<Effect, float>();
         }
         #endregion
 
@@ -118,6 +107,14 @@ namespace GoblinXNA.Shaders
         {
             get;
             set;
+        }
+
+        public Matrix WorldTransform
+        {
+            set
+            {
+                basicEffect.World = value;
+            }
         }
 
         public bool UseVertexColor
@@ -139,16 +136,10 @@ namespace GoblinXNA.Shaders
         #region IAlphaBlendable implementations
         public void SetOriginalAlphas(ModelEffectCollection effectCollection)
         {
-            if (originalSet)
-                return;
-
-            originalAlphas = new float[effectCollection.Count];
-
             for (int i = 0; i < effectCollection.Count; i++)
-                if(effectCollection[i] is BasicEffect)
-                    originalAlphas[i] = ((BasicEffect)effectCollection[i]).Alpha;
-
-            originalSet = true;
+                if ((effectCollection[i] is BasicEffect) &&
+                    !originalAlphas.ContainsKey(effectCollection[i]))
+                    originalAlphas.Add(effectCollection[i], ((BasicEffect)effectCollection[i]).Alpha);
         }
         #endregion
 
@@ -160,14 +151,12 @@ namespace GoblinXNA.Shaders
                 if (material.InternalEffect is BasicEffect)
                 {
                     BasicEffect be = (BasicEffect)material.InternalEffect;
-                    // maintein the previous lighting effects
 
                     Vector3 diffuse = Vector3Helper.GetVector3(material.Diffuse);
                     if (!diffuse.Equals(Vector3.Zero))
                         basicEffect.DiffuseColor = diffuse;
                     else
                         basicEffect.DiffuseColor = be.DiffuseColor;
-                    basicEffect.DiffuseColor = be.DiffuseColor;
                     basicEffect.EmissiveColor = be.EmissiveColor;
                     basicEffect.SpecularColor = be.SpecularColor;
                     basicEffect.SpecularPower = be.SpecularPower;
@@ -175,9 +164,7 @@ namespace GoblinXNA.Shaders
                     basicEffect.TextureEnabled = be.TextureEnabled;
                     basicEffect.VertexColorEnabled = be.VertexColorEnabled;
 
-                    basicEffect.Alpha = originalAlphas[alphaIndexer] * material.Diffuse.W;
-
-                    alphaIndexer = (alphaIndexer + 1) % originalAlphas.Length;
+                    basicEffect.Alpha = originalAlphas[be] * material.Diffuse.W;
                 }
                 else
                     Log.Write("Passed internal effect is not BasicEffect, so we can not apply the " +

@@ -1,4 +1,34 @@
-//#define USE_ARTAG
+/************************************************************************************ 
+ * Copyright (c) 2008-2011, Columbia University
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Columbia University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * 
+ * ===================================================================================
+ * Author: Ohan Oda (ohan@cs.columbia.edu)
+ * 
+ *************************************************************************************/
 
 using System;
 using System.Collections.Generic;
@@ -39,6 +69,7 @@ namespace Tutorial8___Optical_Marker_Tracking
         Scene scene;
         MarkerNode groundMarkerNode, toolbarMarkerNode;
         GeometryNode boxNode;
+        bool useStaticImage = true;
 
         public Tutorial8()
         {
@@ -54,6 +85,8 @@ namespace Tutorial8___Optical_Marker_Tracking
         /// </summary>
         protected override void Initialize()
         {
+            base.Initialize();
+
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
@@ -63,12 +96,8 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Use the newton physics engine to perform collision detection
             scene.PhysicsEngine = new NewtonPhysics();
 
-            // For some reason, it causes memory conflict when it attempts to update the
-            // marker transformation in the multi-threaded code, so if you're using ARTag
-            // then you should not enable the marker tracking thread
-#if !USE_ARTAG
+            // Multi-thread the marker tracking process
             State.ThreadOption = (ushort)ThreadOptions.MarkerTracking;
-#endif
 
             // Set up optical marker tracking
             // Note that we don't create our own camera when we use optical marker
@@ -96,8 +125,6 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
-
-            base.Initialize();
         }
 
         private void CreateLights()
@@ -117,34 +144,36 @@ namespace Tutorial8___Optical_Marker_Tracking
 
         private void SetupMarkerTracking()
         {
-            // Create our video capture device that uses DirectShow library. Note that 
-            // the combinations of resolution and frame rate that are allowed depend on 
-            // the particular video capture device. Thus, setting incorrect resolution 
-            // and frame rate values may cause exceptions or simply be ignored, depending 
-            // on the device driver.  The values set here will work for a Microsoft VX 6000, 
-            // and many other webcams.
-            DirectShowCapture captureDevice = new DirectShowCapture();
-            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480, 
-                ImageFormat.R8G8B8_24, false);
+            IVideoCapture captureDevice = null;
+
+            if (useStaticImage)
+            {
+                captureDevice = new NullCapture();
+                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._800x600,
+                    ImageFormat.R8G8B8_24, false);
+                ((NullCapture)captureDevice).StaticImageFile = "testImage800x600.jpg";
+            }
+            else
+            {
+                // Create our video capture device that uses DirectShow library. Note that 
+                // the combinations of resolution and frame rate that are allowed depend on 
+                // the particular video capture device. Thus, setting incorrect resolution 
+                // and frame rate values may cause exceptions or simply be ignored, depending 
+                // on the device driver.  The values set here will work for a Microsoft VX 6000, 
+                // and many other webcams.
+                captureDevice = new DirectShowCapture2();
+                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                    ImageFormat.R8G8B8_24, false);
+            }
 
             // Add this video capture device to the scene so that it can be used for
             // the marker tracker
             scene.AddVideoCaptureDevice(captureDevice);
 
-            IMarkerTracker tracker = null;
-
-#if USE_ARTAG
-            // Create an optical marker tracker that uses ARTag library
-            tracker = new ARTagTracker();
-            // Set the configuration file to look for the marker specifications
-            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
-                captureDevice.Height, false, "ARTag.cf");
-#else
             // Create an optical marker tracker that uses ALVAR library
-            tracker = new ALVARMarkerTracker();
-            ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+            ALVARMarkerTracker tracker = new ALVARMarkerTracker();
+            tracker.MaxMarkerError = 0.02f;
             tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
-#endif
 
             // Set the marker tracker to use for our scene
             scene.MarkerTracker = tracker;
@@ -158,11 +187,8 @@ namespace Tutorial8___Optical_Marker_Tracking
         {
             GeometryNode groundNode = new GeometryNode("Ground");
                 
-#if USE_ARTAG
-            groundNode.Model = new Box(85, 66, 0.1f);
-#else
             groundNode.Model = new Box(95, 59, 0.1f);
-#endif
+
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 
@@ -195,15 +221,7 @@ namespace Tutorial8___Optical_Marker_Tracking
             sphereNode.Model.ReceiveShadows = true;
 
             // Create a marker node to track a ground marker array.
-#if USE_ARTAG
-            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
-
-            // Since we expect that the ground marker array won't move very much, we use a 
-            // small smoothing alpha.
-            //groundMarkerNode.Smoother = new DESSmoother(0.2f, 0.1f, 1, 1);
-#else
             groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.xml");
-#endif
 
             // Since the ground marker's size is 80x52 ARTag units, in order to move the sphere model
             // to the center of the ground marker, we shift it by 40x26 units and also make it
@@ -240,15 +258,7 @@ namespace Tutorial8___Optical_Marker_Tracking
             boxNode.Model.ReceiveShadows = true;
 
             // Create a marker node to track a toolbar marker array.
-#if USE_ARTAG
-            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "toolbar1");
-
-            // Since we expect that the toolbar marker array will move a lot, we use a large 
-            // smoothing alpha.
-            toolbarMarkerNode.Smoother = new DESSmoother(0.8f, 0.8f, 1, 1);
-#else
             toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "Toolbar.txt");
-#endif
 
             scene.RootNode.AddChild(toolbarMarkerNode);
 
@@ -324,12 +334,7 @@ namespace Tutorial8___Optical_Marker_Tracking
                     // appear right on top of the left marker of the toolbar marker array, we shift by
                     // half of each dimension of the 8x8x8 box model.  The approach used here requires that
                     // the ground marker array remains visible at all times.
-                    Vector3 shiftVector = Vector3.Zero; 
-#if USE_ARTAG
-                    shiftVector = new Vector3(4, 4, 4);
-#else
-                    shiftVector = new Vector3(4, -4, 4);
-#endif
+                    Vector3 shiftVector = new Vector3(4, -4, 4);
                     Matrix mat = Matrix.CreateTranslation(shiftVector) * 
                         toolbarMarkerNode.WorldTransformation * 
                         Matrix.Invert(groundMarkerNode.WorldTransformation);

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -334,6 +334,9 @@ namespace GoblinXNA.SceneGraph
                         worldTransformation = MatrixHelper.Empty;
                     }
                 }
+
+                if (smooth)
+                    smoother.ResetHistory();
             }
         }
 

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -178,11 +178,13 @@ namespace GoblinXNA.SceneGraph
 
                     modifyView = false;
                 }
+
                 return view; 
             }
             set 
             { 
                 view = value;
+                modifyView = false;
             }
         }
 
@@ -218,7 +220,11 @@ namespace GoblinXNA.SceneGraph
 
                 return projection;
             }
-            set { projection = value; }
+            set 
+            { 
+                projection = value; 
+                modifyProjection = false;
+            }
         }
 
         /// <summary>

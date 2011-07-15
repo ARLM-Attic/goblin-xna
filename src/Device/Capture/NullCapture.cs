@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,6 @@ namespace GoblinXNA.Device.Capture
         #region Member Fields
 
         private PointF focalPoint;
-
         private int videoDeviceID;
 
         private string imageFilename;
@@ -66,8 +65,9 @@ namespace GoblinXNA.Device.Capture
         private ImageFormat format;
         private IResizer resizer;
 
-        private int[] imageData;
-        private IntPtr imagePtr;
+        private ImageReadyCallback imageReadyCallback;
+
+        private Texture2D imageTexture;
 
         private bool isImageAlreadyProcessed;
 
@@ -81,10 +81,11 @@ namespace GoblinXNA.Device.Capture
         public NullCapture()
         {
             cameraInitialized = false;
+
             focalPoint = new PointF(0, 0);
+
             videoDeviceID = -1;
-            imageData = null;
-            imagePtr = IntPtr.Zero;
+
             imageFilename = "";
 
             cameraWidth = 0;
@@ -144,6 +145,11 @@ namespace GoblinXNA.Device.Capture
             get { return SpriteEffects.None; }
         }
 
+        public ImageReadyCallback CaptureCallback
+        {
+            set { imageReadyCallback = value; }
+        }
+
         /// <summary>
         /// Gets or sets whether the static image is already processed by the marker tracker.
         /// </summary>
@@ -167,63 +173,17 @@ namespace GoblinXNA.Device.Capture
             get { return imageFilename; }
             set
             {
-                if (!cameraInitialized)
-                    throw new GoblinException("You need to initialize the video capture device first");
-
                 if (!value.Equals(imageFilename))
                 {
                     imageFilename = value;
 
-                    String fileType = Path.GetExtension(imageFilename);
-
-                    int bpp = 1;
-                    int w = 0, h = 0;
-
-                    if (fileType.Equals(".jpg") || fileType.Equals(".jpeg") ||
-                        fileType.Equals(".gif") || fileType.Equals(".bmp"))
-                    {
-                        Bitmap image = new Bitmap(imageFilename);
-
-                        w = image.Width;
-                        h = image.Height;
-
-                        BitmapData data = image.LockBits(
-                            new System.Drawing.Rectangle(0, 0, w, h),
-                            ImageLockMode.ReadOnly, image.PixelFormat);
-
-                        int imageSize = w * h;
-                        imageData = new int[imageSize];
-                        switch (format)
-                        {
-                            case ImageFormat.R5G6B5_16:
-                                bpp = 2;
-                                break;
-                            case ImageFormat.B8G8R8_24:
-                            case ImageFormat.R8G8B8_24:
-                                bpp = 3;
-                                break;
-                            case ImageFormat.A8B8G8R8_32:
-                            case ImageFormat.B8G8R8A8_32:
-                            case ImageFormat.R8G8B8A8_32:
-                                bpp = 4;
-                                break;
-                        }
-
-                        if (resizer != null)
-                            imageSize = (int)(imageSize * (resizer.ScalingFactor * resizer.ScalingFactor));
-
-                        imagePtr = Marshal.AllocHGlobal(imageSize * bpp);
-
-                        ReadBmpData(data, imagePtr, imageData, w, h, bpp);
-
-                        image.UnlockBits(data);
-                    }
+                    if(Path.GetExtension(imageFilename).Length > 0)
+                        imageTexture = Texture2D.FromFile(State.Device, imageFilename);
                     else
-                        throw new GoblinException("We currently do not support reading images other " +
-                            "than .jpg, .jpeg, .gif, and .bmp format");
+                        imageTexture = State.Content.Load<Texture2D>(imageFilename);
 
-                    cameraWidth = w;
-                    cameraHeight = h;
+                    cameraWidth = imageTexture.Width;
+                    cameraHeight = imageTexture.Height;
 
                     isImageAlreadyProcessed = false;
                 }
@@ -234,15 +194,23 @@ namespace GoblinXNA.Device.Capture
 
         #region Public Methods
 
+        /// <summary>
+        /// Initializes a static image capture. 'videoDeviceID', 'framerate', 'resolution',
+        /// and 'grayscale' parameters are ignored.
+        /// </summary>
+        /// <param name="videoDeviceID">Ignored</param>
+        /// <param name="framerate">Ignored</param>
+        /// <param name="resolution">Ignored</param>
+        /// <param name="format">The format of how the ImagePtr property, which will be passed to
+        /// the marker tracker, will be stored (e.g., ARTag uses R8G8B8_24 format)</param>
+        /// <param name="grayscale">Ignored</param>
         public void InitVideoCapture(int videoDeviceID, FrameRate framerate, Resolution resolution, 
             ImageFormat format, bool grayscale)
         {
             if (cameraInitialized)
                 return;
 
-            this.videoDeviceID = videoDeviceID;
             this.format = format;
-            this.grayscale = grayscale;
 
             cameraInitialized = true;
         }
@@ -251,120 +219,120 @@ namespace GoblinXNA.Device.Capture
         {
             if (imageFilename.Length > 0)
             {
-                Array.Copy(imageData, returnImage, returnImage.Length);
-                imagePtr = this.imagePtr;
+                imageTexture.GetData<int>(returnImage);
+
+                CopyIntArrayToIntPtr(returnImage, ref imagePtr);
+
+                if (imageReadyCallback != null)
+                    imageReadyCallback(imagePtr, returnImage);
             }
         }
 
         public void Dispose()
         {
-            // imagePtr is freed by Scene class
+            if(imageTexture != null)
+                imageTexture.Dispose();
         }
 
         #endregion
 
         #region Private Methods
 
-        /// <summary>
-        /// A helper function that extracts the image pixels stored in Bitmap instance to an array
-        /// of integers as well as copy them to the memory location pointed by 'cam_image'.
-        /// </summary>
-        /// <param name="bmpDataSource"></param>
-        /// <param name="cam_image"></param>
-        /// <param name="imageData"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        private void ReadBmpData(BitmapData bmpDataSource, IntPtr cam_image, int[] imageData, int width,
-            int height, int bpp)
+        private void CopyIntArrayToIntPtr(int[] imageData, ref IntPtr imagePtr)
         {
             byte R, G, B, A;
+            byte r, g, b;
+            int color;
 
-            if (resizer != null)
+            unsafe
             {
-                resizer.ResizeImage(bmpDataSource.Scan0, new Vector2(width, height), ref cam_image, bpp);
+                byte* dst = (byte*)imagePtr;
 
-                unsafe
+                switch (format)
                 {
-                    byte* src = (byte*)bmpDataSource.Scan0;
-                    for (int i = 0; i < height; i++)
-                    {
-                        for (int j = 0, k = 0; j < width * 3; j += 3, k += bpp)
+                    case ImageFormat.GRAYSCALE_8:
+                        for (int i = 0; i < cameraHeight; i++)
                         {
-                            imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                                (*(src + j + 1) << 8) | *(src + j);
-                        }
-
-                        src += bmpDataSource.Stride;
-                    }
-                }
-            }
-            else
-            {
-                unsafe
-                {
-                    byte* src = (byte*)bmpDataSource.Scan0;
-                    byte* dst = (byte*)cam_image;
-
-                    for (int i = 0; i < height; i++)
-                    {
-                        for (int j = 0, k = 0; j < width * 3; j += 3, k += bpp)
-                        {
-                            switch (format)
+                            for (int j = 0; j < cameraWidth; j++)
                             {
-                                case ImageFormat.GRAYSCALE_8:
-                                    *(dst + k) = (byte)(0.3 * (*(src + j)) + 0.59 * (*(src + j + 1)) +
-                                        +0.11 * (*(src + j + 2)));
-                                    break;
-                                case ImageFormat.R5G6B5_16:
-                                    *(dst + k) = (byte)((*(src + j) & 0xF8) | (*(src + j + 1) >> 5));
-                                    *(dst + k + 1) = (byte)(((*(src + j + 1) & 0x1C) << 3) |
-                                        ((*(src + j + 2) & 0xF8) >> 3));
-                                    break;
-                                case ImageFormat.B8G8R8_24:
-                                case ImageFormat.R8G8B8_24:
-                                    if (format == ImageFormat.R8G8B8_24)
-                                    {
-                                        R = 0; G = 1; B = 2;
-                                    }
-                                    else
-                                    {
-                                        R = 2; G = 1; B = 0;
-                                    }
-
-                                    *(dst + k + R) = *(src + j);
-                                    *(dst + k + G) = *(src + j + 1);
-                                    *(dst + k + B) = *(src + j + 2);
-                                    break;
-                                case ImageFormat.A8B8G8R8_32:
-                                case ImageFormat.B8G8R8A8_32:
-                                case ImageFormat.R8G8B8A8_32:
-                                    if (format == ImageFormat.A8B8G8R8_32)
-                                    {
-                                        A = 0; B = 1; G = 2; R = 3;
-                                    }
-                                    else if (format == ImageFormat.B8G8R8A8_32)
-                                    {
-                                        B = 0; G = 1; R = 2; A = 3;
-                                    }
-                                    else
-                                    {
-                                        R = 0; G = 1; B = 2; A = 3;
-                                    }
-
-                                    *(dst + k + A) = (byte)255;
-                                    *(dst + k + R) = *(src + j);
-                                    *(dst + k + G) = *(src + j + 1);
-                                    *(dst + k + B) = *(src + j + 2);
-                                    break;
+                                color = imageData[i * cameraWidth + j];
+                                *(dst + j) = (byte)(0.3 * ((byte)(color >> 16)) + 0.59 * ((byte)(color >> 8)) +
+                                        +0.11 * ((byte)color));
                             }
 
-                            imageData[i * width + j / 3] = (*(src + j + 2) << 16) |
-                                (*(src + j + 1) << 8) | *(src + j);
+                            dst += cameraWidth;
+                        }
+                        break;
+                    case ImageFormat.R5G6B5_16:
+                        for (int i = 0; i < cameraHeight; i++)
+                        {
+                            for (int j = 0; j < cameraWidth * 2; j += 2)
+                            {
+                                color = imageData[i * cameraWidth + j / 2];
+                                r = (byte)(color >> 16);
+                                g = (byte)(color >> 8);
+                                b = (byte)(color);
+                                *(dst + j) = (byte)((r & 0xF8) | (g >> 5));
+                                *(dst + j + 1) = (byte)(((g & 0x1C) << 3) |  ((b & 0xF8) >> 3));
+                            }
+
+                            dst += cameraWidth * 2;
+                        }
+                        break;
+                    case ImageFormat.B8G8R8_24:
+                    case ImageFormat.R8G8B8_24:
+                        if (format == ImageFormat.R8G8B8_24)
+                        {
+                            R = 0; G = 1; B = 1;
+                        }
+                        else
+                        {
+                            R = 2; G = 1; B = 0;
                         }
 
-                        src += bmpDataSource.Stride;
-                        dst += (width * bpp);
-                    }
+                        for (int i = 0; i < cameraHeight; i++)
+                        {
+                            for (int j = 0; j < cameraWidth * 3; j += 3)
+                            {
+                                color = imageData[i * cameraWidth + j / 3];
+                                *(dst + j + R) = (byte)(color >> 16);
+                                *(dst + j + G) = (byte)(color >> 8);
+                                *(dst + j + B) = (byte)(color);
+                            }
+
+                            dst += cameraWidth * 3;
+                        }
+                        break;
+                    case ImageFormat.A8B8G8R8_32:
+                    case ImageFormat.B8G8R8A8_32:
+                    case ImageFormat.R8G8B8A8_32:
+                        if (format == ImageFormat.A8B8G8R8_32)
+                        {
+                            A = 0; B = 1; G = 2; R = 3;
+                        }
+                        else if (format == ImageFormat.B8G8R8A8_32)
+                        {
+                            B = 0; G = 1; R = 2; A = 3;
+                        }
+                        else
+                        {
+                            R = 0; G = 1; B = 2; A = 3;
+                        }
+
+                        for (int i = 0; i < cameraHeight; i++)
+                        {
+                            for (int j = 0; j < cameraWidth * 4; j += 4)
+                            {
+                                color = imageData[i * cameraWidth + j / 4];
+                                *(dst + j + A) = (byte)255;
+                                *(dst + j + R) = (byte)(color >> 16);
+                                *(dst + j + G) = (byte)(color >> 8);
+                                *(dst + j + B) = (byte)(color);
+                            }
+
+                            dst += cameraWidth * 4;
+                        }
+                        break;
                 }
             }
         }

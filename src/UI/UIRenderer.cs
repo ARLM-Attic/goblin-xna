@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -83,7 +83,6 @@ namespace GoblinXNA.UI
         /// Do not instantiate this class since this class is already instantiated in the 
         /// GoblinXNA.SceneGraph.Scene class.
         /// </remarks>
-        /// <param name="game">The main Game class</param>
         public UIRenderer()
         {
             try

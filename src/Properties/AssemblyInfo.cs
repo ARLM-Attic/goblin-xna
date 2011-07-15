@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Columbia University")]
 [assembly: AssemblyProduct("GoblinXNA")]
-[assembly: AssemblyCopyright("Copyright © Columbia University 2007-2010")]
+[assembly: AssemblyCopyright("Copyright © Columbia University 2007-2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,4 +32,4 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
 [assembly: AssemblyVersion("3.6.0.0")]
-[assembly: AssemblyFileVersion("3.12.22.2010")]
+[assembly: AssemblyFileVersion("3.7.15.2011")]

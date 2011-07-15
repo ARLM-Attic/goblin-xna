@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,6 +73,7 @@ namespace CameraCalibration
         int captureCount = 0;
         float timer = 0;
         bool finalized = false;
+        bool useImageSequence = false;
 
         string calibrationFilename = "calib.xml";
 
@@ -130,9 +131,20 @@ namespace CameraCalibration
 
         private void SetupCalibration()
         {
-            captureDevice = new DirectShowCapture();
-            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
-                ImageFormat.R8G8B8_24, false);
+            if (useImageSequence)
+            {
+                captureDevice = new NullCapture();
+                // Use whatever the resolution of the still image you're using instead of 640x480
+                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                    ImageFormat.R8G8B8_24, false);
+                ((NullCapture)captureDevice).StaticImageFile = "image" + captureCount + ".jpg";
+            }
+            else
+            {
+                captureDevice = new DirectShowCapture();
+                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                    ImageFormat.R8G8B8_24, false);
+            }
 
             // Add this video capture device to the scene so that it can be used for
             // the marker tracker
@@ -172,6 +184,9 @@ namespace CameraCalibration
                 {
                     string channelSeq = "RGB";
                     int nChannles = 3;
+                    
+                    if(useImageSequence)
+                        ((NullCapture)captureDevice).StaticImageFile = "image" + captureCount + ".jpg";
 
                     captureDevice.GetImageTexture(null, ref imagePtr);
 

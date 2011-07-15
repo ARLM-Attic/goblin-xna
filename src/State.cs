@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -83,7 +83,7 @@ namespace GoblinXNA
         private static bool canUsePS20;
         private static bool canUsePS30;
 
-        private static Hashtable settings = new Hashtable();
+        private static Dictionary<string, string> settings;
 
         private static Log.LogLevel printLevel;
         private static int nextNodeID;
@@ -447,6 +447,8 @@ namespace GoblinXNA
             boundingBoxColor = Color.Red;
             
             lineManager3D = new LineManager3D();
+
+            settings = new Dictionary<string, string>();
 
             if (settingFile.Length != 0)
                 LoadSettings(settingFile);

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -141,7 +141,6 @@ namespace GoblinXNA.UI
     /// <summary>
     /// Invoked when the value of the selection changes.
     /// </summary>
-    /// <param name="evt"></param>
     public delegate void ValueChanged(object src, SelectionType type, int firstIndex, int lastIndex, bool isAdjusting);
 
     /// <summary>

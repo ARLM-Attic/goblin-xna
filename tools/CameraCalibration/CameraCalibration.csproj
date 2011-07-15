@@ -96,12 +96,12 @@
     <Compile Include="Main.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\dlls\unmanaged\alvar140.dll">
-      <Link>alvar140.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\alvar150.dll">
+      <Link>alvar150.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\alvarplatform140.dll">
-      <Link>alvarplatform140.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\alvarplatform150.dll">
+      <Link>alvarplatform150.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\dlls\unmanaged\ALVARWrapper.dll">

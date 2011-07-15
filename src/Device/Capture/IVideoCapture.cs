@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -111,6 +111,12 @@ namespace GoblinXNA.Device.Capture
     };
     #endregion
 
+    #region Delegates
+
+    public delegate bool ImageReadyCallback(IntPtr image, int[] background);
+
+    #endregion
+
     /// <summary>
     /// A video capture interface for accessing cameras. Any video decoding class should implement this interface.
     /// </summary>
@@ -155,6 +161,11 @@ namespace GoblinXNA.Device.Capture
         IResizer MarkerTrackingImageResizer { get; set; }
 
         /// <summary>
+        /// Sets the callback function to be called when a new image becomes ready.
+        /// </summary>
+        ImageReadyCallback CaptureCallback { set; }
+
+        /// <summary>
         /// Gets the information whether certain image operation needs to be applied to the rendered
         /// video image on the background.
         /// </summary>
@@ -193,7 +204,7 @@ namespace GoblinXNA.Device.Capture
         /// Gets an array of video image pixels in Microsoft.Xna.Framework.Graphics.SurfaceFormat.Bgr32 
         /// format. The size is CameraWidth * CameraHeight.
         /// </summary>
-        /// <param name="copyToImagePtr">The pointer where to copy the video image so that the
+        /// <param name="imagePtr">The pointer where to copy the video image so that the
         /// marker tracker library can use it to process the image and detect marker transformations.
         /// Pass IntPtr.Zero if you don't need to get back the pointer.</param>
         /// <param name="returnImage">An array of int in which the video pixels are copied to. Pass null

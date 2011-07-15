@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,6 +84,7 @@ namespace GoblinXNA.Device.Vision.Marker
         /// Processes the video image captured from an initialized video capture device. 
         /// </summary>
         /// <param name="captureDevice">An initialized video capture device</param>
+        /// <param name="imagePtr">A pointer that contains an image to be processed</param>
         void ProcessImage(IVideoCapture captureDevice, IntPtr imagePtr);
 
         /// <summary>

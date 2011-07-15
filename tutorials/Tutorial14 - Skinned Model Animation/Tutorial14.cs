@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -76,6 +76,8 @@ namespace Tutorial14___Skinned_Model_Animation
         /// </summary>
         protected override void Initialize()
         {
+            base.Initialize();
+
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
@@ -97,8 +99,6 @@ namespace Tutorial14___Skinned_Model_Animation
             // Use per pixel lighting for better quality (If you using non NVidia graphics card,
             // setting this to true may reduce the performance significantly)
             scene.PreferPerPixelLighting = true;
-
-            base.Initialize();
         }
 
         private void CreateCamera()

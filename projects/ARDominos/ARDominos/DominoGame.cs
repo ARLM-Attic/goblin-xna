@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,6 @@
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
  *************************************************************************************/ 
-
-//#define USE_ARTAG
 
 using System;
 using System.Collections.Generic;
@@ -1264,16 +1262,9 @@ namespace ARDominos
 
             scene.AddVideoCaptureDevice(captureDevice);
 
-            IMarkerTracker tracker = null;
-#if USE_ARTAG
-            tracker = new ARTagTracker();
-            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width, captureDevice.Height,
-                false, "ARDominoARTag.cf");
-#else
-            tracker = new ALVARMarkerTracker();
-            ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
+            ALVARMarkerTracker tracker = new ALVARMarkerTracker();
+            tracker.MaxMarkerError = 0.02f;
             tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
-#endif
 
             scene.MarkerTracker = tracker;
 
@@ -1282,15 +1273,7 @@ namespace ARDominos
             scene.PhysicsEngine.GravityDirection = -Vector3.UnitZ;
 
             // Create a marker node to track the ground plane
-#if USE_ARTAG
-            markerNode = new MarkerNode(scene.MarkerTracker, "ground");
-#else
-            int[] ids = new int[54];
-            for (int i = 0; i < ids.Length; i++)
-                ids[i] = i;
-
-            markerNode = new MarkerNode(scene.MarkerTracker, "ARDominoALVAR.txt", ids);
-#endif
+            markerNode = new MarkerNode(scene.MarkerTracker, "ARDominoALVAR.txt");
 
             scene.RootNode.AddChild(markerNode);
         }
@@ -1309,11 +1292,7 @@ namespace ARDominos
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-#if USE_ARTAG
-            groundNode.Model = new Box(130, 89, 0.2f);
-#else
             groundNode.Model = new Box(129.5f, 99, 0.2f);
-#endif
 
             groundNode.Physics.Collidable = true;
             groundNode.Physics.Shape = ShapeType.Box;

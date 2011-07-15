@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -67,6 +67,7 @@ namespace GoblinXNA.Network
         protected NetClient netClient;
         protected IPAddress myAddr;
         protected NetPeerConfiguration netConfig;
+        protected bool isLocalAddress;
 
         protected int sequenceChannel;
         protected NetXtea xtea;
@@ -108,6 +109,8 @@ namespace GoblinXNA.Network
             IPAddress hostAddr = hostEntry.AddressList[0];
             hostPoint = new IPEndPoint(hostAddr, portNumber);
 
+            isLocalAddress = IsLocalIpAddress(hostName);
+
             // Create a configuration for the client
             netConfig = new NetPeerConfiguration(appName);
 
@@ -140,6 +143,8 @@ namespace GoblinXNA.Network
 
             IPAddress hostAddr = new IPAddress(hostIPAddress);
             hostPoint = new IPEndPoint(hostAddr, portNumber);
+
+            isLocalAddress = IsLocalIpAddress(hostAddr.ToString());
 
             // Create a configuration for the client
             netConfig = new NetPeerConfiguration(appName);
@@ -225,6 +230,30 @@ namespace GoblinXNA.Network
 
         #region Public Methods
 
+        public static bool IsLocalIpAddress(string host)
+        {
+            try
+            { // get host IP addresses
+                IPAddress[] hostIPs = Dns.GetHostAddresses(host);
+                // get local IP addresses
+                IPAddress[] localIPs = Dns.GetHostAddresses(Dns.GetHostName());
+
+                // test if any host IP equals to any local IP or to localhost
+                foreach (IPAddress hostIP in hostIPs)
+                {
+                    // is localhost
+                    if (IPAddress.IsLoopback(hostIP)) return true;
+                    // is local address
+                    foreach (IPAddress localIP in localIPs)
+                    {
+                        if (hostIP.Equals(localIP)) return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
         public void Connect()
         {
             if (netClient != null && netClient.Status == NetPeerStatus.Running)
@@ -247,7 +276,7 @@ namespace GoblinXNA.Network
                 }
                 else
                 {
-                    if (myAddr.Equals(hostPoint.Address))
+                    if (isLocalAddress)
                         netClient.DiscoverLocalPeers(portNumber);
                     else
                         netClient.DiscoverKnownPeer(hostPoint);
@@ -263,7 +292,7 @@ namespace GoblinXNA.Network
         {
             while (!isServerDiscovered && !shutDownForced)
             {
-                if (myAddr.Equals(hostPoint.Address))
+                if (isLocalAddress)
                     netClient.DiscoverLocalPeers(portNumber);
                 else
                     netClient.DiscoverKnownPeer(hostPoint);
@@ -324,7 +353,7 @@ namespace GoblinXNA.Network
                             break;
                         case NetIncomingMessageType.Data:
                             byte[] data = new byte[msg.LengthBytes];
-                            msg.Read(data, 0, msg.LengthBytes);
+                            msg.ReadBytes(data, 0, msg.LengthBytes);
                             messages.Add(data);
                             break;
                     }

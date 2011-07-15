@@ -1,4 +1,3 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial1 - Getting Started", "Tutorial1 - Getting Started\Tutorial1 - Getting Started.csproj", "{AF606C92-7617-480D-8AE5-5EB1466B570E}"
@@ -30,6 +29,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial14 - Skinned Model Animation", "Tutorial14 - Skinned Model Animation\Tutorial14 - Skinned Model Animation.csproj", "{C272C0B1-937F-4E02-894D-E2A20DD1B8C3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnedModelPipeline", "SkinnedModelPipeline\SkinnedModelPipeline.csproj", "{76C270E2-CC04-48C4-A710-9DBD46163704}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tutorial15 - OpenCV", "Tutorial15 - OpenCV\Tutorial15 - OpenCV.csproj", "{91D2D482-3760-4369-AC42-08D9F8E7CFDE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

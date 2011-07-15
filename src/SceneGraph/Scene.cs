@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -196,6 +196,8 @@ namespace GoblinXNA.SceneGraph
 
         protected bool isStarted;
 
+        protected SpriteEffects backgroundEffects;
+
         #region For Threading
 
         protected Thread markerTrackingThread;
@@ -375,6 +377,8 @@ namespace GoblinXNA.SceneGraph
             videoTextures = new Texture2D[2];
             bufferedVideoPointers = new IntPtr[VIDEO_BUFFER_SIZE];
 
+            backgroundEffects = SpriteEffects.None;
+
             for (int i = 0; i < 2; i++)
                 bufferedVideoImages[i] = new int[VIDEO_BUFFER_SIZE][];
 
@@ -446,6 +450,7 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <see cref="ShowCameraImage"/>
         /// <see cref="BackgroundColor"/>
+        /// <see cref="BackgroundTextureEffects"/>
         public Texture2D BackgroundTexture
         {
             get { return backgroundTexture; }
@@ -462,6 +467,16 @@ namespace GoblinXNA.SceneGraph
         {
             get { return backgroundColor; }
             set { backgroundColor = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the sprite effects to apply to the BackgroundTexture.
+        /// </summary>
+        /// <see cref="BackgroundTexture"/>
+        public SpriteEffects BackgroundTextureEffects
+        {
+            get { return backgroundEffects; }
+            set { backgroundEffects = value; }
         }
 
         /// <summary>
@@ -1663,7 +1678,9 @@ namespace GoblinXNA.SceneGraph
             {
                 spriteBatch.Begin();
                 spriteBatch.Draw(BackgroundTexture,
-                    new Rectangle(0, 0, State.Width, State.Height), videoBackgroundColor);
+                    new Rectangle(0, 0, State.Width, State.Height),
+                    new Rectangle(0, 0, BackgroundTexture.Width, BackgroundTexture.Height),
+                    videoBackgroundColor, 0, Vector2.Zero, backgroundEffects, 0);
                 spriteBatch.End();
             }
 
@@ -1963,11 +1980,14 @@ namespace GoblinXNA.SceneGraph
 
                 if (processLeftImageData || processLeftImagePtr)
                 {
-                    IntPtr leftImagePtr = (processLeftImagePtr) ? 
-                        bufferedVideoPointers[curVideoBufferIndex] : nullPtr;
-                    videoCaptures[actualLeftEyeVideoID].GetImageTexture(
-                        ((processLeftImageData) ? bufferedVideoImages[0][curVideoBufferIndex] : null),
-                        ref leftImagePtr);
+                    if(processLeftImagePtr)
+                        videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                            ((processLeftImageData) ? bufferedVideoImages[0][curVideoBufferIndex] : null),
+                            ref bufferedVideoPointers[curVideoBufferIndex]);
+                    else
+                        videoCaptures[actualLeftEyeVideoID].GetImageTexture(
+                            ((processLeftImageData) ? bufferedVideoImages[0][curVideoBufferIndex] : null),
+                            ref nullPtr);
 
                     if (processLeftImageData)
                         SetTextureData(0);
@@ -1975,11 +1995,14 @@ namespace GoblinXNA.SceneGraph
 
                 if (processRightImageData || processRightImagePtr)
                 {
-                    IntPtr rightImagePtr = (processRightImagePtr) ?
-                        bufferedVideoPointers[curVideoBufferIndex] : nullPtr;
-                    videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                    if(processRightImagePtr)
+                        videoCaptures[actualRightEyeVideoID].GetImageTexture(
+                            ((processRightImageData) ? bufferedVideoImages[1][curVideoBufferIndex] : null),
+                            ref bufferedVideoPointers[curVideoBufferIndex]);
+                    else
+                        videoCaptures[actualRightEyeVideoID].GetImageTexture(
                         ((processRightImageData) ? bufferedVideoImages[1][curVideoBufferIndex] : null),
-                        ref rightImagePtr);
+                            ref nullPtr);
 
                     if (processRightImageData)
                         SetTextureData(1);

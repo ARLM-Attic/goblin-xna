@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2010, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,16 @@ namespace GoblinXNA.Helpers
         }
 
         /// <summary>
+        /// Converts a string to an array of bytes.
+        /// </summary>
+        /// <param name="s">A string to be converted</param>
+        /// <param name="bytes">The resulting byte array</param>
+        public static void ConvertToByte(String s, byte[] bytes)
+        {
+            System.Text.Encoding.ASCII.GetBytes(s, 0, s.Length, bytes, 0);
+        }
+
+        /// <summary>
         /// Converts an array of bytes to a string.
         /// </summary>
         /// <param name="b">An array of bytes</param>
@@ -104,10 +114,21 @@ namespace GoblinXNA.Helpers
         public static byte[] ConvertFloatArray(List<float> floats)
         {
             byte[] b = new byte[floats.Count * 4];
-            for (int i = 0; i < floats.Count; i++)
-                FillByteArray(ref b, i * 4, BitConverter.GetBytes(floats[i]));
+            float[] temp = floats.ToArray();
+            Buffer.BlockCopy(temp, 0, b, 0, b.Length);
 
             return b;
+        }
+
+        /// <summary>
+        /// Converts a list of single-precision floating numbers to an array of bytes.
+        /// </summary>
+        /// <param name="floats">A list of single-precision floating numbers</param>
+        /// <param name="bytes">The resulting byte array</param>
+        public static void ConvertFloatArray(List<float> floats, byte[] bytes)
+        {
+            float[] temp = floats.ToArray();
+            Buffer.BlockCopy(temp, 0, bytes, 0, temp.Length * 4);
         }
 
         /// <summary>
@@ -117,11 +138,22 @@ namespace GoblinXNA.Helpers
         /// <returns>An array of bytes with size of 4 * (number of ints)</returns>
         public static byte[] ConvertIntArray(List<int> ints)
         {
+            int[] temp = ints.ToArray();
             byte[] b = new byte[ints.Count * sizeof(int)];
-            for (int i = 0; i < ints.Count; i++)
-                FillByteArray(ref b, i * sizeof(int), BitConverter.GetBytes(ints[i]));
+            Buffer.BlockCopy(temp, 0, b, 0, b.Length);
 
             return b;
+        }
+
+        /// <summary>
+        /// Converts a list of 32-bit integer numbers to an array of bytes.
+        /// </summary>
+        /// <param name="ints">A list of 32-bit integer numbers</param>
+        /// <param name="bytes">The resulting byte array</param>
+        public static void ConvertIntArray(List<int> ints, byte[] bytes)
+        {
+            int[] temp = ints.ToArray();
+            Buffer.BlockCopy(temp, 0, bytes, 0, temp.Length * 4);
         }
 
         /// <summary>
@@ -131,11 +163,22 @@ namespace GoblinXNA.Helpers
         /// <returns>An array of bytes with size of 2 * (number of shorts)</returns>
         public static byte[] ConvertShortArray(List<short> shorts)
         {
+            short[] temp = shorts.ToArray();
             byte[] b = new byte[shorts.Count * sizeof(short)];
-            for (int i = 0; i < shorts.Count; i++)
-                FillByteArray(ref b, i * sizeof(short), BitConverter.GetBytes(shorts[i]));
+            Buffer.BlockCopy(temp, 0, b, 0, b.Length);
 
             return b;
+        }
+
+        /// <summary>
+        /// Converts a list of 16-bit integer numbers to an array of bytes.
+        /// </summary>
+        /// <param name="shorts">A list of 16-bit integer numbers</param>
+        /// <param name="bytes">The resulting byte array</param>
+        public static void ConvertShortArray(List<short> shorts, byte[] bytes)
+        {
+            short[] temp = shorts.ToArray();
+            Buffer.BlockCopy(temp, 0, bytes, 0, temp.Length * 2);
         }
 
         /// <summary>
@@ -152,7 +195,25 @@ namespace GoblinXNA.Helpers
         {
             int length = (src.Length > (dest.Length - destStartIndex)) ?
                 (dest.Length - destStartIndex) : src.Length;
-            Array.Copy(src, 0, dest, destStartIndex, length);
+            Buffer.BlockCopy(src, 0, dest, destStartIndex, length);
+        }
+
+        /// <summary>
+        /// Fills the given dest byte array from the destStartIndex with the src byte array starting at
+        /// specific index with specific length
+        /// </summary>
+        /// <remarks>
+        /// If the source contains more than (dest.Length - destStartIndex) bytes, then the overflowed 
+        /// bytes are not copied into the destination array..
+        /// </remarks>
+        /// <param name="dest">The destination where the source array will be copied</param>
+        /// <param name="destStartIndex">The index of the destination array where the copy starts</param>
+        /// <param name="src">The source array where to copy from</param>
+        /// <param name="srcStartIndex">The starting index to copy from</param>
+        /// <param name="srcLength">The length to copy from the starting index</param>
+        public static void FillByteArray(ref byte[] dest, int destStartIndex, byte[] src, int srcStartIndex, int srcLength)
+        {
+            Buffer.BlockCopy(src, srcStartIndex, dest, destStartIndex, srcLength);
         }
 
         /// <summary>
@@ -165,10 +226,66 @@ namespace GoblinXNA.Helpers
         {
             byte[] b = new byte[b1.Length + b2.Length];
 
-            Array.Copy(b1, 0, b, 0, b1.Length);
-            Array.Copy(b2, 0, b, b1.Length, b2.Length);
+            Buffer.BlockCopy(b1, 0, b, 0, b1.Length);
+            Buffer.BlockCopy(b2, 0, b, b1.Length, b2.Length);
 
             return b;
+        }
+
+        /// <summary>
+        /// Concatenates two byte arrays from specific starting index and length.
+        /// </summary>
+        /// <param name="b1">The first byte array to be concatenated</param>
+        /// <param name="b1StartIndex"></param>
+        /// <param name="b1Length"></param>
+        /// <param name="b2">The second byte array to be concatenated</param>
+        /// <param name="b2StartIndex"></param>
+        /// <param name="b2Length"></param>
+        /// <returns>The concatenated byte array with size of b1 + b2</returns>
+        public static byte[] ConcatenateBytes(byte[] b1, int b1StartIndex, int b1Length, byte[] b2, int b2StartIndex, int b2Length)
+        {
+            byte[] b = new byte[b1Length + b2Length];
+
+            Buffer.BlockCopy(b1, b1StartIndex, b, 0, b1Length);
+            Buffer.BlockCopy(b2, b2StartIndex, b, b1Length, b2Length);
+
+            return b;
+        }
+
+        /// <summary>
+        /// Concatenates two byte arrays from specific starting index and length.
+        /// </summary>
+        /// <param name="b1">The first byte array to be concatenated</param>
+        /// <param name="b1StartIndex"></param>
+        /// <param name="b1Length"></param>
+        /// <param name="b2">The second byte array to be concatenated</param>
+        /// <param name="b2StartIndex"></param>
+        /// <param name="b2Length"></param>
+        /// <param name="bytes">The resulting byte array</param>
+        public static void ConcatenateBytes(byte[] b1, int b1StartIndex, int b1Length, byte[] b2, 
+            int b2StartIndex, int b2Length, byte[] bytes)
+        {
+            Buffer.BlockCopy(b1, b1StartIndex, bytes, 0, b1Length);
+            Buffer.BlockCopy(b2, b2StartIndex, bytes, b1Length, b2Length);
+        }
+
+        /// <summary>
+        /// Concatenates two byte arrays from specific starting index and length and copy to a resulting byte array 
+        /// at specific starting index.
+        /// </summary>
+        /// <param name="b1">The first byte array to be concatenated</param>
+        /// <param name="b1StartIndex"></param>
+        /// <param name="b1Length"></param>
+        /// <param name="b2">The second byte array to be concatenated</param>
+        /// <param name="b2StartIndex"></param>
+        /// <param name="b2Length"></param>
+        /// <param name="bytes">The resulting byte array</param>
+        /// <param name="bytesStartIndex"></param>
+        public static void ConcatenateBytes(byte[] b1, int b1StartIndex, int b1Length, byte[] b2,
+            int b2StartIndex, int b2Length, byte[] bytes, int bytesStartIndex)
+        {
+            Buffer.BlockCopy(b1, b1StartIndex, bytes, bytesStartIndex, b1Length);
+            Buffer.BlockCopy(b2, b2StartIndex, bytes, bytesStartIndex + b1Length, b2Length);
         }
 
         /// <summary>
@@ -181,9 +298,21 @@ namespace GoblinXNA.Helpers
         public static byte[] Truncate(byte[] value, int startIndex, int length)
         {
             byte[] b = new byte[length];
-            Array.Copy(value, startIndex, b, 0, length);
+            Buffer.BlockCopy(value, startIndex, b, 0, length);
 
             return b;
+        }
+
+        /// <summary>
+        /// Truncates an array of bytes from the startIndex for the specified length.
+        /// </summary>
+        /// <param name="value">A byte array to be truncated</param>
+        /// <param name="startIndex">The index in the 'value' array where truncation starts</param>
+        /// <param name="length">The length of the new truncated array</param>
+        /// <param name="bytes">The resulting byte array</param>
+        public static void Truncate(byte[] value, int startIndex, int length, byte[] bytes)
+        {
+            Buffer.BlockCopy(value, startIndex, bytes, 0, length);
         }
     }
 }

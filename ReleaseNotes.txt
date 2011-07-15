@@ -1,11 +1,79 @@
 Goblin XNA Release Notes
 
+Version 3.6.0 (7/15/11)
+
+
+Updates:
+
+1. Added OpenCV 2.1 supports. OpenCVCapture implements IVideoCapture interface using OpenCV, and CvDllBridge,
+   CxcoreDllBridge, and HighguiDllBridge classes wrap the OpenCV functions in each dlls. Note that only
+   subset of the entire OpenCV libraries are wrapped, and you will need to wrap additional functions youself.
+   These wrapper classes are in GoblinXNA.Device.Vision package.
+
+2. Added Tutorial 15 which demonstrates how to use OpenCV with Goblin XNA.
+
+3. Added ResetHistory() interface function to ISmoother.
+
+4. Added StereoCamera.FocalLength property so that the user can adjust the focal length. The focal length
+   used to be infinity prior to this version.
+
+5. Added HavokPhysics usage example in Tutorial 5.
+
+6. Added Billboard class in GoblinXNA.Graphics package that extends PrimitiveModel.
+
+7. Added NullCapture usage (which uses a static image for debugging purpose) sample in Tutorial 8.
+
+8. Added CaptureCallback property to PointGreyCapture.
+
+
+Bug Fixes:
+
+1. Fixed a problem for NullCapture.
+
+2. Fixed marker tracking problem using PointGreyCapture. 
+
+
+Changes:
+
+1. Resets smoothing history when the marker tracking gets lost in MarkerNode class so that it won't have
+   undesirable smoothed jump when the tracking is resumed at different pose. 
+
+2. Same change is made to MarkerBundleNode as above.
+
+3. Overridden MarkerBundleNode's MaxDropouts property so that changes to MarkerBundleNode.MaxDropouts
+   will change its supporting node's MaxDropouts properties as well.
+
+4. Updated iWearDllBridge.GetProductID() to return ushort instead of int (it used to be int type, but from
+   Vuzix SDK 3.1, it's ushort type), so iWearTracker.ProductID will return correct enum value now.
+
+5. Updated Lidgren.Network to a newer version (gen3 2011-2-19). Updated LidgrenServer and LidgrenClient for this
+   update.
+
+6. Moved base.Initialize() call for all of the tutorials to the very beginning of the Initialize() function so that
+   LoadContent() is called before initializaing any of the Goblin classes.
+
+7. Moved ImageReadyCallback delegate to IVideoCapture from each implementation and added CaptureCallback 
+   property to IVideoCapture interface.
+
+8. Removed animatedMesh parameter from Model's constructor. Instead, added UpdateAnimationTransforms
+   method to allow updating the animation transform of a specific mesh (NOTE: This is for Rigid-Body Animation)
+
+9. Made appropriate changes to ModelLoader in accordance with the above change.
+
+10. Made appropriate changes to Tutorial 14's AnimatedModel and AnimatedModelLoader classes in accordance
+    with the animatedMesh removal. 
+
+11. Improved the speed for all of the array manipulation methods in ByteHelper class by using Buffer.BlockCopy method
+    instead of Array.Copy method. For example, it's 8 times faster to convert 1000000 floats to bytes using 
+    ConvertFloatArray compared to previous implementation. This wil enhance the networking speed for large number of
+    synchronized geometry nodes.
+
 Version 3.5.1 (1/04/11)
 
 
 Updates:
 
-1, Updated the user manual to version 3.5.1
+1. Updated the user manual to version 3.5.1
 
 2. Added RenderLeftView property to indicate whether the scene graph is currently rendering the left eye view in
    stereo mode. (Note: This property is always true if you're not using stereo mode)
