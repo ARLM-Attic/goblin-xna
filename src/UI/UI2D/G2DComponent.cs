@@ -521,6 +521,10 @@ namespace GoblinXNA.UI.UI2D
         /// the mouse is pressed</param>
         protected virtual void HandleMousePress(int button, Point mouseLocation)
         {
+#if WINDOWS_PHONE
+            within = TestWithin(mouseLocation);
+#endif
+
             if (!within || !enabled || !visible)
                 return;
 
@@ -539,6 +543,9 @@ namespace GoblinXNA.UI.UI2D
         /// the mouse is released</param>
         protected virtual void HandleMouseRelease(int button, Point mouseLocation)
         {
+#if WINDOWS_PHONE
+            within = TestWithin(mouseLocation);
+#endif
             if (!within || !enabled || !visible)
                 return;
 

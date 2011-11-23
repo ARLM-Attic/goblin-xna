@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial15___OpenCV
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial15___OpenCV
             }
         }
     }
+#endif
 }
 

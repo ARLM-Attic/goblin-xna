@@ -30,7 +30,7 @@ namespace GoblinXNA.Shaders
         #region Member Fields
 
         protected EffectParameter view,
-            viewportHeight,
+            viewportScale,
             time,
             duration,
             durationRandomness,
@@ -82,7 +82,7 @@ namespace GoblinXNA.Shaders
             world = effect.Parameters["World"];
             view = effect.Parameters["View"];
             projection = effect.Parameters["Projection"];
-            viewportHeight = effect.Parameters["ViewportHeight"];
+            viewportScale = effect.Parameters["ViewportScale"];
             time = effect.Parameters["CurrentTime"];
             duration = effect.Parameters["Duration"];
             durationRandomness = effect.Parameters["DurationRandomness"];
@@ -132,7 +132,7 @@ namespace GoblinXNA.Shaders
             }
         }
 
-        public override void Render(Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
+        public override void Render(ref Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
         {
             if (techniqueName == null)
                 throw new GoblinException("techniqueName is null");
@@ -142,27 +142,18 @@ namespace GoblinXNA.Shaders
             world.SetValue(worldMatrix);
             view.SetValue(State.ViewMatrix);
             projection.SetValue(State.ProjectionMatrix);
-            viewportHeight.SetValue(State.Height);
+            viewportScale.SetValue(new Vector2(0.5f / State.Device.Viewport.AspectRatio, -0.5f));
             // Start shader
             effect.CurrentTechnique = effect.Techniques[techniqueName];
-            try
-            {
-                effect.Begin(SaveStateMode.None);
 
-                // Render all passes (usually just one)
-                //foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-                foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-                {
-                    pass.Begin();
-                    renderDelegate();
-                    pass.End();
-                }
-            }
-            finally
+            // Render all passes (usually just one)
+            //foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
             {
-                // End shader
-                effect.End();
+                pass.Apply();
+                renderDelegate();
             }
+
         }
 
         public override void Dispose()

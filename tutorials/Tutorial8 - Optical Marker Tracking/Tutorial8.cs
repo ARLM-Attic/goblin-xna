@@ -35,11 +35,8 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
 
 using GoblinXNA;
 using GoblinXNA.Graphics;
@@ -53,6 +50,7 @@ using GoblinXNA.Device.Util;
 using GoblinXNA.Physics;
 using GoblinXNA.Physics.Newton1;
 using GoblinXNA.Helpers;
+using GoblinXNA.Shaders;
 
 namespace Tutorial8___Optical_Marker_Tracking
 {
@@ -69,12 +67,15 @@ namespace Tutorial8___Optical_Marker_Tracking
         Scene scene;
         MarkerNode groundMarkerNode, toolbarMarkerNode;
         GeometryNode boxNode;
-        bool useStaticImage = true;
+        bool useStaticImage = false;
 
         public Tutorial8()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            graphics.PreferredBackBufferWidth = 800;
+            graphics.PreferredBackBufferHeight = 600;
         }
 
         /// <summary>
@@ -91,12 +92,14 @@ namespace Tutorial8___Optical_Marker_Tracking
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Use the newton physics engine to perform collision detection
             scene.PhysicsEngine = new NewtonPhysics();
 
-            // Multi-thread the marker tracking process
+            // For some reason, it causes memory conflict when it attempts to update the
+            // marker transformation in the multi-threaded code, so if you're using ARTag
+            // then you should not enable the marker tracking thread
             State.ThreadOption = (ushort)ThreadOptions.MarkerTracking;
 
             // Set up optical marker tracking
@@ -107,21 +110,18 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Set up the lights used in the scene
             CreateLights();
 
+            // Enable shadow mapping
+            // NOTE: In order to use shadow mapping, you will need to add 'MultiLightShadowMap.fx'
+            // and 'SimpleShadowShader.fx' shader files to your 'Content' directory. Also in here,
+            // we're creating the ShadowMap before the creation of 3D objects since we need to assign
+            // this ShadowMap to the IShadowShader used for the 3D objects
+            scene.ShadowMap = new MultiLightShadowMap();
+
             // Create 3D objects
             CreateObjects();
 
             // Create the ground that represents the physical ground marker array
             CreateGround();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
-
-            // Enable shadow mapping
-            // NOTE: In order to use shadow mapping, you will need to add 'PostScreenShadowBlur.fx'
-            // and 'ShadowMap.fx' shader files as well as 'ShadowDistanceFadeoutMap.dds' texture file
-            // to your 'Content' directory
-            scene.EnableShadowMapping = true;
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
@@ -139,6 +139,15 @@ namespace Tutorial8___Optical_Marker_Tracking
             LightNode lightNode = new LightNode();
             lightNode.LightSource = lightSource;
 
+            // Set this light node to cast shadows (by just setting this to true will not cast any shadows,
+            // scene.ShadowMap needs to be set to a valid IShadowMap and Model.Shader needs to be set to
+            // a proper IShadowShader implementation
+            lightNode.CastShadows = true;
+
+            // You should also set the light projection when casting shadow from this light
+            lightNode.LightProjection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4,
+                1, 1f, 500);
+
             scene.RootNode.AddChild(lightNode);
         }
 
@@ -151,7 +160,7 @@ namespace Tutorial8___Optical_Marker_Tracking
                 captureDevice = new NullCapture();
                 captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._800x600,
                     ImageFormat.R8G8B8_24, false);
-                ((NullCapture)captureDevice).StaticImageFile = "testImage800x600.jpg";
+                ((NullCapture)captureDevice).StaticImageFile = "MarkerImage";
             }
             else
             {
@@ -170,10 +179,9 @@ namespace Tutorial8___Optical_Marker_Tracking
             // the marker tracker
             scene.AddVideoCaptureDevice(captureDevice);
 
-            // Create an optical marker tracker that uses ALVAR library
             ALVARMarkerTracker tracker = new ALVARMarkerTracker();
             tracker.MaxMarkerError = 0.02f;
-            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 32.4f);
 
             // Set the marker tracker to use for our scene
             scene.MarkerTracker = tracker;
@@ -186,15 +194,20 @@ namespace Tutorial8___Optical_Marker_Tracking
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-                
-            groundNode.Model = new Box(95, 59, 0.1f);
+
+            // We will use TexturedBox instead of regular Box class since we will need the
+            // texture coordinates elements for passing the vertices to the SimpleShadowShader
+            // we will be using
+            groundNode.Model = new TexturedBox(324, 180, 0.1f);
 
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 
             // Make the ground model to receive shadow casted by other objects with
-            // CastShadows set to true
-            groundNode.Model.ReceiveShadows = true;
+            // ShadowAttribute.ReceiveCast
+            groundNode.Model.ShadowAttribute = ShadowAttribute.ReceiveOnly;
+            // Assign a shadow shader for this model that uses the IShadowMap we assigned to the scene
+            groundNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             Material groundMaterial = new Material();
             groundMaterial.Diffuse = Color.Gray.ToVector4();
@@ -211,23 +224,24 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Create a geometry node with a model of a sphere that will be overlaid on
             // top of the ground marker array
             GeometryNode sphereNode = new GeometryNode("Sphere");
-            sphereNode.Model = new Sphere(3, 20, 20);
+            // We will use TexturedSphere instead of regular Box class since we will need the
+            // texture coordinates elements for passing the vertices to the SimpleShadowShader
+            // we will be using
+            sphereNode.Model = new TexturedSphere(16, 20, 20);
 
             // Add this sphere model to the physics engine for collision detection
             sphereNode.AddToPhysicsEngine = true;
             sphereNode.Physics.Shape = ShapeType.Sphere;
             // Make this sphere model cast and receive shadows
-            sphereNode.Model.CastShadows = true;
-            sphereNode.Model.ReceiveShadows = true;
+            sphereNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
+            // Assign a shadow shader for this model that uses the IShadowMap we assigned to the scene
+            sphereNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             // Create a marker node to track a ground marker array.
             groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.xml");
 
-            // Since the ground marker's size is 80x52 ARTag units, in order to move the sphere model
-            // to the center of the ground marker, we shift it by 40x26 units and also make it
-            // float from the ground marker's center
             TransformNode sphereTransNode = new TransformNode();
-            sphereTransNode.Translation = new Vector3(40, 26, 10);
+            sphereTransNode.Translation = new Vector3(0, 0, 50);
 
             // Create a material to apply to the sphere model
             Material sphereMaterial = new Material();
@@ -248,14 +262,18 @@ namespace Tutorial8___Optical_Marker_Tracking
             // top of the ground marker array initially. (When the toolbar marker array is
             // detected, it will be overlaid on top of the toolbar marker array.)
             boxNode = new GeometryNode("Box");
-            boxNode.Model = new Box(8);
+            // We will use TexturedBox instead of regular Box class since we will need the
+            // texture coordinates elements for passing the vertices to the SimpleShadowShader
+            // we will be using
+            boxNode.Model = new TexturedBox(32.4f);
 
             // Add this box model to the physics engine for collision detection
             boxNode.AddToPhysicsEngine = true;
             boxNode.Physics.Shape = ShapeType.Box;
             // Make this box model cast and receive shadows
-            boxNode.Model.CastShadows = true;
-            boxNode.Model.ReceiveShadows = true;
+            boxNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
+            // Assign a shadow shader for this model that uses the IShadowMap we assigned to the scene
+            boxNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             // Create a marker node to track a toolbar marker array.
             toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "Toolbar.txt");
@@ -297,6 +315,11 @@ namespace Tutorial8___Optical_Marker_Tracking
             Content.Unload();
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -304,7 +327,7 @@ namespace Tutorial8___Optical_Marker_Tracking
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -328,13 +351,13 @@ namespace Tutorial8___Optical_Marker_Tracking
                     // array's transformation, which becomes T*G(inv)*G = T*I = T as a result, 
                     // where T is the transformation of the toolbar marker array, G is the 
                     // transformation of the ground marker array, and I is the identity matrix. 
-                    // The Vector3(4, 4, 4) is a shift translation to make the box overlaid right 
+                    // The Vector3(0, 0, 16.1) is a shift translation to make the box overlaid right 
                     // on top of the toolbar marker. The top-left corner of the left marker of the 
                     // toolbar marker array is defined as (0, 0, 0), so in order to make the box model
                     // appear right on top of the left marker of the toolbar marker array, we shift by
                     // half of each dimension of the 8x8x8 box model.  The approach used here requires that
                     // the ground marker array remains visible at all times.
-                    Vector3 shiftVector = new Vector3(4, -4, 4);
+                    Vector3 shiftVector = new Vector3(0, 0, 16.1f);
                     Matrix mat = Matrix.CreateTranslation(shiftVector) * 
                         toolbarMarkerNode.WorldTransformation * 
                         Matrix.Invert(groundMarkerNode.WorldTransformation);
@@ -344,12 +367,10 @@ namespace Tutorial8___Optical_Marker_Tracking
                 }
                 else
                     ((NewtonPhysics)scene.PhysicsEngine).SetTransform(boxNode.Physics, 
-                        Matrix.CreateTranslation(Vector3.One * 4));
+                        Matrix.CreateTranslation(0, 0, 4));
             }
 
-            // TODO: Add your drawing code here
-
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

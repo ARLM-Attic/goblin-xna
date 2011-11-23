@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial2___Simple_Animation
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial2___Simple_Animation
             }
         }
     }
+#endif
 }
 

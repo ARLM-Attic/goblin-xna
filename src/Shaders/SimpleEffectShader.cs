@@ -39,7 +39,9 @@ using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA.Graphics;
 using GoblinXNA.Helpers;
+#if !WINDOWS_PHONE
 using GoblinXNA.Graphics.ParticleEffects;
+#endif
 using GoblinXNA.SceneGraph;
 
 namespace GoblinXNA.Shaders
@@ -62,16 +64,9 @@ namespace GoblinXNA.Shaders
         private BasicEffect basicEffect;
         private List<LightSource> lightSources;
         private Vector3 ambientLight;
-        private Dictionary<Effect, float> originalAlphas; 
-
-        #region Temporary Variables
-
-        private Matrix tmpMat1;
-        private Matrix tmpMat2;
-        private Matrix tmpMat3;
-        private Vector3 tmpVec1;
-
-        #endregion
+        private Dictionary<Effect, float> originalAlphas;
+        private BasicEffect internalEffect;
+        private bool lightsChanged;
 
         #endregion
 
@@ -85,7 +80,7 @@ namespace GoblinXNA.Shaders
             if (!State.Initialized)
                 throw new GoblinException("Goblin XNA needs to be initialized first using State.InitGoblin(..)");
 
-            basicEffect = new BasicEffect(State.Device, null);
+            basicEffect = new BasicEffect(State.Device);
             lightSources = new List<LightSource>();
             ambientLight = Vector3.Zero;
             originalAlphas = new Dictionary<Effect, float>();
@@ -107,14 +102,6 @@ namespace GoblinXNA.Shaders
         {
             get;
             set;
-        }
-
-        public Matrix WorldTransform
-        {
-            set
-            {
-                basicEffect.World = value;
-            }
         }
 
         public bool UseVertexColor
@@ -150,21 +137,31 @@ namespace GoblinXNA.Shaders
             {
                 if (material.InternalEffect is BasicEffect)
                 {
-                    BasicEffect be = (BasicEffect)material.InternalEffect;
+                    internalEffect = (BasicEffect)material.InternalEffect;
+                    internalEffect.Alpha = originalAlphas[internalEffect] * material.Diffuse.W;
 
-                    Vector3 diffuse = Vector3Helper.GetVector3(material.Diffuse);
-                    if (!diffuse.Equals(Vector3.Zero))
-                        basicEffect.DiffuseColor = diffuse;
-                    else
-                        basicEffect.DiffuseColor = be.DiffuseColor;
-                    basicEffect.EmissiveColor = be.EmissiveColor;
-                    basicEffect.SpecularColor = be.SpecularColor;
-                    basicEffect.SpecularPower = be.SpecularPower;
-                    basicEffect.Texture = be.Texture;
-                    basicEffect.TextureEnabled = be.TextureEnabled;
-                    basicEffect.VertexColorEnabled = be.VertexColorEnabled;
+                    if (lightsChanged)
+                    {
+                        internalEffect.LightingEnabled = basicEffect.LightingEnabled;
+                        internalEffect.PreferPerPixelLighting = basicEffect.PreferPerPixelLighting;
+                        internalEffect.AmbientLightColor = basicEffect.AmbientLightColor;
+                        if (basicEffect.LightingEnabled)
+                        {
+                            DirectionalLight[] lights = {internalEffect.DirectionalLight0,
+                            internalEffect.DirectionalLight1, internalEffect.DirectionalLight2};
 
-                    basicEffect.Alpha = originalAlphas[be] * material.Diffuse.W;
+                            int numLightSource = lightSources.Count;
+                            for (int i = 0; i < numLightSource; i++)
+                            {
+                                lights[i].Enabled = true;
+                                lights[i].DiffuseColor = Vector3Helper.GetVector3(lightSources[i].Diffuse);
+                                lights[i].Direction = lightSources[i].Direction;
+                                lights[i].SpecularColor = Vector3Helper.GetVector3(lightSources[i].Specular);
+                            }
+                            for (int i = numLightSource; i < MaxLights; i++)
+                                lights[i].Enabled = false;
+                        }
+                    }
                 }
                 else
                     Log.Write("Passed internal effect is not BasicEffect, so we can not apply the " +
@@ -210,14 +207,7 @@ namespace GoblinXNA.Shaders
 
                     LightSource source = new LightSource();
                     source.Diffuse = lNode.LightSource.Diffuse;
-
-                    tmpVec1 = lNode.LightSource.Direction;
-                    Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                    tmpMat2 = lNode.WorldTransformation;
-                    MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
-
-                    source.Direction = tmpMat3.Translation;
+                    source.Direction = lNode.LightSource.TransformedDirection;
                     source.Specular = lNode.LightSource.Specular;
 
                     lightSources.Add(source);
@@ -247,14 +237,7 @@ namespace GoblinXNA.Shaders
 
                     LightSource source = new LightSource();
                     source.Diffuse = lNode.LightSource.Diffuse;
-
-                    tmpVec1 = lNode.LightSource.Direction;
-                    Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-                    tmpMat2 = lNode.WorldTransformation;
-                    MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
-
-                    source.Direction = tmpMat3.Translation;
+                    source.Direction = lNode.LightSource.TransformedDirection;
                     source.Specular = lNode.LightSource.Specular;
 
                     lightSources.Add(source);
@@ -269,7 +252,7 @@ namespace GoblinXNA.Shaders
 
             if (lightSources.Count > 0)
             {
-                BasicDirectionalLight[] lights = {basicEffect.DirectionalLight0,
+                DirectionalLight[] lights = {basicEffect.DirectionalLight0,
                     basicEffect.DirectionalLight1, basicEffect.DirectionalLight2};
 
                 bool atLeastOneLight = false;
@@ -287,6 +270,7 @@ namespace GoblinXNA.Shaders
             }
 
             basicEffect.AmbientLightColor = ambientLight;
+            lightsChanged = true;
         }
 
         /// <summary>
@@ -308,6 +292,7 @@ namespace GoblinXNA.Shaders
             }
         }
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// This shader does not support particle effect.
         /// </summary>
@@ -315,38 +300,34 @@ namespace GoblinXNA.Shaders
         public void SetParameters(ParticleEffect particleEffect)
         {
         }
+#endif
 
-        public void Render(Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
+        public void Render(ref Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
         {
-            basicEffect.View = State.ViewMatrix;
-            basicEffect.Projection = State.ProjectionMatrix;
-            basicEffect.World = worldMatrix;
+            BasicEffect effect = (internalEffect != null) ? internalEffect : basicEffect;
+            effect.View = State.ViewMatrix;
+            effect.Projection = State.ProjectionMatrix;
+            effect.World = worldMatrix;
 
-            try
+            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
             {
-                basicEffect.Begin();
-                foreach (EffectPass pass in basicEffect.CurrentTechnique.Passes)
-                {
-                    pass.Begin();
-                    if (renderDelegate != null)
-                        renderDelegate();
-                    pass.End();
-                }
+                pass.Apply();
+                renderDelegate();
             }
-            catch (Exception exp)
-            {
-                Log.Write("SimpleEffectShader exception: " + exp.Message);
-            }
-            finally
-            {
-                basicEffect.End();
-            }
+        }
+
+        public void RenderEnd()
+        {
+            if (lightsChanged)
+                lightsChanged = false;
         }
 
         public void Dispose()
         {
             if (basicEffect != null)
                 basicEffect.Dispose();
+            if (internalEffect != null)
+                internalEffect.Dispose();
         }
 
         #endregion

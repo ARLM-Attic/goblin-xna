@@ -28,7 +28,7 @@
  * ===================================================================================
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
- *************************************************************************************/ 
+ *************************************************************************************/
 
 using System;
 using System.Collections.Generic;
@@ -46,10 +46,16 @@ namespace GoblinXNA.Network
     {
         #region Member Fields
 
+        protected const int INITIAL_BUFFER_SIZE = 8192;
+
         protected IServer networkServer;
         protected IClient networkClient;
+        protected TransferSize transferSize;
+        protected bool started;
+        protected int networkObjSize;
+        protected int maxNetworkObjSize;
 
-        protected List<byte[]> networkMessages;
+        protected byte[] receivedBytes;
         protected List<byte> reliableInOrderMsgs;
         protected List<byte> unreliableInOrderMsgs;
         protected List<byte> reliableUnOrderMsgs;
@@ -71,11 +77,27 @@ namespace GoblinXNA.Network
             networkObjects = new Dictionary<string, NetObj>();
             updating = false;
 
-            networkMessages = new List<byte[]>();
+            receivedBytes = new byte[INITIAL_BUFFER_SIZE];
             reliableInOrderMsgs = new List<byte>();
             unreliableInOrderMsgs = new List<byte>();
             reliableUnOrderMsgs = new List<byte>();
             unreliableUnOrderMsgs = new List<byte>();
+
+            transferSize = TransferSize.UShort;
+            networkObjSize = sizeof(ushort);
+            switch (transferSize)
+            {
+                case TransferSize.Byte:
+                    maxNetworkObjSize = byte.MaxValue;
+                    break;
+                case TransferSize.UShort:
+                    maxNetworkObjSize = ushort.MaxValue;
+                    break;
+                case TransferSize.Int:
+                    maxNetworkObjSize = int.MaxValue;
+                    break;
+            }
+            started = false;
         }
 
         #endregion
@@ -108,6 +130,32 @@ namespace GoblinXNA.Network
             }
         }
 
+        public virtual TransferSize TransferSizePerNetworkObject
+        {
+            get { return transferSize; }
+            set 
+            {
+                if (started)
+                    throw new GoblinException("You can not modify this property after the network " +
+                        "transfer starts. Change this property in your Initialize() function");
+
+                transferSize = value;
+                networkObjSize = (int)transferSize;
+                switch (transferSize)
+                {
+                    case TransferSize.Byte:
+                        maxNetworkObjSize = byte.MaxValue;
+                        break;
+                    case TransferSize.UShort:
+                        maxNetworkObjSize = ushort.MaxValue;
+                        break;
+                    case TransferSize.Int:
+                        maxNetworkObjSize = int.MaxValue;
+                        break;
+                }
+            }
+        }
+
         #endregion
 
         #region Public Methods
@@ -117,7 +165,12 @@ namespace GoblinXNA.Network
             // busy wait while the network handler is being updated
             while (updating) { }
             if (!networkObjects.ContainsKey(networkObj.Identifier))
+            {
+                if (networkObj.Identifier.Length > 255)
+                    throw new GoblinException("A network object's Identifier should not exceed 255 " +
+                        "characters long");
                 networkObjects.Add(networkObj.Identifier, new NetObj(networkObj));
+            }
         }
 
         public virtual void RemoveNetworkObject(INetworkObject networkObj)
@@ -135,54 +188,58 @@ namespace GoblinXNA.Network
                 networkClient.Shutdown();
 
             networkObjects.Clear();
-            networkMessages.Clear();
+            receivedBytes = null;
         }
 
         public virtual void Update(float elapsedMsecs)
         {
-            networkMessages.Clear();
-            bool sendAll = false;
+            started = true;
+            int receivedLength = 0;
+
             if (State.IsServer)
-                networkServer.ReceiveMessage(ref networkMessages);
+                receivedLength = networkServer.ReceiveMessage(ref receivedBytes);
             else
-                networkClient.ReceiveMessage(ref networkMessages);
+                receivedLength = networkClient.ReceiveMessage(ref receivedBytes);
 
             String identifier = "";
-            String[] splits = null;
-            char[] seps = { ':' };
-            byte[] inputData = null;
-            byte[] data = null;
-            short size = 0;
+            int size = 0;
+            int idLength = 0;
             int index = 0;
-            foreach (byte[] msg in networkMessages)
+            int dataLength = 0;
+
+            while (index < receivedLength)
             {
-                index = 0;
-                while (index < msg.Length)
+                switch (transferSize)
                 {
-                    size = ByteHelper.ConvertToShort(msg, index);
-                    data = ByteHelper.Truncate(msg, index + 2, size);
-                    //Console.WriteLine("Received: " + ByteHelper.ConvertToString(data));
-                    splits = ByteHelper.ConvertToString(data).Split(seps);
-                    identifier = splits[0];
-                    if ((data.Length - identifier.Length) > 0)
-                        inputData = ByteHelper.Truncate(data, identifier.Length + 1,
-                            data.Length - identifier.Length - 1);
-
-                    if (networkObjects.ContainsKey(identifier))
-                        networkObjects[identifier].NetworkObject.InterpretMessage(inputData);
-                    else if (identifier.Equals("NewConnectionEstablished"))
-                        sendAll = true;
-                    else
-                        Log.Write("Network Identifier: " + identifier + " is not found", Log.LogLevel.Log);
-
-                    index += (size + 2);
+                    case TransferSize.Byte:
+                        size = (int)receivedBytes[index];
+                        break;
+                    case TransferSize.UShort:
+                        size = BitConverter.ToUInt16(receivedBytes, index);
+                        break;
+                    case TransferSize.Int:
+                        size = ByteHelper.ConvertToInt(receivedBytes, index);
+                        break;
                 }
 
-                // If we're server, then broadcast the message received from the client to
-                // all of the connected clients except the client which sent the message
-                //if (State.IsServer)
-                //    networkServer.BroadcastMessage(msg, true, true, true);
+                index += networkObjSize;
+                idLength = (int)receivedBytes[index++];
+                identifier = ByteHelper.ConvertToString(receivedBytes, index, idLength);
+                index += idLength;
+                dataLength = size - (idLength + 1);
+
+                if (networkObjects.ContainsKey(identifier) && dataLength > 0)
+                    networkObjects[identifier].NetworkObject.InterpretMessage(receivedBytes, index, dataLength);
+                else
+                    Log.Write("Network Identifier: " + identifier + " is not found", Log.LogLevel.Log);
+
+                index += dataLength;
             }
+
+            // If we're server, then broadcast the message received from the client to
+            // all of the connected clients except the client which sent the message
+            //if (State.IsServer)
+            //    networkServer.BroadcastMessage(msg, true, true, true);
 
             updating = true;
 
@@ -198,30 +255,18 @@ namespace GoblinXNA.Network
 
             if (State.IsServer)
             {
-                if (sendAll)
+                if (networkServer.NumConnectedClients >= State.NumberOfClientsToWait)
                 {
                     foreach (NetObj netObj in networkObjects.Values)
-                    {
-                        if (!netObj.NetworkObject.Hold)
+                        if (!netObj.NetworkObject.Hold &&
+                            (netObj.NetworkObject.ReadyToSend || netObj.IsTimeToTransmit))
+                        {
                             AddNetMessage(msgs, reliableInOrderMsgs, reliableUnOrderMsgs,
                                 unreliableInOrderMsgs, unreliableUnOrderMsgs, netObj.NetworkObject);
-                    }
-                }
-                else
-                {
-                    if (networkServer.NumConnectedClients >= State.NumberOfClientsToWait)
-                    {
-                        foreach (NetObj netObj in networkObjects.Values)
-                            if (!netObj.NetworkObject.Hold &&
-                                (netObj.NetworkObject.ReadyToSend || netObj.IsTimeToTransmit))
-                            {
-                                AddNetMessage(msgs, reliableInOrderMsgs, reliableUnOrderMsgs,
-                                    unreliableInOrderMsgs, unreliableUnOrderMsgs, netObj.NetworkObject);
 
-                                netObj.NetworkObject.ReadyToSend = false;
-                                netObj.TimeElapsedSinceLastTransmit = 0;
-                            }
-                    }
+                            netObj.NetworkObject.ReadyToSend = false;
+                            netObj.TimeElapsedSinceLastTransmit = 0;
+                        }
                 }
 
                 if (reliableInOrderMsgs.Count > 0)
@@ -269,11 +314,31 @@ namespace GoblinXNA.Network
         protected virtual void AddNetMessage(List<byte> msgs, List<byte> riMsgs, List<byte> ruMsgs,
             List<byte> uriMsgs, List<byte> uruMsgs, INetworkObject networkObj)
         {
-            byte[] id = ByteHelper.ConvertToByte(networkObj.Identifier + ":");
+            byte[] id = ByteHelper.ConvertToByte(networkObj.Identifier);
             byte[] data = networkObj.GetMessage();
-            short size = (short)(id.Length + data.Length);
+            int totalSize = id.Length + data.Length + 1;
+            if (totalSize > maxNetworkObjSize || totalSize < 0)
+                throw new GoblinException(networkObj.Identifier + " contains data larger than the current " +
+                    "transfer size of " + maxNetworkObjSize + ". Change the TransferSize to a larger size.");
 
-            msgs.AddRange(BitConverter.GetBytes(size));
+            byte[] size = null;
+
+            switch (transferSize)
+            {
+                case TransferSize.Byte:
+                    size = new byte[1];
+                    size[0] = (byte)totalSize;
+                    break;
+                case TransferSize.UShort:
+                    size = BitConverter.GetBytes((ushort)totalSize);
+                    break;
+                case TransferSize.Int:
+                    size = BitConverter.GetBytes(totalSize);
+                    break;
+            }
+
+            msgs.AddRange(size);
+            msgs.Add((byte)networkObj.Identifier.Length);
             msgs.AddRange(id);
             msgs.AddRange(data);
 

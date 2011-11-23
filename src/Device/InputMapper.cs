@@ -166,9 +166,9 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="gameTime"></param>
         /// <param name="deviceActive"></param>
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
-            enumerator.Update(gameTime, deviceActive);
+            enumerator.Update(elapsedTime, deviceActive);
         }
 
         /// <summary>

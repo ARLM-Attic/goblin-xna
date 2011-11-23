@@ -73,6 +73,9 @@ namespace Tutorial15___OpenCV
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            graphics.PreferredBackBufferWidth = 800;
+            graphics.PreferredBackBufferHeight = 600;
         }
 
         /// <summary>
@@ -87,7 +90,7 @@ namespace Tutorial15___OpenCV
 
             State.InitGoblin(graphics, Content, "");
 
-            scene = new Scene(this);
+            scene = new Scene();
 
             SetupCaptureDevices();
 
@@ -144,12 +147,12 @@ namespace Tutorial15___OpenCV
             captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
 
-            // Create a alpha + gray texture that contains the image processed by OpenCV
+            // Create a 16bit color texture that contains the image processed by OpenCV
             // We're using alpha gray texture because we want the black color to represent
             // transparent color so that we can overlay the texture properly on top of the live
             // video image
             overlayTexture = new Texture2D(GraphicsDevice, captureDevice.Width, captureDevice.Height,
-                1, TextureUsage.None, SurfaceFormat.LuminanceAlpha16);
+                false, SurfaceFormat.Bgra4444);
             // Create an array that will contain the image data of overlayTexture
             overlayData = new short[overlayTexture.Width * overlayTexture.Height];
 
@@ -180,10 +183,9 @@ namespace Tutorial15___OpenCV
                     {
                         for (int j = 0; j < videoImage.width; j++)
                         {
-                            // The most 8 significant bits are used for alpha, and the least 8
-                            // significant bits are used for the gray color
-                            // We assign the black color to be totally transparent so that's why
-                            // we use the same value for the alpha and gray color
+                            // src data contains 8 bit gray scaled color, so we need to convert it
+                            // to Rgba4444 format.
+                            // We assign the black color to be totally transparent
                             overlayData[index++] = (short)((*(src) << 8) | (*(src)));
                             src++;
                         }
@@ -217,13 +219,18 @@ namespace Tutorial15___OpenCV
             spriteBatch = new SpriteBatch(GraphicsDevice);
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         /// <summary>
         /// Allows the game component to update itself.
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -233,7 +240,7 @@ namespace Tutorial15___OpenCV
         protected override void Draw(GameTime gameTime)
         {
             // Draws the screen
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
 
             if (drawOverlay)
             {

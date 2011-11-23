@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial10___Networking
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial10___Networking
             }
         }
     }
+#endif
 }
 

@@ -51,10 +51,22 @@ namespace GoblinXNA.SceneGraph
 
         protected LightSource lightSource;
         protected bool global;
+        protected bool castShadows;
         protected Vector4 ambientLightColor;
         protected Matrix worldTransform;
+        protected Matrix lightViewProjection;
+        protected Matrix lightProjection;
+        protected BoundingFrustum lightFrustum;
 
         protected bool hasChanged;
+
+        protected Vector3 tmpVec1;
+        protected Vector3 tmpVec2;
+        protected Vector3 zero;
+        protected Vector3 up;
+        protected Matrix tmpMat1;
+        protected Matrix tmpMat2;
+        protected Matrix tmpMat3;
 
         #endregion
 
@@ -68,9 +80,17 @@ namespace GoblinXNA.SceneGraph
         {
             lightSource = new LightSource();
             global = true;
+            castShadows = true;
             worldTransform = Matrix.Identity;
+            lightViewProjection = Matrix.Identity;
             ambientLightColor = new Vector4(0, 0, 0, 1);
             hasChanged = true;
+
+            lightProjection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, 1, 1, 1000);
+            lightFrustum = new BoundingFrustum(lightProjection);
+
+            zero = Vector3.Zero;
+            up = Vector3.Up;
         }
         /// <summary>
         /// Creates a light node with an empty name
@@ -115,6 +135,24 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Gets or sets whether this light should cast shadows when Scene.EnableShadowMapping is set to true.
+        /// The default value is true. You should also set LightProjection property if you set this to true.
+        /// </summary>
+        /// <see cref="LightProjection"/>
+        public bool CastShadows
+        {
+            get { return castShadows; }
+            set
+            {
+                if (castShadows != value)
+                {
+                    castShadows = value;
+                    hasChanged = true;
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the ambient light color. The default value is (0.0f, 0.0f, 0.0f, 1.0f).
         /// </summary>
         public Vector4 AmbientLightColor
@@ -142,8 +180,47 @@ namespace GoblinXNA.SceneGraph
                 {
                     worldTransform = value;
                     hasChanged = true;
+
+                    // compute the transformed direction and position of the light source
+                    if (lightSource.Type != LightType.Directional)
+                    {
+                        tmpVec1 = lightSource.Position;
+                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat2);
+                        Matrix.Multiply(ref worldTransform, ref tmpMat2, out tmpMat3);
+
+                        lightSource.TransformedPosition = tmpMat3.Translation;
+                    }
+
+                    if (lightSource.Type != LightType.Point)
+                    {
+                        tmpVec1 = lightSource.Direction;
+                        Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
+                        MatrixHelper.GetRotationMatrix(ref worldTransform, out tmpMat2);
+                        Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
+
+                        lightSource.TransformedDirection = tmpMat3.Translation;
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets or sets the light projection used for casting shadows. If you set CastShadows property to true,
+        /// you should also set this projection matrix.
+        /// </summary>
+        public Matrix LightProjection
+        {
+            get { return lightProjection; }
+            set
+            {
+                lightProjection = value;
+                lightFrustum = new BoundingFrustum(lightProjection);
+            }
+        }
+
+        public Matrix LightViewProjection
+        {
+            get { return lightViewProjection; }
         }
 
         /// <summary>
@@ -161,6 +238,65 @@ namespace GoblinXNA.SceneGraph
 
         #endregion
 
+        #region Public Methods
+
+        public void ComputeLightViewProjection()
+        {
+            switch (lightSource.Type)
+            {
+                case LightType.Directional:
+                    tmpVec1 = lightSource.TransformedDirection;
+                    // Matrix with that will rotate in points the direction of the light
+                    Matrix.CreateLookAt(ref zero, ref tmpVec1, ref up, out tmpMat1);
+
+                    // Get the corners of the frustum
+                    Vector3[] frustumCorners = lightFrustum.GetCorners();
+
+                    // Transform the positions of the corners into the direction of the light
+                    for (int i = 0; i < frustumCorners.Length; i++)
+                    {
+                        Vector3.Transform(ref frustumCorners[i], ref tmpMat1, out frustumCorners[i]);
+                    }
+
+                    // Find the smallest box around the points
+                    BoundingBox lightBox = BoundingBox.CreateFromPoints(frustumCorners);
+
+                    Vector3 boxSize = lightBox.Max - lightBox.Min;
+                    Vector3 halfBoxSize = boxSize * 0.5f;
+
+                    // The position of the light should be in the center of the back
+                    // pannel of the box. 
+                    tmpVec1 = lightBox.Min + halfBoxSize;
+                    tmpVec1.Z = lightBox.Min.Z;
+
+                    // We need the position back in world coordinates so we transform 
+                    // the light position by the inverse of the lights rotation
+                    Matrix.Invert(ref tmpMat1, out tmpMat2);
+                    Vector3.Transform(ref tmpVec1, ref tmpMat2, out tmpVec1);
+
+                    // Create the view matrix for the light
+                    tmpVec2 = tmpVec1 + lightSource.TransformedDirection;
+                    Matrix.CreateLookAt(ref tmpVec1, ref tmpVec2, ref up, out tmpMat1);
+
+                    // Create the projection matrix for the light
+                    // The projection is orthographic since we are using a directional light
+                    Matrix.CreateOrthographic(boxSize.X, boxSize.Y, -boxSize.Z, boxSize.Z, out tmpMat2);
+
+                    Matrix.Multiply(ref tmpMat1, ref tmpMat2, out lightViewProjection);
+                    break;
+                case LightType.Point:
+                case LightType.SpotLight:
+                    tmpVec1 = lightSource.TransformedPosition;
+                    tmpVec2 = lightSource.TransformedDirection;
+                    Matrix.CreateLookAt(ref tmpVec1, ref tmpVec2, ref up, out tmpMat1);
+
+                    Matrix.Multiply(ref tmpMat1, ref lightProjection, out lightViewProjection);
+                    break;
+            }
+        }
+
+        #endregion
+
         #region Overriden Methods
         /// <summary>
         /// Clones this light node.
@@ -170,17 +306,20 @@ namespace GoblinXNA.SceneGraph
         {
             LightNode clone = (LightNode)base.CloneNode();
             clone.Global = global;
+            clone.CastShadows = castShadows;
             clone.AmbientLightColor = ambientLightColor;
             clone.LightSource = lightSource;
 
             return clone;
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
 
             xmlNode.SetAttribute("Global", global.ToString());
+            xmlNode.SetAttribute("CastShadows", castShadows.ToString());
             xmlNode.SetAttribute("AmbientLightColor", ambientLightColor.ToString());
 
             xmlNode.AppendChild(lightSource.Save(xmlDoc));
@@ -194,6 +333,8 @@ namespace GoblinXNA.SceneGraph
 
             if (xmlNode.HasAttribute("Global"))
                 global = bool.Parse(xmlNode.GetAttribute("Global"));
+            if (xmlNode.HasAttribute("CastShadows"))
+                castShadows = bool.Parse(xmlNode.GetAttribute("CastShadows"));
             if (xmlNode.HasAttribute("AmbientLightColor"))
                 ambientLightColor = Vector4Helper.FromString(xmlNode.GetAttribute("AmbientLightColor"));
 
@@ -202,6 +343,7 @@ namespace GoblinXNA.SceneGraph
                 Type.GetType(lightSourceXml.Name));
             lightSource.Load(lightSourceXml);
         }
+#endif
 
         #endregion
     }

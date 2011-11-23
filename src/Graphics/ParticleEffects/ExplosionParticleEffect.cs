@@ -23,11 +23,13 @@ namespace GoblinXNA.Graphics.ParticleEffects
     /// </summary>
     public class ExplosionParticleEffect : ParticleEffect
     {
+        public ExplosionParticleEffect() : this(100) { }
+
         /// <summary>
         /// Creates an explosion particle system.
         /// </summary>
-        public ExplosionParticleEffect()
-            : base()
+        public ExplosionParticleEffect(int maxParticles)
+            : base(maxParticles)
         {
         }
 
@@ -36,9 +38,6 @@ namespace GoblinXNA.Graphics.ParticleEffects
             base.Initialize();
 
             textureName = "explosion";
-
-            maxParticles = 100;
-            particles = new ParticleVertex[maxParticles];
 
             duration = TimeSpan.FromSeconds(2);
             durationRandomness = 1;
@@ -63,8 +62,8 @@ namespace GoblinXNA.Graphics.ParticleEffects
             minEndSize = 100;
             maxEndSize = 200;
 
-            sourceBlend = Blend.SourceAlpha;
-            destinationBlend = Blend.One;
+            // Use additive blending.
+            blendState = BlendState.Additive;
         }
     }
 }

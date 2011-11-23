@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial9___Advanced_Features
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial9___Advanced_Features
             }
         }
     }
+#endif
 }
 

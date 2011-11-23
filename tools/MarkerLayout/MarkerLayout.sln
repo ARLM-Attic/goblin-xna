@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarkerLayout", "MarkerLayout.csproj", "{8A3D1FE5-7330-4E41-9E7F-B68ECE04EED0}"
 EndProject
 Global

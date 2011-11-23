@@ -306,9 +306,10 @@ namespace GoblinXNA.Network
             }
         }
 
-        public void ReceiveMessage(ref List<byte[]> messages)
+        public int ReceiveMessage(ref byte[] messages)
         {
             NetIncomingMessage msg;
+            int totalLength = 0;
 
             try
             {
@@ -344,7 +345,7 @@ namespace GoblinXNA.Network
                                 if (ServerConnected != null)
                                     ServerConnected();
                             }
-                            else
+                            else if(status == NetConnectionStatus.Disconnected)
                             {
                                 isConnected = false;
                                 if (ServerDisconnected != null)
@@ -352,9 +353,10 @@ namespace GoblinXNA.Network
                             }
                             break;
                         case NetIncomingMessageType.Data:
-                            byte[] data = new byte[msg.LengthBytes];
-                            msg.ReadBytes(data, 0, msg.LengthBytes);
-                            messages.Add(data);
+                            totalLength += msg.LengthBytes;
+                            if (messages.Length < totalLength)
+                                ByteHelper.ExpandArray(ref messages, totalLength);
+                            msg.ReadBytes(messages, totalLength - msg.LengthBytes, msg.LengthBytes);
                             break;
                     }
                 }
@@ -363,6 +365,8 @@ namespace GoblinXNA.Network
             {
                 Log.Write("Socket exception is thrown in ReceiveMessage: " + se.StackTrace);
             }
+
+            return totalLength;
         }
 
         public void SendMessage(byte[] msg, bool reliable, bool inOrder)

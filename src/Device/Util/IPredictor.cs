@@ -57,6 +57,7 @@ namespace GoblinXNA.Device.Util
         /// <param name="result">The predicted transformation</param>
         void GetPrediction(float t, out Matrix result);
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// Saves the information of this predictor to an XML element.
         /// </summary>
@@ -69,5 +70,6 @@ namespace GoblinXNA.Device.Util
         /// </summary>
         /// <param name="xmlNode"></param>
         void Load(XmlElement xmlNode);
+#endif
     }
 }

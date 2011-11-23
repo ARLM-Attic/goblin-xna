@@ -11,6 +11,7 @@
 #region Using Statements
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 #endregion
 
 namespace GoblinXNA.Graphics.ParticleEffects
@@ -20,6 +21,11 @@ namespace GoblinXNA.Graphics.ParticleEffects
     /// </summary>
     public struct ParticleVertex
     {
+        /// <summary>
+        /// Stores which corner of the particle quad this vertex represents.
+        /// </summary>
+        public Short2 Corner;
+
         /// <summary>
         /// Stores the starting position of the particle.
         /// </summary>
@@ -40,34 +46,30 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// </summary>
         public float Time;
 
+        // Describe the layout of this vertex structure.
+        public static readonly VertexDeclaration VertexDeclaration = new VertexDeclaration
+        (
+            new VertexElement(0, VertexElementFormat.Short2,
+                                 VertexElementUsage.Position, 0),
 
-        /// <summary>
-        /// Describe the layout of this vertex structure.
-        /// </summary>
-        public static readonly VertexElement[] VertexElements =
-        {
-            new VertexElement(0, 0, VertexElementFormat.Vector3,
-                                    VertexElementMethod.Default,
-                                    VertexElementUsage.Position, 0),
+            new VertexElement(4, VertexElementFormat.Vector3,
+                                 VertexElementUsage.Position, 1),
 
-            new VertexElement(0, 12, VertexElementFormat.Vector3,
-                                     VertexElementMethod.Default,
-                                     VertexElementUsage.Normal, 0),
+            new VertexElement(16, VertexElementFormat.Vector3,
+                                  VertexElementUsage.Normal, 0),
 
-            new VertexElement(0, 24, VertexElementFormat.Color,
-                                     VertexElementMethod.Default,
-                                     VertexElementUsage.Color, 0),
+            new VertexElement(28, VertexElementFormat.Color,
+                                  VertexElementUsage.Color, 0),
 
-            new VertexElement(0, 28, VertexElementFormat.Single,
-                                     VertexElementMethod.Default,
-                                     VertexElementUsage.TextureCoordinate, 0),
-        };
+            new VertexElement(32, VertexElementFormat.Single,
+                                  VertexElementUsage.TextureCoordinate, 0)
+        );
 
 
         /// <summary>
         /// Describe the size of this vertex structure.
         /// </summary>
-        public const int SizeInBytes = 32;
+        public const int SizeInBytes = 36;
     }
 }
 

@@ -51,7 +51,7 @@ using GoblinXNA.Shaders;
 using GoblinXNA.Helpers;
 using GoblinXNA.Physics;
 
-using SkinnedModelPipeline.SkinnedModel;
+using SkinnedModelWindows;
 using System.ComponentModel;
 
 namespace Tutorial14___Skinned_Model_Animation
@@ -110,10 +110,12 @@ namespace Tutorial14___Skinned_Model_Animation
             CalculateMinimumBoundingSphere();
             
             //The text you pass in here needs to match the .fx shader file 
-            shader = new SkinnedModelShader("SkinnedModel");
+            shader = new SkinnedModelShader();
 
             resourceName = "";
+#if WINDOWS
             shaderName = TypeDescriptor.GetClassName(shader);
+#endif
             modelLoaderName = "AnimatedModelLoader";
         }
 
@@ -199,7 +201,7 @@ namespace Tutorial14___Skinned_Model_Animation
         /// </remarks>
         /// <param name="material">Material properties of this model</param>
         /// <param name="renderMatrix">Transform of this model</param>
-        public override void Render(Matrix renderMatrix, Material material)
+        public override void Render(ref Matrix renderMatrix, Material material)
         {
             if (!UseInternalMaterials)
             {
@@ -214,9 +216,6 @@ namespace Tutorial14___Skinned_Model_Animation
                     material.HasChanged = false;
                 }
             }
-                        
-            //Update the bones
-            ((SkinnedModelShader)shader).UpdateBones(transforms);
 
             // Render the actual model
             foreach (ModelMesh modelMesh in this.mesh)
@@ -236,16 +235,14 @@ namespace Tutorial14___Skinned_Model_Animation
                     }
 
                     shader.Render(
-                        tmpMat1,
+                        ref tmpMat1,
                         (UseInternalMaterials) ? part.Effect.CurrentTechnique.Name : technique,
                         delegate
                         {
-                            State.Device.Vertices[0].SetSource(
-                                modelMesh.VertexBuffer, part.StreamOffset, part.VertexStride);
-                            State.Device.Indices = modelMesh.IndexBuffer;
-                            State.Device.VertexDeclaration = part.VertexDeclaration;
+                            State.Device.SetVertexBuffer(part.VertexBuffer);
+                            State.Device.Indices = part.IndexBuffer;
                             State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
+                                part.VertexOffset, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
 
                         });
 
@@ -255,12 +252,12 @@ namespace Tutorial14___Skinned_Model_Animation
                             afterEffect.SetParameters(material);
 
                         afterEffect.Render(
-                            tmpMat1,
+                            ref tmpMat1,
                             "",
                             delegate
                             {
                                 State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                    part.BaseVertex, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
+                                    part.VertexOffset, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
 
                             });
                     }
@@ -291,14 +288,6 @@ namespace Tutorial14___Skinned_Model_Animation
         public void Start()
         {
             animationSpeedDirection = lastSpeedDir;
-        }
-
-        /// <summary>
-        /// Rewind the anmation
-        /// </summary>
-        public void Rewind()
-        {
-            animationPlayer.RewindCurrentClip();
         }
 
         /// <summary>

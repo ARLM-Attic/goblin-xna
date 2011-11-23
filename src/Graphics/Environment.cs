@@ -53,6 +53,7 @@ namespace GoblinXNA.Graphics
         protected bool fogEnabled;
         protected Vector4 fogColor;
         protected IShader shader;
+        protected Matrix tmpMat1;
         #endregion
 
         #region Constructors
@@ -65,6 +66,7 @@ namespace GoblinXNA.Graphics
             fogEndDistance = -1;
             fogEnabled = false;
             fogColor = Color.White.ToVector4();
+            tmpMat1 = Matrix.Identity;
             shader = new SimpleEffectShader();
         }
         #endregion
@@ -124,7 +126,7 @@ namespace GoblinXNA.Graphics
         public void Render()
         {
             shader.SetParameters(this);
-            shader.Render(Matrix.Identity, "", null);
+            shader.Render(ref tmpMat1, "", null);
         }
         #endregion
     }

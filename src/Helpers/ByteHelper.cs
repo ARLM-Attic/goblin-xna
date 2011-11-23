@@ -50,7 +50,11 @@ namespace GoblinXNA.Helpers
         /// <returns></returns>
         public static byte[] ConvertToByte(String s)
         {
+#if WINDOWS_PHONE
+            return System.Text.Encoding.UTF8.GetBytes(s);
+#else
             return System.Text.Encoding.ASCII.GetBytes(s);
+#endif
         }
 
         /// <summary>
@@ -60,7 +64,11 @@ namespace GoblinXNA.Helpers
         /// <param name="bytes">The resulting byte array</param>
         public static void ConvertToByte(String s, byte[] bytes)
         {
+#if WINDOWS_PHONE
+            System.Text.Encoding.UTF8.GetBytes(s, 0, s.Length, bytes, 0);
+#else
             System.Text.Encoding.ASCII.GetBytes(s, 0, s.Length, bytes, 0);
+#endif
         }
 
         /// <summary>
@@ -70,7 +78,21 @@ namespace GoblinXNA.Helpers
         /// <returns></returns>
         public static String ConvertToString(byte[] b)
         {
-            return System.Text.Encoding.ASCII.GetString(b);
+            return ConvertToString(b, 0, b.Length);
+        }
+
+        /// <summary>
+        /// Converts an array of bytes to a string.
+        /// </summary>
+        /// <param name="b">An array of bytes</param>
+        /// <returns></returns>
+        public static String ConvertToString(byte[] b, int startIndex, int length)
+        {
+#if WINDOWS_PHONE
+            return System.Text.Encoding.UTF8.GetString(b, startIndex, length);
+#else
+            return System.Text.Encoding.ASCII.GetString(b, startIndex, length);
+#endif
         }
 
         /// <summary>
@@ -313,6 +335,32 @@ namespace GoblinXNA.Helpers
         public static void Truncate(byte[] value, int startIndex, int length, byte[] bytes)
         {
             Buffer.BlockCopy(value, startIndex, bytes, 0, length);
+        }
+
+        /// <summary>
+        /// Rounds a given number to the nearst power of two number. The resulting number is
+        /// always larger or equal to the given number.
+        /// </summary>
+        /// <param name="number"></param>
+        /// <returns></returns>
+        public static int RoundToPowerOfTwo(int number)
+        {
+            double log2 = Math.Log(number, 2);
+            return (int)Math.Pow(2, Math.Ceiling(log2));
+        }
+
+        /// <summary>
+        /// Expands an existing array to new size without losing the data.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="newLength"></param>
+        public static void ExpandArray(ref byte[] data, int newLength)
+        {
+            byte[] copy = new byte[data.Length];
+            Buffer.BlockCopy(data, 0, copy, 0, copy.Length);
+            data = new byte[newLength];
+            Buffer.BlockCopy(copy, 0, data, 0, copy.Length);
+            copy = null;
         }
     }
 }

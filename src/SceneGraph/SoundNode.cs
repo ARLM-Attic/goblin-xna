@@ -118,6 +118,20 @@ namespace GoblinXNA.SceneGraph
         #region Public Methods
 
         /// <summary>
+        /// Plays the sound effect in 3D.
+        /// </summary>
+        /// <remarks>
+        /// Before calling this method, you should make sure that you initialized the Sound class by calling
+        /// the Sound.Initialize(...) method. Otherwise, an exception will be thrown.
+        /// </remarks>
+        /// <param name="soundEffect"></param>
+        public void Play(SoundEffect soundEffect)
+        {
+            Sound.Instance.PlaySoundEffect3D(soundEffect, this);
+        }
+
+#if !WINDOWS_PHONE
+        /// <summary>
         /// Plays the 3D sound specified by its cue name.
         /// </summary>
         /// <remarks>
@@ -127,8 +141,9 @@ namespace GoblinXNA.SceneGraph
         /// <param name="cueName"></param>
         public void Play(String cueName)
         {
-            Sound.Play3D(cueName, this);
+            Sound.Instance.Play3D(cueName, this);
         }
+#endif
 
         #endregion
 
@@ -142,6 +157,7 @@ namespace GoblinXNA.SceneGraph
             return node;
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -157,6 +173,7 @@ namespace GoblinXNA.SceneGraph
 
             // nothing to load
         }
+#endif
 
         #endregion
     }

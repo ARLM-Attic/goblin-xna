@@ -78,11 +78,10 @@ namespace Tutorial14___Skinned_Model_Animation
             vertices[2].TextureCoordinate = new Vector2(1, 1);
             vertices[3].TextureCoordinate = new Vector2(1, 0);
 
-            mesh.VertexDeclaration = new VertexDeclaration(State.Device,
-                VertexPositionNormalTexture.VertexElements);
+            mesh.VertexDeclaration = VertexPositionNormalTexture.VertexDeclaration;
 
             mesh.VertexBuffer = new VertexBuffer(State.Device,
-                VertexPositionNormalTexture.SizeInBytes * vertices.Length, BufferUsage.None);
+                typeof(VertexPositionNormalTexture), vertices.Length, BufferUsage.None);
             mesh.VertexBuffer.SetData(vertices);
 
             short[] indices = new short[6];
@@ -94,7 +93,6 @@ namespace Tutorial14___Skinned_Model_Animation
                 BufferUsage.None);
             mesh.IndexBuffer.SetData(indices);
 
-            mesh.SizeInBytes = VertexPositionNormalTexture.SizeInBytes;
             mesh.NumberOfVertices = 4;
             mesh.NumberOfPrimitives = 2;
 

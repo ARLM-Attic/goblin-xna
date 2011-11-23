@@ -310,10 +310,8 @@ namespace GoblinXNA.UI.UI2D
 
         protected virtual void CreateDefaultButtonArrows()
         {
-            upLeftTexture = new Texture2D(State.Device, upLeftButton.Bounds.Width, upLeftButton.Bounds.Height, 1,
-                TextureUsage.None, SurfaceFormat.Bgra5551);
-            downRightTexture = new Texture2D(State.Device, downRightButton.Bounds.Width, downRightButton.Bounds.Height, 1,
-                TextureUsage.None, SurfaceFormat.Bgra5551);
+            upLeftTexture = new Texture2D(State.Device, upLeftButton.Bounds.Width, upLeftButton.Bounds.Height, false, SurfaceFormat.Bgra5551);
+            downRightTexture = new Texture2D(State.Device, downRightButton.Bounds.Width, downRightButton.Bounds.Height, false, SurfaceFormat.Bgra5551);
 
             int sixth = downRightButton.Bounds.Width / 6;
             List<Point> points = new List<Point>();

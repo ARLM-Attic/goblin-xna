@@ -22,8 +22,13 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Creates a particle system that simulates projectile trail effect.
         /// </summary>
-        public ProjectileTrailParticleEffect()
-            : base()
+        public ProjectileTrailParticleEffect() : this(1000) { }
+
+        /// <summary>
+        /// Creates a particle system that simulates projectile trail effect.
+        /// </summary>
+        public ProjectileTrailParticleEffect(int maxParticles)
+            : base(maxParticles)
         {
         }
 
@@ -32,9 +37,6 @@ namespace GoblinXNA.Graphics.ParticleEffects
             base.Initialize();
 
             textureName = "smoke";
-
-            maxParticles = 1000;
-            particles = new ParticleVertex[maxParticles];
 
             duration = TimeSpan.FromSeconds(3);
             durationRandomness = 1.5f;

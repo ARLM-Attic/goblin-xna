@@ -47,9 +47,8 @@ namespace GoblinXNA.Graphics
         #region Member Fields
         protected VertexBuffer vb;
         protected IndexBuffer ib;
-        protected VertexDeclaration decl;
         protected PrimitiveType type;
-        protected int sizeInBytes;
+        protected VertexDeclaration decl;
         protected int numVertices;
         protected int numPrimitives;
         #endregion
@@ -82,14 +81,7 @@ namespace GoblinXNA.Graphics
             get { return ib; }
             set { ib = value; }
         }
-        /// <summary>
-        /// Gets or sets the vertex declaration
-        /// </summary>
-        public VertexDeclaration VertexDeclaration
-        {
-            get { return decl; }
-            set { decl = value; }
-        }
+
         /// <summary>
         /// Gets or sets primitive type used to render this mesh. 
         /// Default is PrimitiveType.TriangleList
@@ -99,14 +91,16 @@ namespace GoblinXNA.Graphics
             get { return type; }
             set { type = value; }
         }
+
         /// <summary>
-        /// Gets or sets the size of the vertex format used to construct the VertexBuffer in bytes
+        /// Gets or sets the vertex declaration
         /// </summary>
-        public int SizeInBytes
+        public VertexDeclaration VertexDeclaration
         {
-            get { return sizeInBytes; }
-            set { sizeInBytes = value; }
+            get { return decl; }
+            set { decl = value; }
         }
+
         /// <summary>
         /// Gets or sets the number of vertices set in VertexBuffer
         /// </summary>
@@ -115,6 +109,7 @@ namespace GoblinXNA.Graphics
             get { return numVertices; }
             set { numVertices = value; }
         }
+
         /// <summary>
         /// Gets or sets the number of primitive shapes defined with PrimitiveType
         /// </summary>
@@ -134,9 +129,6 @@ namespace GoblinXNA.Graphics
 
             if (ib != null)
                 ib.Dispose();
-
-            if (decl != null)
-                decl.Dispose();
         }
 
         #endregion

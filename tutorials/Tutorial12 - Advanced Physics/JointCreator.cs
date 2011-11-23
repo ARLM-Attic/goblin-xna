@@ -28,7 +28,7 @@
  * ===================================================================================
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
- *************************************************************************************/ 
+ *************************************************************************************/
 
 using System;
 using System.Collections.Generic;
@@ -133,8 +133,7 @@ namespace Tutorial12___Advanced_Physics
 
                 GeometryNode link1 = new GeometryNode("Link " + i);
                 link1.Model = capsule;
-                link1.Model.CastShadows = true;
-                link1.Model.ReceiveShadows = true;
+                link1.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
                 link1.Material = linkMat;
 
                 link1.AddToPhysicsEngine = true;
@@ -183,8 +182,7 @@ namespace Tutorial12___Advanced_Physics
                 link1 = new GeometryNode("Door 1");
                 link1.Model = new Box(size.X, size.Y, size.Z);
                 link1.Material = linkMat;
-                link1.Model.CastShadows = true;
-                link1.Model.ReceiveShadows = true;
+                link1.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 link1.AddToPhysicsEngine = true;
                 link1.Physics.Interactable = true;
@@ -216,8 +214,7 @@ namespace Tutorial12___Advanced_Physics
                 GeometryNode link2 = new GeometryNode("Door 2");
                 link2.Model = new Box(size.X, size.Y, size.Z);
                 link2.Material = linkMat;
-                link2.Model.CastShadows = true;
-                link2.Model.ReceiveShadows = true;
+                link2.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 link2.AddToPhysicsEngine = true;
                 link2.Physics.Interactable = true;
@@ -264,8 +261,7 @@ namespace Tutorial12___Advanced_Physics
                 bar = new GeometryNode("Bar");
                 bar.Model = new Cylinder(size.Y, size.Y, size.X, 20);
                 bar.Material = barMat;
-                bar.Model.CastShadows = true;
-                bar.Model.ReceiveShadows = true;
+                bar.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 bar.AddToPhysicsEngine = true;
                 bar.Physics.Interactable = true;
@@ -308,8 +304,7 @@ namespace Tutorial12___Advanced_Physics
                 GeometryNode beat = new GeometryNode("Beat Slider");
                 beat.Model = new Box(beatSize);
                 beat.Material = beatMat;
-                beat.Model.CastShadows = true;
-                beat.Model.ReceiveShadows = true;
+                beat.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 beat.AddToPhysicsEngine = true;
                 beat.Physics.Interactable = true;
@@ -373,8 +368,7 @@ namespace Tutorial12___Advanced_Physics
                 GeometryNode beat = new GeometryNode("Beat Corkscrew");
                 beat.Model = new Box(beatSize);
                 beat.Material = beatMat;
-                beat.Model.CastShadows = true;
-                beat.Model.ReceiveShadows = true;
+                beat.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 beat.AddToPhysicsEngine = true;
                 beat.Physics.Interactable = true;
@@ -455,8 +449,7 @@ namespace Tutorial12___Advanced_Physics
                 GeometryNode beat = new GeometryNode("Beat Universal");
                 beat.Model = new Box(beatSize);
                 beat.Material = beatMat;
-                beat.Model.CastShadows = true;
-                beat.Model.ReceiveShadows = true;
+                beat.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 beat.AddToPhysicsEngine = true;
                 beat.Physics.Interactable = true;

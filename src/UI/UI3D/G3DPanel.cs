@@ -326,7 +326,7 @@ namespace GoblinXNA.UI.UI3D
             coords[6].Position = new Vector3(halfExtent.X, halfExtent.Y, -halfExtent.Z);
             coords[7].Position = new Vector3(-halfExtent.X, halfExtent.Y, -halfExtent.Z);
 
-            vb = new VertexBuffer(State.Device, VertexPositionColorTexture.SizeInBytes * 8, 
+            vb = new VertexBuffer(State.Device, typeof(VertexPositionColorTexture), 8, 
                 BufferUsage.WriteOnly);
             vb.SetData(coords);
 

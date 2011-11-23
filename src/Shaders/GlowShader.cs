@@ -141,14 +141,14 @@ namespace GoblinXNA.Shaders
             glowExponential = effect.Parameters["GlowExponential"];
         }
 
-        public override void Render(Matrix worldMatrix, string techniqueName, 
+        public override void Render(ref Matrix worldMatrix, string techniqueName, 
             RenderHandler renderDelegate)
         {
             worldInverseTranspose.SetValue(Matrix.Transpose(Matrix.Invert(worldMatrix)));
             worldViewProj.SetValue(worldMatrix * State.ViewProjectionMatrix);
             viewInverse.SetValue(Matrix.Invert(State.ViewMatrix));
 
-            base.Render(worldMatrix, "Glow", renderDelegate);
+            base.Render(ref worldMatrix, "Glow", renderDelegate);
         }
 
         #endregion

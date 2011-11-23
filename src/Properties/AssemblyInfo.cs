@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("GoblinXNAv3.6")]
-[assembly: AssemblyDescription("Goblin framework compiled with XNA 3.1")]
+[assembly: AssemblyTitle("GoblinXNAv4.0")]
+[assembly: AssemblyDescription("Goblin framework compiled with XNA 4.0")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Columbia University")]
 [assembly: AssemblyProduct("GoblinXNA")]
-[assembly: AssemblyCopyright("Copyright © Columbia University 2007-2011")]
+[assembly: AssemblyCopyright("Copyright © Columbia University 2007-2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("3.6.0.0")]
-[assembly: AssemblyFileVersion("3.7.15.2011")]
+[assembly: AssemblyVersion("4.0.0.0")]
+[assembly: AssemblyFileVersion("4.11.23.2011")]

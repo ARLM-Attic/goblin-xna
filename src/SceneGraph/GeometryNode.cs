@@ -64,6 +64,7 @@ namespace GoblinXNA.SceneGraph
         protected bool needsToUpdateLocalLights; 
         protected Matrix worldTransform;
         protected Matrix markerTransform;
+        private bool markerTransformSet;
 
         protected IPhysicsObject physicsProperties;
 
@@ -99,6 +100,7 @@ namespace GoblinXNA.SceneGraph
             needsToUpdateLocalLights = false;
             isOccluder = false;
             addToPhysicsEngine = false;
+            markerTransformSet = false;
 
             physicsProperties = new PhysicsObject(this);
 
@@ -127,7 +129,7 @@ namespace GoblinXNA.SceneGraph
             set
             {
                 base.Enabled = value;
-                physicsStateChanged = true;
+                //physicsStateChanged = true;
             }
         }
 
@@ -242,7 +244,20 @@ namespace GoblinXNA.SceneGraph
         public Matrix MarkerTransform
         {
             get { return markerTransform; }
-            internal set { markerTransform = value; }
+            internal set 
+            { 
+                markerTransform = value;
+                if(!markerTransform.Equals(Matrix.Identity))
+                    markerTransformSet = true;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether the MarkerTransform property is valid (non Identity matrix)
+        /// </summary>
+        public bool MarkerTransformSet
+        {
+            get { return markerTransformSet; }
         }
 
         /// <summary>
@@ -254,7 +269,7 @@ namespace GoblinXNA.SceneGraph
             set 
             { 
                 isRendered = value;
-                physicsStateChanged = true;
+                //physicsStateChanged = true;
             }
         }
 
@@ -329,6 +344,7 @@ namespace GoblinXNA.SceneGraph
             throw new GoblinException("You should not clone Geometry node");
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -401,6 +417,7 @@ namespace GoblinXNA.SceneGraph
                 physicsProperties.MeshProvider = (IPhysicsMeshProvider)model;
             physicsProperties.Model = model;
         }
+#endif
 
         public override void Dispose()
         {

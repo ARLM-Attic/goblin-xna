@@ -446,7 +446,7 @@ namespace GoblinXNA.Device.GPS
             }
         }
 
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
             // Nothing to update
         }

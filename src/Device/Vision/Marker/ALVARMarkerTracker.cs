@@ -78,18 +78,12 @@ namespace GoblinXNA.Device.Vision.Marker
         private float zNearPlane;
         private float zFarPlane;
 
-        private bool hideMarkers;
-        private List<object> hideList;
-        private bool hideMarkerConfigured;
-        private int textureSize;
         private int colorChannel;
-        private Dictionary<object, int[]> hideTextureMap;
 
         private int[] ids;
         private double[] poseMats;
         private IntPtr idPtr;
         private IntPtr posePtr;
-        private IntPtr hideTexturePtr;
         private int prevMarkerNum;
 
         private int[] multiIDs;
@@ -100,6 +94,8 @@ namespace GoblinXNA.Device.Vision.Marker
         private IntPtr multiHideTexturePtr;
         private IntPtr multiErrorPtr;
 
+        private int detectorID;
+        private int cameraID;
         private bool detectAdditional;
 
         #endregion
@@ -123,8 +119,8 @@ namespace GoblinXNA.Device.Vision.Marker
             camProjMat = Matrix.Identity;
             initialized = false;
 
-            zNearPlane = 10;
-            zFarPlane = 2000;
+            zNearPlane = 0.1f;
+            zFarPlane = 1000;
 
             detectedMarkers = new Dictionary<int, Matrix>();
             detectedMultiMarkers = new Dictionary<string, Matrix>();
@@ -134,19 +130,13 @@ namespace GoblinXNA.Device.Vision.Marker
             multiMarkerIDs = new List<string>();
             multiMarkerID = 0;
 
-            hideMarkers = false;
-            hideList = null;
-            hideMarkerConfigured = false;
-            textureSize = 0;
             colorChannel = 0;
-            hideTextureMap = new Dictionary<object, int[]>();
 
             ids = null;
             poseMats = null;
             prevMarkerNum = 0;
             idPtr = IntPtr.Zero;
             posePtr = IntPtr.Zero;
-            hideTexturePtr = IntPtr.Zero;
 
             multiIDs = null;
             multiPoseMats = null;
@@ -157,6 +147,8 @@ namespace GoblinXNA.Device.Vision.Marker
             multiErrorPtr = IntPtr.Zero;
 
             detectAdditional = false;
+            detectorID = -1;
+            cameraID = -1;
         }
 
         #endregion
@@ -203,11 +195,7 @@ namespace GoblinXNA.Device.Vision.Marker
         public bool DetectAdditional
         {
             get { return detectAdditional; }
-            set
-            {
-                detectAdditional = value;
-                ALVARDllBridge.alvar_set_detect_additional(detectAdditional);
-            }
+            set { detectAdditional = value; }
         }
 
         public bool Initialized
@@ -225,7 +213,7 @@ namespace GoblinXNA.Device.Vision.Marker
 
         /// <summary>
         /// Gets or sets the near clipping plane used to compute CameraProjection.
-        /// The default value is 10.
+        /// The default value is 0.1f.
         /// </summary>
         /// <remarks>
         /// This property should be set before calling InitTracker(...).
@@ -244,7 +232,7 @@ namespace GoblinXNA.Device.Vision.Marker
 
         /// <summary>
         /// Gets or sets the far clipping plane used to compute CameraProjection.
-        /// The default value is 2000.
+        /// The default value is 1000.
         /// </summary>
         /// <remarks>
         /// This property should be set before calling InitTracker(...).
@@ -262,46 +250,44 @@ namespace GoblinXNA.Device.Vision.Marker
         }
 
         /// <summary>
-        /// Gets or sets whether to hide the detected markers with a texture that resembles the
-        /// surrounding texture in the video image. The default value is false.
+        /// Gets or sets the current marker detector ID. The current detector ID specifies which marker
+        /// detector to use when more than one detector is added in the case you need more than one 
+        /// instance of marker detector. For instance, if you plan to track markers from different video
+        /// capture devices at the same time (e.g., stereo mode with two physical cameras), then you will
+        /// need two marker detector instances for proper tracking (ALVAR makes assumptions based on history 
+        /// information for performing tracking on images with sharp angle or far away, so if you pass images
+        /// from different physical location sequentially, the tracking will get very messy).
+        /// 
+        /// Make sure to add a new marker detector before setting this property, and use 
+        /// ALVARDllBridge.alvar_add_marker_detector(...) function to add a new marker detector. The detector
+        /// ID is the return value of this function if no error occurs.
         /// </summary>
         /// <remarks>
-        /// You must call SetHideMarkerTextureConfigurations(...) method to configure the settings
-        /// of the hide texture. If not configured, the markers won't be hidden. 
-        /// 
-        /// By default, all of the detected markers are hidden, but you can choose to hide only 
-        /// specified markers by setting HideList property.
+        /// Generally, you only need one instance of marker detector, so unless you add and need more than
+        /// one instances of marker detector, it's best not to change this property.
         /// </remarks>
-        /// <see cref="SetHideMarkerTextureConfigurations"/>
-        /// <seealso cref="HideList"/>
-        public bool HideMarkers
+        public int DetectorID
         {
-            get { return hideMarkers; }
-            set 
-            { 
-                hideMarkers = value; 
-                hideTexturePtr = IntPtr.Zero;
-            }
+            get { return detectorID; }
+            set { detectorID = value; }
         }
 
         /// <summary>
-        /// Gets the textures used for hiding the markers.
+        /// Gets or sets the current camera ID used by the marker detector. A camera in ALVAR contains
+        /// lens intrinsic parameters and distortion information, so if you use different physical capture
+        /// devices for tracking, then you should add additional camera. Make sure to add a new camera before
+        /// setting this property, and use ALVARDllBridge.alvar_add_camera(...) function to add a new camera.
         /// </summary>
-        public Dictionary<object, int[]> HideTextures
+        /// <remarks>
+        /// Generally, you only need one camera, so unless you add and need more than one instance of camera,
+        /// it's best not to change this property. The camera ID is the return value of this function if 
+        /// no error occurs.
+        /// </remarks>
+        /// <see cref="ALVARDllBridge.alvar_add_camera"/>
+        public int CameraID
         {
-            get { return hideTextureMap; }
-        }
-
-        /// <summary>
-        /// Gets or sets the list of markers to hide. The list can contain either int (for single
-        /// marker) or String (for multiple markers). If null, which is the default, all detected
-        /// markers will be hiden if HideMarkers is set to true.
-        /// </summary>
-        /// <see cref="HideMarkers"/>
-        public List<object> HideList
-        {
-            get { return hideList; }
-            set { hideList = value; }
+            get { return cameraID; }
+            set { cameraID = value; }
         }
 
         #endregion
@@ -357,37 +343,25 @@ namespace GoblinXNA.Device.Vision.Marker
                 }
             }
 
-            int ret = ALVARDllBridge.alvar_init_camera(configFilename, img_width, img_height);
+            ALVARDllBridge.alvar_init();
+
+            int ret = ALVARDllBridge.alvar_add_camera(configFilename, img_width, img_height);
             if (ret < 0)
-                Log.Write("camera calibration file is either not specified or not found");
+                throw new MarkerException("Camera calibration file is either not specified or not found");
+
+            cameraID = ret;
 
             double[] projMat = new double[16];
-            ALVARDllBridge.alvar_get_camera_params(projMat, ref cameraFovX, ref cameraFovY);
+            ALVARDllBridge.alvar_get_camera_params(cameraID, projMat, ref cameraFovX, ref cameraFovY, zFarPlane, zNearPlane);
             camProjMat = new Matrix(
                 (float)projMat[0], (float)projMat[1], (float)projMat[2], (float)projMat[3],
                 (float)projMat[4], (float)projMat[5], (float)projMat[6], (float)projMat[7],
                 (float)projMat[8], (float)projMat[9], (float)projMat[10], (float)projMat[11],
                 (float)projMat[12], (float)projMat[13], (float)projMat[14], (float)projMat[15]);
 
-            ALVARDllBridge.alvar_init_marker_detector(markerSize, markerRes, margin);
+            detectorID = ALVARDllBridge.alvar_add_marker_detector(markerSize, markerRes, margin);
 
             initialized = true;
-        }
-
-        /// <summary>
-        /// Sets the configurations for textures used to hide the markers. 
-        /// </summary>
-        /// <param name="size">The pixel width and height of the texture.</param>
-        /// <param name="depth"></param>
-        /// <param name="channels">The number of color channels.</param>
-        /// <param name="margin"></param>
-        public void SetHideMarkerTextureConfigurations(uint size, uint depth, uint channels, 
-            double margin)
-        {
-            ALVARDllBridge.alvar_set_hide_texture_configuration(size, depth, channels, margin);
-            textureSize = (int)(size * size);
-            colorChannel = (int)channels;
-            hideMarkerConfigured = true;
         }
 
         /// <summary>
@@ -413,12 +387,11 @@ namespace GoblinXNA.Device.Vision.Marker
                 if (markerConfigs[0] is string)
                 {
                     String markerConfigName = (String)markerConfigs[0];
-                    int[] ids = new int[1];
                     if (markerConfigName.Equals(""))
                         throw new MarkerException(GetAssocMarkerUsage());
                     else
                     {
-                        ALVARDllBridge.alvar_add_multi_marker(ids.Length, ids, markerConfigName);
+                        ALVARDllBridge.alvar_add_multi_marker(markerConfigName);
                         id = markerConfigName;
                     }
 
@@ -438,9 +411,6 @@ namespace GoblinXNA.Device.Vision.Marker
                     id = markerConfigs[0];
                     int markerID = (int)markerConfigs[0];
                     singleMarkerIDs.Add(markerID);
-                    if (hideMarkers && hideMarkerConfigured)
-                        if ((hideList == null) || (hideList != null && hideList.Contains(markerConfigs[0])))
-                            hideTextureMap.Add(markerID, new int[textureSize]);
 
                     singleMarkerIDsPtr = Marshal.AllocHGlobal(singleMarkerIDs.Count * sizeof(int));
                     unsafe
@@ -462,11 +432,8 @@ namespace GoblinXNA.Device.Vision.Marker
                         id = markerConfigs[0];
                         int markerID = (int)markerConfigs[0];
                         double markerSize = Double.Parse(markerConfigs[1].ToString());
-                        ALVARDllBridge.alvar_set_marker_size(markerID, markerSize);
+                        ALVARDllBridge.alvar_set_marker_size(detectorID, markerID, markerSize);
                         singleMarkerIDs.Add(markerID);
-                        if (hideMarkers && hideMarkerConfigured)
-                            if((hideList == null) || (hideList != null && hideList.Contains(markerConfigs[0])))
-                                hideTextureMap.Add(markerID, new int[textureSize]);
 
                         singleMarkerIDsPtr = Marshal.AllocHGlobal(singleMarkerIDs.Count * sizeof(int));
                         unsafe
@@ -479,12 +446,11 @@ namespace GoblinXNA.Device.Vision.Marker
                     else
                     {
                         String markerConfigName = (String)markerConfigs[0];
-                        int[] ids = (int[])markerConfigs[1];
                         if (markerConfigName.Equals(""))
                             throw new MarkerException(GetAssocMarkerUsage());
                         else
                         {
-                            ALVARDllBridge.alvar_add_multi_marker(ids.Length, ids, markerConfigName);
+                            ALVARDllBridge.alvar_add_multi_marker(markerConfigName);
                             id = markerConfigName;
                         }
 
@@ -545,7 +511,7 @@ namespace GoblinXNA.Device.Vision.Marker
             int interestedMarkerNums = singleMarkerIDs.Count;
             int foundMarkerNums = 0;
 
-            ALVARDllBridge.alvar_detect_marker(nChannles, channelSeq, channelSeq, 
+            ALVARDllBridge.alvar_detect_marker(detectorID, cameraID, nChannles, channelSeq, channelSeq, 
                 imagePtr, singleMarkerIDsPtr, ref foundMarkerNums, ref interestedMarkerNums,
                 max_marker_error, max_track_error);
 
@@ -647,17 +613,7 @@ namespace GoblinXNA.Device.Vision.Marker
                     posePtr = Marshal.AllocHGlobal(interestedMarkerNums * 16 * sizeof(double));
                 }
 
-                if (hideMarkers && hideMarkerConfigured)
-                {
-                    if (prevMarkerNum != interestedMarkerNums)
-                    {
-                        hideTexturePtr = Marshal.AllocHGlobal(interestedMarkerNums * textureSize * 
-                            colorChannel * sizeof(byte));
-                    }
-                    ALVARDllBridge.alvar_get_poses(idPtr, posePtr, true, hideTexturePtr);
-                }
-                else
-                    ALVARDllBridge.alvar_get_poses(idPtr, posePtr, false, IntPtr.Zero);
+                ALVARDllBridge.alvar_get_poses(detectorID, idPtr, posePtr);
 
                 prevMarkerNum = interestedMarkerNums;
 
@@ -682,21 +638,6 @@ namespace GoblinXNA.Device.Vision.Marker
                             (float)poseMats[index + 8], (float)poseMats[index + 9], (float)poseMats[index + 10], (float)poseMats[index + 11],
                             (float)poseMats[index + 12], (float)poseMats[index + 13], (float)poseMats[index + 14], (float)poseMats[index + 15]);
                         detectedMarkers.Add(id, mat);
-
-                        if (hideMarkers && hideMarkerConfigured && hideTextureMap.ContainsKey(id))
-                        {
-                            unsafe
-                            {
-                                byte* src = (byte*)hideTexturePtr;
-                                src += textureSize * colorChannel * i;
-
-                                int[] textureData = hideTextureMap[id];
-                                for (int j = 0; j < textureSize; j++, src += colorChannel)
-                                {
-                                    textureData[j] = (*(src) << 16) | (*(src + 1) << 8) | *(src + 2);
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -706,8 +647,8 @@ namespace GoblinXNA.Device.Vision.Marker
 
             double error = -1;
 
-            ALVARDllBridge.alvar_get_multi_marker_poses(multiIdPtr, multiPosePtr, multiErrorPtr,
-                false, IntPtr.Zero);
+            ALVARDllBridge.alvar_get_multi_marker_poses(detectorID, cameraID, detectAdditional, 
+                multiIdPtr, multiPosePtr, multiErrorPtr);
 
             Marshal.Copy(multiIdPtr, multiIDs, 0, multiMarkerIDs.Count);
             Marshal.Copy(multiPosePtr, multiPoseMats, 0, multiMarkerIDs.Count * 16);

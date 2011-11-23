@@ -53,10 +53,8 @@ namespace GoblinXNA.Graphics
     {
         #region Fields
 
-        protected bool enabled;
         protected bool useLighting;
-        protected bool castShadow;
-        protected bool receiveShadow;
+        protected ShadowAttribute shadowAttribute;
         protected bool useVertexColor;
 
         protected CustomMesh customMesh;
@@ -76,10 +74,6 @@ namespace GoblinXNA.Graphics
 
         protected String shaderName;
         protected String customShapeParameters;
-
-        protected List<LineManager3D.Line> lines;
-        protected List<LineManager3D.Line> renderLines;
-        protected Matrix prevRenderMatrix;
 
         #region Temporary Variables
 
@@ -112,12 +106,12 @@ namespace GoblinXNA.Graphics
             afterEffectShaders = new List<IShader>();
 
             customShapeParameters = "";
+#if !WINDOWS_PHONE
             shaderName = TypeDescriptor.GetClassName(shader);
+#endif
 
-            enabled = true;
             useLighting = true;
-            castShadow = false;
-            receiveShadow = false;
+            shadowAttribute = ShadowAttribute.None;
             showBoundingBox = false;
             useVertexColor = false;
             technique = "";
@@ -134,49 +128,30 @@ namespace GoblinXNA.Graphics
         #region Properties
 
         /// <summary>
-        /// Flag indicating whether model is enabled and should be rendered. The default value is true.
-        /// </summary>
-        public bool Enabled
-        {
-            get { return enabled; }
-            set { enabled = value; }
-        }
-
-        /// <summary>
         /// Flag reflecting whether lighting should be used when rendering this model. 
         /// The default value is true.
         /// </summary>
-        public bool UseLighting
+        public virtual bool UseLighting
         {
             get { return useLighting; }
             set { useLighting = value; }
         }
 
         /// <summary>
-        /// Gets or sets if this model can cast shadows on other objects that can receive shadows.
-        /// The default value is false.
+        /// Gets or sets how this model will be used when shadow mapping is in use. The default value
+        /// is ShadowAttribute.None. 
         /// </summary>
-        public bool CastShadows
+        public virtual ShadowAttribute ShadowAttribute
         {
-            get { return castShadow; }
-            set { castShadow = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets if this model can receive shadows cast by objects that can cast shadows.
-        /// The default value is false.
-        /// </summary>
-        public bool ReceiveShadows
-        {
-            get { return receiveShadow; }
-            set { receiveShadow = value; }
+            get { return shadowAttribute; }
+            set { shadowAttribute = value; }
         }
         
         /// <summary>
         /// Gets or sets whether to use the vertex color instead of material information to
         /// render this model.
         /// </summary>
-        public bool UseVertexColor
+        public virtual bool UseVertexColor
         {
             get { return useVertexColor; }
             set 
@@ -187,19 +162,19 @@ namespace GoblinXNA.Graphics
             }
         }
 
-        public IShader Shader
+        public virtual IShader Shader
         {
             get { return shader; }
             set { shader = value; }
         }
 
-        public String ShaderTechnique
+        public virtual String ShaderTechnique
         {
             get { return technique; }
             set { technique = value; }
         }
 
-        public List<IShader> AfterEffectShaders
+        public virtual List<IShader> AfterEffectShaders
         {
             get { return afterEffectShaders; }
             set { afterEffectShaders = value; }
@@ -264,7 +239,7 @@ namespace GoblinXNA.Graphics
         /// origin instead of locating it based on the position stored in the file, you should
         /// set this to true. The default value is false.
         /// </summary>
-        public bool OffsetToOrigin
+        public virtual bool OffsetToOrigin
         {
             get { return offsetToOrigin; }
             set { offsetToOrigin = value; }
@@ -274,16 +249,10 @@ namespace GoblinXNA.Graphics
         /// Gets or sets whether to draw the minimum bounding box around the model.
         /// The default value is false.
         /// </summary>
-        public bool ShowBoundingBox
+        public virtual bool ShowBoundingBox
         {
             get { return showBoundingBox; }
-            set 
-            {
-                showBoundingBox = value; 
-
-                if (value && lines == null)
-                    GenerateBoundingBox(boundingBox.Min, boundingBox.Max);
-            }
+            set { showBoundingBox = value; }
         }
 
         /// <summary>
@@ -301,7 +270,7 @@ namespace GoblinXNA.Graphics
         /// <remarks>
         /// This information is necessary for saving and loading scene graph from an XML file.
         /// </remarks>
-        public String ShaderName
+        public virtual String ShaderName
         {
             get { return shaderName; }
             set { shaderName = value; }
@@ -314,7 +283,7 @@ namespace GoblinXNA.Graphics
         /// <remarks>
         /// This information is necessary for saving and loading scene graph from an XML file.
         /// </remarks>
-        public String CustomShapeParameters
+        public virtual String CustomShapeParameters
         {
             get { return customShapeParameters; }
             set { customShapeParameters = value; }
@@ -329,7 +298,7 @@ namespace GoblinXNA.Graphics
         /// </summary>
         protected virtual void CalculateMinimumBoundingBox()
         {
-            int stride = customMesh.VertexDeclaration.GetVertexStrideSize(0);
+            int stride = customMesh.VertexDeclaration.VertexStride;
             int numberv = customMesh.NumberOfVertices;
             byte[] data = new byte[stride * numberv];
 
@@ -345,7 +314,7 @@ namespace GoblinXNA.Graphics
 
             if (customMesh.IndexBuffer.BufferUsage == BufferUsage.None)
             {
-                short[] tmpIndices = new short[customMesh.IndexBuffer.SizeInBytes / sizeof(short)];
+                short[] tmpIndices = new short[customMesh.IndexBuffer.IndexCount];
                 customMesh.IndexBuffer.GetData<short>(tmpIndices);
                 int[] tmpIntIndices = new int[tmpIndices.Length];
                 Array.Copy(tmpIndices, tmpIntIndices, tmpIndices.Length);
@@ -363,39 +332,6 @@ namespace GoblinXNA.Graphics
                 if(offsetTransform.Equals(Matrix.Identity))
                     offsetTransform.Translation = -(boundingBox.Min + boundingBox.Max) / 2;
             }
-        }
-
-        /// <summary>
-        /// Generates the necessary mesh for drawing a minimum bounding box around this model.
-        /// </summary>
-        /// <param name="min">The minimum point of the minimum bounding box</param>
-        /// <param name="max">The maximum point of the minimum bounding box</param>
-        protected virtual void GenerateBoundingBox(Vector3 min, Vector3 max)
-        {
-            Vector3 minMaxZ = Vector3Helper.Get(min.X, min.Y, max.Z);
-            Vector3 minMaxX = Vector3Helper.Get(max.X, min.Y, min.Z);
-            Vector3 minMaxY = Vector3Helper.Get(min.X, max.Y, min.Z);
-            Vector3 maxMinX = Vector3Helper.Get(min.X, max.Y, max.Z);
-            Vector3 maxMinY = Vector3Helper.Get(max.X, min.Y, max.Z);
-            Vector3 maxMinZ = Vector3Helper.Get(max.X, max.Y, min.Z);
-
-            lines = new List<LineManager3D.Line>();
-
-            lines.Add(new LineManager3D.Line(min, minMaxX, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(min, minMaxY, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(min, minMaxZ, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(max, maxMinX, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(max, maxMinY, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(max, maxMinZ, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(minMaxY, maxMinX, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(minMaxY, maxMinZ, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(minMaxZ, maxMinX, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(minMaxZ, maxMinY, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(minMaxX, maxMinY, State.BoundingBoxColor));
-            lines.Add(new LineManager3D.Line(minMaxX, maxMinZ, State.BoundingBoxColor));
-
-            renderLines = new List<LineManager3D.Line>();
-            renderLines.AddRange(lines);
         }
 
         /// <summary>
@@ -427,7 +363,7 @@ namespace GoblinXNA.Graphics
         /// </remarks>
         /// <param name="material">Material properties of this model</param>
         /// <param name="renderMatrix">Transform of this model</param>
-        public virtual void Render(Matrix renderMatrix, Material material)
+        public virtual void Render(ref Matrix renderMatrix, Material material)
         {
             if ((shader.CurrentMaterial != material) || material.HasChanged)
             {
@@ -440,22 +376,14 @@ namespace GoblinXNA.Graphics
             }
 
             shader.Render(
-                renderMatrix,
+                ref renderMatrix,
                 technique,
-                delegate
-                {
-                    State.Device.Vertices[0].SetSource(
-                        customMesh.VertexBuffer, 0, customMesh.SizeInBytes);
-                    State.Device.Indices = customMesh.IndexBuffer;
-                    State.Device.VertexDeclaration = customMesh.VertexDeclaration;
-                    State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
-                        0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
-                });
+                SubmitGeometry);
 
             foreach (IShader afterEffect in afterEffectShaders)
             {
                 afterEffect.Render(
-                    renderMatrix,
+                    ref renderMatrix,
                     technique,
                     delegate
                     {
@@ -465,30 +393,34 @@ namespace GoblinXNA.Graphics
             }
 
             if (showBoundingBox)
-                RenderBoundingBox(renderMatrix);
+                RenderBoundingBox(ref renderMatrix);
         }
 
-        protected virtual void RenderBoundingBox(Matrix renderMatrix)
+        public virtual void PrepareShadows(ref Matrix renderMatrix)
         {
-            if (!renderMatrix.Equals(prevRenderMatrix))
-            {
-                for (int i = 0; i < lines.Count; i++)
-                {
-                    tmpMat1 = Matrix.CreateTranslation(lines[i].startPoint);
-                    Matrix.Multiply(ref tmpMat1, ref renderMatrix, out tmpMat1);
+            if (!(shader is IShadowShader))
+                return;
 
-                    tmpMat2 = Matrix.CreateTranslation(lines[i].endPoint);
-                    Matrix.Multiply(ref tmpMat2, ref renderMatrix, out tmpMat2);
+            ((IShadowShader)shader).ShadowMap.ComputeShadow(
+                ref renderMatrix,
+                SubmitGeometry);
+        }
 
-                    renderLines[i] = new LineManager3D.Line(tmpMat1.Translation,
-                        tmpMat2.Translation, lines[i].endColor);
-                }
+        protected virtual void SubmitGeometry()
+        {
+            State.Device.SetVertexBuffer(customMesh.VertexBuffer);
+            State.Device.Indices = customMesh.IndexBuffer;
+            State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
+                0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
+        }
 
-                prevRenderMatrix = renderMatrix;
-            }
+        protected virtual void RenderBoundingBox(ref Matrix renderMatrix)
+        {
+            Vector3[] corners = boundingBox.GetCorners();
+            for (int i = 0; i < corners.Length; i++)
+                Vector3.Transform(ref corners[i], ref renderMatrix, out corners[i]);
 
-            foreach (LineManager3D.Line line in renderLines)
-                State.LineManager.AddLine(line);
+            DebugShapeRenderer.AddBoundingBox(corners, State.BoundingBoxColor, 0);
         }
 
         /// <summary>
@@ -504,52 +436,7 @@ namespace GoblinXNA.Graphics
                 customMesh.Dispose();
         }
 
-        /// <summary>
-        /// Renders all objects that should receive shadows here. Called from the 
-        /// ShadowMappingShader.UseShadow method.
-        /// </summary>
-        /// <remarks>
-        /// This function is called automatically to receive shadows, so do not call this method
-        /// </remarks>
-        /// <param name="renderMatrix">Transform of this model</param>
-        public virtual void UseShadows(Matrix renderMatrix)
-        {
-            // The model only receives shadow if receiveShadow is set to true
-            if (!receiveShadow)
-                return;
-
-            State.ShadowShader.UpdateCalcShadowWorldMatrix(renderMatrix);
-            State.Device.Vertices[0].SetSource(
-                customMesh.VertexBuffer, 0, customMesh.SizeInBytes);
-            State.Device.Indices = customMesh.IndexBuffer;
-            State.Device.VertexDeclaration = customMesh.VertexDeclaration;
-            State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
-                0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
-        }
-
-        /// <summary>
-        /// Generate shadows for this model in the generate shadows pass
-        /// of our shadow mapping shader. All objects rendered here will
-        /// cast shadows in our scene.
-        /// </summary>
-        /// <remarks>
-        /// This function is called automatically to cast shadows, so do not call this method
-        /// </remarks>
-        /// <param name="renderMatrix">Transform of this model</param>
-        public virtual void GenerateShadows(Matrix renderMatrix)
-        {
-            if (!castShadow)
-                return;
-
-            State.ShadowShader.UpdateGenerateShadowWorldMatrix(renderMatrix);
-            State.Device.Vertices[0].SetSource(
-                customMesh.VertexBuffer, 0, customMesh.SizeInBytes);
-            State.Device.Indices = customMesh.IndexBuffer;
-            State.Device.VertexDeclaration = customMesh.VertexDeclaration;
-            State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
-                0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
-        }
-
+#if !WINDOWS_PHONE
         public virtual XmlElement SaveModelCreationInfo(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement("ModelCreationInfo");
@@ -570,10 +457,8 @@ namespace GoblinXNA.Graphics
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
 
-            xmlNode.SetAttribute("Enabled", enabled.ToString());
             xmlNode.SetAttribute("UseLighting", useLighting.ToString());
-            xmlNode.SetAttribute("CastShadow", castShadow.ToString());
-            xmlNode.SetAttribute("ReceiveShadow", receiveShadow.ToString());
+            xmlNode.SetAttribute("ShadowAttribute", shadowAttribute.ToString());
             xmlNode.SetAttribute("ShowBoundingBox", showBoundingBox.ToString());
             xmlNode.SetAttribute("OffsetToOrigin", offsetToOrigin.ToString());
 
@@ -582,19 +467,17 @@ namespace GoblinXNA.Graphics
 
         public virtual void Load(XmlElement xmlNode)
         {
-            if (xmlNode.HasAttribute("Enabled"))
-                enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
             if (xmlNode.HasAttribute("UseLighting"))
                 useLighting = bool.Parse(xmlNode.GetAttribute("UseLighting"));
-            if (xmlNode.HasAttribute("CastShadow"))
-                castShadow = bool.Parse(xmlNode.GetAttribute("CastShadow"));
-            if (xmlNode.HasAttribute("ReceiveShadow"))
-                receiveShadow = bool.Parse(xmlNode.GetAttribute("ReceiveShadow"));
+            if (xmlNode.HasAttribute("ShadowAttribute"))
+                shadowAttribute = (ShadowAttribute)Enum.Parse(typeof(ShadowAttribute), 
+                    xmlNode.GetAttribute("CastShadow"));
             if (xmlNode.HasAttribute("ShowBoundingBox"))
                 showBoundingBox = bool.Parse(xmlNode.GetAttribute("ShowBoundingBox"));
             if (xmlNode.HasAttribute("OffsetToOrigin"))
                 offsetToOrigin = bool.Parse(xmlNode.GetAttribute("OffsetToOrigin"));
         }
+#endif
 
         #endregion
     }

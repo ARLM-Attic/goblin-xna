@@ -36,12 +36,9 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
 
 using GoblinXNA;
 using GoblinXNA.Graphics;
@@ -66,6 +63,10 @@ namespace Tutorial14___Skinned_Model_Animation
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -82,7 +83,7 @@ namespace Tutorial14___Skinned_Model_Animation
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set up the camera, which defines the eye location and viewing frustum
             CreateCamera();
@@ -95,10 +96,6 @@ namespace Tutorial14___Skinned_Model_Animation
 
             // Loads the skinned model
             LoadModel();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
         }
 
         private void CreateCamera()
@@ -171,7 +168,6 @@ namespace Tutorial14___Skinned_Model_Animation
             AnimatedModelLoader loader = new AnimatedModelLoader();
             animatedModel = (AnimatedModel)loader.Load("", "dude");
             animatedModel.UseInternalMaterials = true;
-            animatedModel.ShaderTechnique = "SkinnedModelTechnique";
 
             GeometryNode modelNode = new GeometryNode("Dude");
             modelNode.Model = animatedModel;
@@ -185,6 +181,13 @@ namespace Tutorial14___Skinned_Model_Animation
             modelTransNode.AddChild(modelNode);
         }
 
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -192,9 +195,19 @@ namespace Tutorial14___Skinned_Model_Animation
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
             animatedModel.Update(gameTime);
 
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -203,7 +216,7 @@ namespace Tutorial14___Skinned_Model_Animation
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            elapsedTime += (float)gameTime.ElapsedRealTime.TotalSeconds / 2;
+            elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds / 2;
 
             Vector3 curPos = Vector3.Zero;
             curPos.X = (float)(100 * Math.Cos(elapsedTime));
@@ -214,7 +227,7 @@ namespace Tutorial14___Skinned_Model_Animation
             modelTransNode.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY,
                 -elapsedTime);
 
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

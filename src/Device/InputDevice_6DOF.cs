@@ -62,7 +62,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="gameTime"></param>
         /// <param name="deviceActive"></param>
-        void Update(GameTime gameTime, bool deviceActive);
+        void Update(TimeSpan elapsedTime, bool deviceActive);
 
         /// <summary>
         /// Disposes this 6DOF input device.

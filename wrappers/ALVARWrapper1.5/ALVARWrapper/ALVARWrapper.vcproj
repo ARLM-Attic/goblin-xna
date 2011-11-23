@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\Program Files (x86)\Alvar 1.5.0\include&quot;;&quot;C:\Program Files (x86)\Alvar 1.5.0\include\pro&quot;;&quot;C:\Program Files (x86)\Alvar 1.5.0\include\platform&quot;;&quot;C:\Program Files (x86)\OpenCV\cxcore\include&quot;;&quot;C:\Program Files (x86)\OpenCV\cv\include&quot;"
+				AdditionalIncludeDirectories="&quot;E:\Program Files\Alvar 1.5.0\include&quot;;&quot;E:\Program Files\Alvar 1.5.0\include\pro&quot;;&quot;E:\Program Files\Alvar 1.5.0\include\platform&quot;;&quot;C:\Program Files (x86)\OpenCV\cxcore\include&quot;;&quot;C:\Program Files (x86)\OpenCV\cv\include&quot;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -60,8 +60,9 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="alvar150d.lib alvarplatform150d.lib cxcore.lib"
+				OutputFile="$(OutDir)\ALVARWrapper.dll"
 				Version="1.5.0"
-				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Alvar 1.5.0\bin\msvc90&quot;;&quot;C:\Program Files (x86)\OpenCV\lib&quot;"
+				AdditionalLibraryDirectories="&quot;E:\Program Files\Alvar 1.5.0\bin\msvc90&quot;;&quot;C:\Program Files (x86)\OpenCV\lib&quot;"
 				GenerateDebugInformation="true"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -114,7 +115,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;D:\Program Files\AlvarPro 1.5.0\include&quot;;&quot;D:\Program Files\AlvarPro 1.5.0\include\pro&quot;;&quot;D:\Program Files\AlvarPro 1.5.0\include\platform&quot;;&quot;C:\Program Files (x86)\OpenCV\cv\include&quot;;&quot;C:\Program Files (x86)\OpenCV\cxcore\include&quot;"
+				AdditionalIncludeDirectories="&quot;E:\Program Files\Alvar 1.5.0\include&quot;;&quot;E:\Program Files\Alvar 1.5.0\include\pro&quot;;&quot;E:\Program Files\Alvar 1.5.0\include\platform&quot;;&quot;C:\Program Files (x86)\OpenCV\cxcore\include&quot;;&quot;C:\Program Files (x86)\OpenCV\cv\include&quot;"
 				PreprocessorDefinitions="Alvar_BUILD"
 				RuntimeLibrary="2"
 				WarningLevel="3"
@@ -137,7 +138,7 @@
 				AdditionalDependencies="alvar150.lib alvarplatform150.lib cxcore.lib"
 				OutputFile="$(OutDir)\ALVARWrapper.dll"
 				Version="1.5.0"
-				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\OpenCV\lib&quot;;&quot;D:\Program Files\Alvar 1.5.0\bin\msvc90&quot;"
+				AdditionalLibraryDirectories="&quot;E:\Program Files\Alvar 1.5.0\bin\msvc90&quot;;&quot;C:\Program Files (x86)\OpenCV\lib&quot;"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"

@@ -85,6 +85,9 @@ namespace GoblinXNA.Graphics
         protected float outerConeAngle;
         protected float range;
 
+        protected Vector3 transformedPosition;
+        protected Vector3 transformedDirection;
+
         protected bool hasChanged;
 
         #endregion
@@ -95,8 +98,8 @@ namespace GoblinXNA.Graphics
         /// </summary>
         public LightSource()
         {
-            position = new Vector3();
-            direction = new Vector3(-1, -1, -1);
+            position = Vector3.Zero;
+            direction = Vector3.Zero;
             lightType = LightType.Directional;
             enabled = true;
             diffuse = Color.Black.ToVector4();
@@ -202,7 +205,7 @@ namespace GoblinXNA.Graphics
 
         /// <summary>
         /// Gets or sets the position of this light source. This property is used only for Point
-        /// and SpotLight types. The default value is new Vector3().
+        /// and SpotLight types. The default value is vector (0, 0, 0).
         /// </summary>
         public Vector3 Position
         {
@@ -212,14 +215,25 @@ namespace GoblinXNA.Graphics
                 if (!position.Equals(value))
                 {
                     position = value;
+                    transformedPosition = position;
                     hasChanged = true;
                 }
             }
         }
 
         /// <summary>
+        /// Gets the transformed version of the Position property by the associated LightNode's
+        /// WorldTransformation.
+        /// </summary>
+        public Vector3 TransformedPosition
+        {
+            get { return transformedPosition; }
+            internal set { transformedPosition = value; }
+        }
+
+        /// <summary>
         /// Gets or sets the direction of this light source. This property is used
-        /// only for Directional and SpotLight types. The default value is vector (-1, -1, -1).
+        /// only for Directional and SpotLight types. The default value is vector (0, 0, 0).
         /// </summary>
         public Vector3 Direction
         {
@@ -229,9 +243,20 @@ namespace GoblinXNA.Graphics
                 if (!direction.Equals(value))
                 {
                     direction = value;
+                    transformedDirection = direction;
                     hasChanged = true;
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the transformed version of the Direction property by the associated LightNode's
+        /// WorldTransformation.
+        /// </summary>
+        public Vector3 TransformedDirection
+        {
+            get { return transformedDirection; }
+            internal set { transformedDirection = value; }
         }
 
         /// <summary>
@@ -359,6 +384,7 @@ namespace GoblinXNA.Graphics
 
         #region Public Methods
 
+#if !WINDOWS_PHONE
         public virtual XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
@@ -447,6 +473,8 @@ namespace GoblinXNA.Graphics
                     outerConeAngle = float.Parse(xmlNode.GetAttribute("OuterConeAngle"));
             }
         }
+
+#endif
 
         #endregion
     }

@@ -9,19 +9,20 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("Tutorial11 - Shader")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyCompany("Columbia University")]
-
-[assembly: AssemblyCopyright("Copyright © Columbia University 2008")]
+[assembly: AssemblyCopyright("Copyright © Columbia University 2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 
-// COM, set the ComVisible attribute to true on that type.
+// COM, set the ComVisible attribute to true on that type. Only Windows
+// assemblies support COM.
 [assembly: ComVisible(false)]
 
-// The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("15276454-0aa2-49be-99c5-d8e0db7b580e")]
-
+// On Windows, the following GUID is for the ID of the typelib if this
+// project is exposed to COM. On other platforms, it unique identifies the
+// title storage container when deploying this assembly to the device.
+[assembly: Guid("38f09101-8b31-45a3-a2fe-4ba0975461da")]
 
 // Version information for an assembly consists of the following four values:
 //

@@ -394,6 +394,7 @@ namespace GoblinXNA.SceneGraph
             return clone;
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -445,6 +446,7 @@ namespace GoblinXNA.SceneGraph
                 }
             }
         }
+#endif
 
         #endregion
     }

@@ -30,12 +30,11 @@
  * 
  *************************************************************************************/
 
-//#define USE_ARTAG
-
 using System;
 using System.Collections.Generic;
-
 using System.Linq;
+using System.Xml;
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -57,6 +56,7 @@ using GoblinXNA.Helpers;
 using GoblinXNA.Device.iWear;
 using GoblinXNA.Device;
 using GoblinXNA.Device.Generic;
+using GoblinXNA.Shaders;
 
 using GoblinXNA.UI.UI2D;
 
@@ -70,6 +70,8 @@ namespace Tutorial13___iWear_VR920
     /// </summary>
     public class Tutorial13 : Microsoft.Xna.Framework.Game
     {
+        bool FULL_SCREEN = false;
+
         GraphicsDeviceManager graphics;
         SpriteFont sampleFont;
 
@@ -80,13 +82,28 @@ namespace Tutorial13___iWear_VR920
 
         iWearTracker iTracker;
 
-        Viewport leftViewport;
-        Viewport rightViewport;
+        RenderTarget2D stereoScreenLeft;
+        RenderTarget2D stereoScreenRight;
+        Rectangle leftRect;
+        Rectangle rightRect;
+        Rectangle leftSource;
+        Rectangle rightSource;
+        SpriteBatch spriteBatch;
+
+        float markerSize = 32.4f;
 
         public Tutorial13()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            if (FULL_SCREEN)
+                graphics.IsFullScreen = true;
+            else
+            {
+                graphics.PreferredBackBufferWidth = 1280;
+                graphics.PreferredBackBufferHeight = 480;
+            }
         }
 
         /// <summary>
@@ -102,12 +119,10 @@ namespace Tutorial13___iWear_VR920
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
-#if !USE_ARTAG
             State.ThreadOption = (ushort)(ThreadOptions.MarkerTracking);
-#endif
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set up the VUZIX's iWear VR920 for both stereo and orientation tracking
             SetupIWear();
@@ -125,21 +140,16 @@ namespace Tutorial13___iWear_VR920
             // Set up the lights used in the scene
             CreateLights();
 
+            // Use the multi light shadow map shader for our shadow mapping
+            // NOTE: In order to use shadow mapping, you will need to add 'MultiLightShadowMap.fx'
+            // and 'SimpleShadowShader.fx' shader files to your 'Content' directory
+            scene.ShadowMap = new MultiLightShadowMap();
+
             // Create 3D objects
             CreateObjects();
 
             // Create the ground that represents the physical ground marker array
             CreateGround();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
-
-            // Enable shadow mapping
-            // NOTE: In order to use shadow mapping, you will need to add 'PostScreenShadowBlur.fx'
-            // and 'ShadowMap.fx' shader files as well as 'ShadowDistanceFadeoutMap.dds' texture file
-            // to your 'Content' directory
-            scene.EnableShadowMapping = true;
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
@@ -148,22 +158,8 @@ namespace Tutorial13___iWear_VR920
 
             if (stereoMode && (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920))
             {
-                leftViewport = new Viewport();
-                leftViewport.X = 0;
-                leftViewport.Y = 0;
-                leftViewport.Width = State.Width / 2;
-                leftViewport.Height = State.Height;
-                leftViewport.MinDepth = State.Device.Viewport.MinDepth;
-                leftViewport.MaxDepth = State.Device.Viewport.MaxDepth;
-
-                rightViewport = new Viewport();
-                rightViewport.X = State.Width / 2;
-                rightViewport.Y = 0;
-                rightViewport.Width = State.Width / 2;
-                rightViewport.Height = State.Height;
-                rightViewport.MinDepth = State.Device.Viewport.MinDepth;
-                rightViewport.MaxDepth = State.Device.Viewport.MaxDepth;
-            }     
+                SetupStereoViewport();
+            }
         }
 
         private void HandleKeyPressEvent(Keys key, KeyModifier modifier)
@@ -171,31 +167,112 @@ namespace Tutorial13___iWear_VR920
             // This is somewhat necessary to exit from full screen mode
             if (key == Keys.Escape)
                 this.Exit();
-
-            if (key == Keys.Enter)
-            {
-                if (scene.RightEyeVideoID == 1)
-                    scene.RightEyeVideoID = 0;
-                else
-                    scene.RightEyeVideoID = 1;
-            }
         }
 
         private void SetupStereoCamera()
         {
             StereoCamera camera = new StereoCamera();
-            camera.Translation = new Vector3(0, 0, 0);
-            // For stereo camera, you need to setup the interpupillary distance which is the distance
-            // between the left and right eyes
-            camera.InterpupillaryDistance = 1.45f;
-            camera.FocalLength = 40;
+
+            // Load the right eye view matrix from a calibration file created in StereoCameraCalibration tool
+            XmlDocument xmlDoc = new XmlDocument();
+
+            try
+            {
+                xmlDoc.Load("Wrap920_1_Stereo_Millimeter.xml");
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException(exp.Message);
+            }
+
+            Matrix cameraRightView = Matrix.Identity;
+            foreach (XmlNode xmlNode in xmlDoc.ChildNodes)
+            {
+                if (xmlNode is XmlElement)
+                {
+                    if (xmlNode.Name.Equals("StereoCalibration"))
+                    {
+                        MatrixHelper.LoadMatrixFromXML(xmlNode, ref cameraRightView);
+                    }
+                }
+            }
+
+            camera.LeftView = Matrix.CreateLookAt(Vector3.Zero, -Vector3.UnitZ, Vector3.UnitY);
+            camera.RightView = Matrix.Invert(cameraRightView);
+
             CameraNode cameraNode = new CameraNode(camera);
 
             scene.RootNode.AddChild(cameraNode);
             scene.CameraNode = cameraNode;
+        }
 
-            graphics.IsFullScreen = true;
-            graphics.ApplyChanges();
+        private void SetupStereoViewport()
+        {
+            int stereoWidth = State.Width / 2;
+            int stereoHeight = State.Height;
+
+            PresentationParameters pp = GraphicsDevice.PresentationParameters;
+
+            stereoScreenLeft = new RenderTarget2D(GraphicsDevice, stereoWidth, stereoHeight, false,
+                SurfaceFormat.Color, pp.DepthStencilFormat);
+            stereoScreenRight = new RenderTarget2D(GraphicsDevice, stereoWidth, stereoHeight, false,
+                SurfaceFormat.Color, pp.DepthStencilFormat);
+
+            leftRect = new Rectangle(0, 0, stereoWidth, stereoHeight);
+            rightRect = new Rectangle(stereoWidth, 0, stereoWidth, stereoHeight);
+
+            XmlDocument xmlDoc = new XmlDocument();
+            try
+            {
+                xmlDoc.Load("Wrap920_1_Adjustments.xml");
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException(exp.Message);
+            }
+
+            int camWidthAdjustmentLeft = 0, camHShiftAdjustmentLeft = 0, camVShiftAdjustmentLeft = 0;
+            int camWidthAdjustmentRight = 0, camHShiftAdjustmentRight = 0, camVShiftAdjustmentRight = 0;
+            foreach (XmlNode xmlNode in xmlDoc.ChildNodes)
+            {
+                if (xmlNode is XmlElement)
+                {
+                    if (xmlNode.Name.Equals("CameraAdjustments"))
+                    {
+                        foreach (XmlNode child in xmlNode.ChildNodes)
+                        {
+                            if (child.Name.Equals("LeftWidthAdjustment"))
+                                camWidthAdjustmentLeft = int.Parse(child.InnerText);
+                            else if (child.Name.Equals("LeftHorizontalShiftAdjustment"))
+                                camHShiftAdjustmentLeft = int.Parse(child.InnerText);
+                            else if (child.Name.Equals("LeftVerticalShiftAdjustment"))
+                                camVShiftAdjustmentLeft = int.Parse(child.InnerText);
+                            else if (child.Name.Equals("RightWidthAdjustment"))
+                                camWidthAdjustmentRight = int.Parse(child.InnerText);
+                            else if (child.Name.Equals("RightHorizontalShiftAdjustment"))
+                                camHShiftAdjustmentRight = int.Parse(child.InnerText);
+                            else if (child.Name.Equals("RightVerticalShiftAdjustment"))
+                                camVShiftAdjustmentRight = int.Parse(child.InnerText);
+                        }
+                    }
+                }
+            }
+
+            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                camHeightAdjustment + camVShiftAdjustmentLeft,
+                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+
+            camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                camHeightAdjustment + camVShiftAdjustmentRight,
+                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+
+            spriteBatch = new SpriteBatch(GraphicsDevice);
+
+            scene.BackgroundBound = leftRect;
         }
 
         private void CreateLights()
@@ -208,6 +285,9 @@ namespace Tutorial13___iWear_VR920
 
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
+            lightNode.CastShadows = true;
+            lightNode.LightProjection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4,
+                1, 1f, 500);
             // Add an ambient component
             lightNode.AmbientLightColor = new Vector4(0.3f, 0.3f, 0.3f, 1);
             lightNode.LightSource = lightSource;
@@ -218,7 +298,7 @@ namespace Tutorial13___iWear_VR920
 
         private void SetupMarkerTracking()
         {
-            DirectShowCapture captureDevice = new DirectShowCapture();
+            DirectShowCapture2 captureDevice = new DirectShowCapture2();
             captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
 
@@ -228,52 +308,47 @@ namespace Tutorial13___iWear_VR920
 
             // if we're using Wrap920AR, then we need to add another capture device for
             // processing stereo camera
-            DirectShowCapture captureDevice2 = null;
+            DirectShowCapture2 captureDevice2 = null;
             if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
-                captureDevice2 = new DirectShowCapture();
-                captureDevice2.InitVideoCapture(2, FrameRate._30Hz, Resolution._640x480,
+                captureDevice2 = new DirectShowCapture2();
+                captureDevice2.InitVideoCapture(1, FrameRate._30Hz, Resolution._640x480,
                     ImageFormat.R8G8B8_24, false);
 
                 scene.AddVideoCaptureDevice(captureDevice2);
+
+                // Calculate the right projection matrix using the camera intrinsic parameters for the 
+                // right camera
+                ((StereoCamera)scene.CameraNode.Camera).RightProjection =
+                    ALVARDllBridge.GetCameraProjection("Wrap920_1_Right.xml", captureDevice2.Width, 
+                        captureDevice2.Height, 0.1f, 1000);
             }
 
-            IMarkerTracker tracker = null;
-
-#if USE_ARTAG
-            // Create an optical marker tracker that uses ARTag library
-            tracker = new ARTagTracker();
-            // Set the configuration file to look for the marker specifications
-            tracker.InitTracker(638.052f, 633.673f, captureDevice.Width,
-                captureDevice.Height, false, "ARTag.cf");
-#else
             // Create an optical marker tracker that uses ALVAR library
-            tracker = new ALVARMarkerTracker();
-            ((ALVARMarkerTracker)tracker).MaxMarkerError = 0.02f;
-            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
-#endif
+            ALVARMarkerTracker tracker = new ALVARMarkerTracker();
+            tracker.MaxMarkerError = 0.02f;
+            tracker.ZNearPlane = 0.1f;
+            tracker.ZFarPlane = 1000;
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "Wrap920_1_Left.xml", markerSize);
+
+            ((StereoCamera)scene.CameraNode.Camera).LeftProjection = tracker.CameraProjection;
 
             scene.MarkerTracker = tracker;
 
             if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
-                scene.LeftEyeVideoID = captureDevice.VideoDeviceID;
-                scene.RightEyeVideoID = captureDevice2.VideoDeviceID;
-                scene.TrackerVideoID = captureDevice.VideoDeviceID;
+                scene.LeftEyeVideoID = 0;
+                scene.RightEyeVideoID = 1;
+                scene.TrackerVideoID = 0;
             }
             else
             {
-                scene.LeftEyeVideoID = captureDevice.VideoDeviceID;
-                scene.RightEyeVideoID = captureDevice.VideoDeviceID;
-                scene.TrackerVideoID = captureDevice.VideoDeviceID;
+                scene.LeftEyeVideoID = 0;
+                scene.RightEyeVideoID = 0;
+                scene.TrackerVideoID = 0;
             }
 
             // Create a marker node to track a ground marker array. 
-#if USE_ARTAG
-            groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ground");
-
-            scene.RootNode.AddChild(groundMarkerNode);
-#else
             groundMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARGroundArray.xml");
 
             // Add a transform node to tranlate the objects to be centered around the
@@ -281,7 +356,6 @@ namespace Tutorial13___iWear_VR920
             TransformNode transNode = new TransformNode();
 
             scene.RootNode.AddChild(groundMarkerNode);
-#endif
 
             scene.ShowCameraImage = true;
         }
@@ -306,18 +380,15 @@ namespace Tutorial13___iWear_VR920
         {
             GeometryNode groundNode = new GeometryNode("Ground");
 
-#if USE_ARTAG
-            groundNode.Model = new Box(85, 66, 0.1f);
-#else
-            groundNode.Model = new Box(95, 59, 0.1f);
-#endif
+            groundNode.Model = new TexturedBox(340, 200, 0.1f);
 
             // Set this ground model to act as an occluder so that it appears transparent
             groundNode.IsOccluder = true;
 
             // Make the ground model to receive shadow casted by other objects with
             // CastShadows set to true
-            groundNode.Model.ReceiveShadows = true;
+            groundNode.Model.ShadowAttribute = ShadowAttribute.ReceiveOnly;
+            groundNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             Material groundMaterial = new Material();
             groundMaterial.Diffuse = new Vector4(0.5f, 0.5f, 0.5f, 0.5f);
@@ -334,9 +405,9 @@ namespace Tutorial13___iWear_VR920
             // Create a sphere geometry
             {
                 GeometryNode sphereNode = new GeometryNode("Sphere");
-                sphereNode.Model = new Sphere(3.5f, 20, 20);
-                sphereNode.Model.CastShadows = true;
-                sphereNode.Model.ReceiveShadows = true;
+                sphereNode.Model = new TexturedSphere(14, 20, 20);
+                sphereNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
+                sphereNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
                 Material sphereMat = new Material();
                 sphereMat.Diffuse = Color.Red.ToVector4();
@@ -346,7 +417,7 @@ namespace Tutorial13___iWear_VR920
                 sphereNode.Material = sphereMat;
 
                 TransformNode sphereTrans = new TransformNode();
-                sphereTrans.Translation = new Vector3(0, 0, 5);
+                sphereTrans.Translation = new Vector3(0, 0, 20);
 
                 groundMarkerNode.AddChild(sphereTrans);
                 sphereTrans.AddChild(sphereNode);
@@ -355,9 +426,9 @@ namespace Tutorial13___iWear_VR920
             // Create a box geometry
             {
                 GeometryNode boxNode = new GeometryNode("Box");
-                boxNode.Model = new Box(6);
-                boxNode.Model.CastShadows = true;
-                boxNode.Model.ReceiveShadows = true;
+                boxNode.Model = new TexturedBox(24);
+                boxNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
+                boxNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
                 Material boxMat = new Material();
                 boxMat.Diffuse = Color.Blue.ToVector4();
@@ -367,7 +438,7 @@ namespace Tutorial13___iWear_VR920
                 boxNode.Material = boxMat;
 
                 TransformNode boxTrans = new TransformNode();
-                boxTrans.Translation = new Vector3(-35, -18, 8);
+                boxTrans.Translation = new Vector3(-140, -72, 32);
 
                 groundMarkerNode.AddChild(boxTrans);
                 boxTrans.AddChild(boxNode);
@@ -376,9 +447,8 @@ namespace Tutorial13___iWear_VR920
             // Create a cylinder geometry
             {
                 GeometryNode cylinderNode = new GeometryNode("Cylinder");
-                cylinderNode.Model = new Cylinder(3.5f, 3.5f, 10, 20);
-                cylinderNode.Model.CastShadows = true;
-                cylinderNode.Model.ReceiveShadows = true;
+                cylinderNode.Model = new Cylinder(14, 14, 10, 20);
+                cylinderNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 Material cylinderMat = new Material();
                 cylinderMat.Diffuse = Color.Green.ToVector4();
@@ -388,7 +458,7 @@ namespace Tutorial13___iWear_VR920
                 cylinderNode.Material = cylinderMat;
 
                 TransformNode cylinderTrans = new TransformNode();
-                cylinderTrans.Translation = new Vector3(35, -18, 8);
+                cylinderTrans.Translation = new Vector3(140, -72, 32);
 
                 groundMarkerNode.AddChild(cylinderTrans);
                 cylinderTrans.AddChild(cylinderNode);
@@ -397,9 +467,8 @@ namespace Tutorial13___iWear_VR920
             // Create a torus geometry
             {
                 GeometryNode torusNode = new GeometryNode("Torus");
-                torusNode.Model = new Torus(2.5f, 6.0f, 20, 20);
-                torusNode.Model.CastShadows = true;
-                torusNode.Model.ReceiveShadows = true;
+                torusNode.Model = new Torus(10, 24, 20, 20);
+                torusNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 Material torusMat = new Material();
                 torusMat.Diffuse = Color.Yellow.ToVector4();
@@ -409,7 +478,7 @@ namespace Tutorial13___iWear_VR920
                 torusNode.Material = torusMat;
 
                 TransformNode torusTrans = new TransformNode();
-                torusTrans.Translation = new Vector3(-35, 18, 8);
+                torusTrans.Translation = new Vector3(-140, 72, 32);
 
                 groundMarkerNode.AddChild(torusTrans);
                 torusTrans.AddChild(torusNode);
@@ -418,9 +487,8 @@ namespace Tutorial13___iWear_VR920
             // Create a capsule geometry
             {
                 GeometryNode capsuleNode = new GeometryNode("Capsule");
-                capsuleNode.Model = new Capsule(3, 12, 20);
-                capsuleNode.Model.CastShadows = true;
-                capsuleNode.Model.ReceiveShadows = true;
+                capsuleNode.Model = new Capsule(12, 48, 20);
+                capsuleNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
                 Material capsuleMat = new Material();
                 capsuleMat.Diffuse = Color.Cyan.ToVector4();
@@ -430,7 +498,7 @@ namespace Tutorial13___iWear_VR920
                 capsuleNode.Material = capsuleMat;
 
                 TransformNode capsuleTrans = new TransformNode();
-                capsuleTrans.Translation = new Vector3(35, 18, 8);
+                capsuleTrans.Translation = new Vector3(140, 72, 32);
 
                 groundMarkerNode.AddChild(capsuleTrans);
                 capsuleTrans.AddChild(capsuleNode);
@@ -444,6 +512,11 @@ namespace Tutorial13___iWear_VR920
             base.LoadContent();
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -451,7 +524,7 @@ namespace Tutorial13___iWear_VR920
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -465,11 +538,17 @@ namespace Tutorial13___iWear_VR920
             {
                 if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
                 {
-                    State.Device.Viewport = leftViewport;
-                    base.Draw(gameTime);
+                    scene.SceneRenderTarget = stereoScreenLeft;
+                    scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
 
-                    State.Device.Viewport = rightViewport;
+                    scene.SceneRenderTarget = stereoScreenRight;
                     scene.RenderScene();
+
+                    GraphicsDevice.SetRenderTarget(null);
+                    spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Opaque);
+                    spriteBatch.Draw(stereoScreenLeft, leftRect, leftSource, Color.White);
+                    spriteBatch.Draw(stereoScreenRight, rightRect, rightSource, Color.White);
+                    spriteBatch.End();
                 }
                 else if (iTracker.IsStereoAvailable)
                 {
@@ -480,7 +559,7 @@ namespace Tutorial13___iWear_VR920
                     iTracker.BeginGPUQuery();
                     // Render the scene for left eye. Note that since base.Draw(..) will update the
                     // physics simulation and scene graph as well. 
-                    base.Draw(gameTime);
+                    scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
                     // Renders our own 2D UI for left eye view
                     RenderUI();
                     // Wait for the GPU to finish rendering
@@ -511,7 +590,7 @@ namespace Tutorial13___iWear_VR920
             }
             else
             {
-                base.Draw(gameTime);
+                scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
                 RenderUI();
             }
         }

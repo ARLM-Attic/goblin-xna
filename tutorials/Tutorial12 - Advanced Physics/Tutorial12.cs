@@ -28,7 +28,7 @@
  * ===================================================================================
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
- *************************************************************************************/ 
+ *************************************************************************************/
 
 using System;
 using System.Collections.Generic;
@@ -84,7 +84,7 @@ namespace Tutorial12___Advanced_Physics
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -263,6 +263,11 @@ namespace Tutorial12___Advanced_Physics
             textFont = Content.Load<SpriteFont>("Sample");
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -270,7 +275,7 @@ namespace Tutorial12___Advanced_Physics
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -308,8 +313,6 @@ namespace Tutorial12___Advanced_Physics
                     car.ApplyHandBrakes(0); 
             }
 
-            base.Draw(gameTime);
-
             UI2DRenderer.WriteText(new Vector2(5, 30), "Press the following keys to change " +
                 "the active camera:", Color.Red, textFont, Vector2.One * 0.5f);
             UI2DRenderer.WriteText(new Vector2(5, 50), "'C' -- Car chasing camera", 
@@ -318,6 +321,8 @@ namespace Tutorial12___Advanced_Physics
                 Color.Red, textFont, Vector2.One * 0.5f);
             UI2DRenderer.WriteText(new Vector2(5, 90), "'N' -- Near camera",
                 Color.Red, textFont, Vector2.One * 0.5f);
+
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

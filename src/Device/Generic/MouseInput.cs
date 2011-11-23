@@ -36,6 +36,9 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+#if WINDOWS_PHONE
+using Microsoft.Xna.Framework.Input.Touch;
+#endif
 
 using GoblinXNA.Helpers;
 
@@ -512,8 +515,56 @@ namespace GoblinXNA.Device.Generic
             return data;
         }
 
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
+#if WINDOWS_PHONE
+
+            TouchCollection touches = TouchPanel.GetState();
+
+            if (touches.Count > 0)
+            {
+                Point mouseLocation = new Point((int)touches[0].Position.X, (int)touches[0].Position.Y);
+                // We only care about the primary touch for MouseInput implementation
+                switch (touches[0].State)
+                {
+                    case TouchLocationState.Pressed:
+                        if(MousePressEvent != null)
+                            MousePressEvent(LeftButton, mouseLocation);
+
+                        mousePressed = true;
+
+                        // Handle drag start
+                        startDraggingPos = mouseLocation;
+                        prevDraggingPos = mouseLocation;
+                        dragButton = LeftButton;
+                        break;
+                    case TouchLocationState.Released:
+                        // RELEASE
+                        if (MouseReleaseEvent != null)
+                            MouseReleaseEvent(dragButton, mouseLocation);
+
+                        // CLICK
+                        if (MouseClickEvent != null)
+                            MouseClickEvent(dragButton, mouseLocation);
+
+                        mousePressed = false;
+                        break;
+                    case TouchLocationState.Moved:
+                        if (!prevDraggingPos.Equals(mouseLocation))
+                        {
+                            if (MouseDragEvent != null)
+                                MouseDragEvent(dragButton, startDraggingPos, mouseLocation);
+
+                            if(MouseMoveEvent != null)
+                                MouseMoveEvent(mouseLocation);
+
+                            prevDraggingPos = mouseLocation;
+                        }
+                        break;
+                }
+            }
+
+#elif WINDOWS
             if (onlyTrackWhenFocused && !deviceActive)
                 return;
 
@@ -608,6 +659,7 @@ namespace GoblinXNA.Device.Generic
 
             if (MouseRightButtonReleased && MouseLeftButtonReleased && MouseMiddleButtonReleased)
                 mousePressed = false;
+#endif
         }
 
         public void Dispose()

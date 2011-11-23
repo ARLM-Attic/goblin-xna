@@ -192,89 +192,40 @@ namespace GoblinXNA.Device.iWear
 
         #region DLL Imports
 
-        #region iWear Tracking
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWROpenTracker", 
-            CallingConvention = CallingConvention.Cdecl)]
+        // iWear Tracking.
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWROpenTracker", CallingConvention = CallingConvention.Cdecl)]
         public static extern long IWROpenTracker();
 
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRCloseTracker",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRCloseTracker", CallingConvention = CallingConvention.Cdecl)]
         public static extern void IWRCloseTracker();
 
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRZeroSet",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern void IWRZeroSet();
-
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGetTracking",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRGetTracking", CallingConvention = CallingConvention.Cdecl)]
         public static extern long IWRGetTracking(ref int yaw, ref int pitch, ref int roll);
 
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGetProductID",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern ushort IWRGetProductID();
-
-        #region VR920 Only
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRSetFilterState",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern void IWRSetFilterState(Boolean on);
-
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGetFilterState",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool IWRGetFilterState();
-        #endregion
-
-        #endregion
-
-        #region Wrap920 Only
-
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGet6DTracking",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern long IWRGet6DTracking(ref int yaw, ref int pitch, ref int roll,
-            ref int xtrn, ref int ytrn, ref int ztrn);
-
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRSetMagAutoCorrect",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern void IWRSetMagAutoCorrect(Boolean on);
-
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGetMagYaw",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern long IWRGetMagYaw(ref int yaw);
-
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGetSensorData",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRGetSensorData", CallingConvention = CallingConvention.Cdecl)]
         public static extern long IWRGetSensorData(ref IWRSensorData sensorData);
 
-        [DllImport("iweardrv.dll", SetLastError = false, EntryPoint = "IWRGetFilteredSensorData",
-            CallingConvention = CallingConvention.Cdecl)]
-        public static extern long IWRGetFilteredSensorData(ref int ax, ref int ay, ref int az,
-            ref int lgx, ref int lgy, ref int lgz, ref int gx, ref int gy, ref int gz,
-            ref int mx, ref int my, ref int mz);
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRSetFilterState", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void IWRSetFilterState(Boolean on);
 
-        #endregion
+        [DllImport("iWearDrv.dll", SetLastError = false, EntryPoint = "IWRGetProductID", CallingConvention = CallingConvention.Cdecl)]
+        public static extern ushort IWRGetProductID();
 
-        #region iWear Stereoscopy
-
-        [DllImport("iwrstdrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_Open",
-            CallingConvention = CallingConvention.Cdecl)]
+        // iWear Stereoscopy.
+        [DllImport("iWrstDrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_Open", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr IWROpenStereo();
 
-        [DllImport("iwrstdrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_Close",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWrstDrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_Close", CallingConvention = CallingConvention.Cdecl)]
         public static extern void IWRCloseStereo(IntPtr handle);
 
-        [DllImport("iwrstdrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_SetLR",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWrstDrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_SetLR", CallingConvention = CallingConvention.Cdecl)]
         public static extern Boolean IWRSetStereoLR(IntPtr handle, int eye);
 
-        [DllImport("iwrstdrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_SetStereo",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWrstDrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_SetStereo", CallingConvention = CallingConvention.Cdecl)]
         public static extern Boolean IWRSetStereoEnabled(IntPtr handle, Boolean enabled);
 
-        [DllImport("iwrstdrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_WaitForAck",
-            CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("iWrstDrv.dll", SetLastError = false, EntryPoint = "IWRSTEREO_WaitForAck", CallingConvention = CallingConvention.Cdecl)]
         public static extern Byte IWRWaitForOpenFrame(IntPtr handle, Boolean eye);
-
-        #endregion
 
         #endregion
     }

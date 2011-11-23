@@ -7,5 +7,5 @@
     <Marker id="3" image="raw_markers/ALVAR/MarkerData_3.png" upperLeftCorner="232,232" />
   </Coordframe>
   <OutputImage name="ALVARArrayFromXML.gif" />
-  <OutputConfig name="ALVARConfigFromXML.xml" type="ALVAR"/>
+  <OutputConfig name="ALVARConfigFromXML.xml"/>
 </MarkerLayout>

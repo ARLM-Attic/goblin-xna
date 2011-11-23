@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial1___Getting_Started
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial1___Getting_Started
             }
         }
     }
+#endif
 }
 

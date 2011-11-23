@@ -54,7 +54,6 @@ namespace GoblinXNA.Device.iWear
         private bool stereoAvailable;
         private bool trackerAvailable;
         private bool sensorAvailable;
-        private Vector3 motion;
         private Quaternion rotation;
         private float yaw;
         private float pitch;
@@ -73,18 +72,9 @@ namespace GoblinXNA.Device.iWear
         private iWearDllBridge.IWRSensorData sensorData;
         private iWearDllBridge.IWRProductID productID;
 
-        private bool enableSensorReading;
-        private bool useFilteredSensorData;
-        private bool enable6DOFTracking;
-
-        private int ax, ay, az;
-        private int lgx, lgy, lgz;
-        private int gx, gy, gz;
-        private int mx, my, mz;
-
-        private int xtrn, ytrn, ztrn;
-
         private static iWearTracker tracker;
+
+        private bool isHiDef;
 
         #endregion
 
@@ -101,7 +91,6 @@ namespace GoblinXNA.Device.iWear
             trackerAvailable = false;
             sensorAvailable = false;
             productID = iWearDllBridge.IWRProductID.IWR_PROD_NONE;
-            motion = Vector3.Zero;
             rotation = Quaternion.Identity;
             yaw = 0;
             pitch = 0;
@@ -111,15 +100,13 @@ namespace GoblinXNA.Device.iWear
             gyroData = Vector3.Zero;
             lbGyroData = Vector3.Zero;
             sensorData = new iWearDllBridge.IWRSensorData();
+            isHiDef = (State.Device.GraphicsProfile == GraphicsProfile.HiDef);
 
             stereoHandle = ((IntPtr)(-1));
             // Setup a query, to provide GPU syncing method.
-            g_QueryGPU = new OcclusionQuery(State.Device);
+            if(isHiDef)
+                g_QueryGPU = new OcclusionQuery(State.Device);
             windowBottomLine = 0;
-
-            enableSensorReading = false;
-            useFilteredSensorData = false;
-            enable6DOFTracking = false;
         }
 
         #endregion
@@ -170,59 +157,11 @@ namespace GoblinXNA.Device.iWear
         }
 
         /// <summary>
-        /// Gets or sets whether to enable the raw sensor reading from Wrap920 AR tracker.
-        /// The default value is false.
-        /// </summary>
-        public bool EnableSensorReading
-        {
-            get { return enableSensorReading; }
-            set { enableSensorReading = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets whether to use the filtered sensor data. If false, the raw sensor
-        /// data will be used. The default value is false.
-        /// </summary>
-        public bool UseFilteredSensorData
-        {
-            get { return useFilteredSensorData; }
-            set { useFilteredSensorData = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets whether to enable the 6DOF tracking provided by Wrap920 tracker.
-        /// The default value is false.
-        /// </summary>
-        public bool Enable6DOFTracking
-        {
-            get { return enable6DOFTracking; }
-            set { enable6DOFTracking = value; }
-        }
-
-        /// <summary>
         /// Gets the yaw (in radians) updated by the device's orientation tracker. 
         /// </summary>
         public float Yaw
         {
             get { return yaw; }
-        }
-        
-        /// <summary>
-        /// Gets the yaw (in radians) based on the magnetic sensor.
-        /// </summary>
-        public float MagneticYaw
-        {
-            get
-            {
-                if (productID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
-                {
-                    int magYaw = 0;
-                    iWearDllBridge.IWRGetMagYaw(ref magYaw);
-                    return ConvertToRadians(magYaw);
-                }
-                else
-                    return 0;
-            }
         }
 
         /// <summary>
@@ -239,14 +178,6 @@ namespace GoblinXNA.Device.iWear
         public float Roll
         {
             get { return roll; }
-        }
-
-        /// <summary>
-        /// Gets the
-        /// </summary>
-        public Vector3 Motion
-        {
-            get { return motion; }
         }
 
         /// <summary>
@@ -301,22 +232,6 @@ namespace GoblinXNA.Device.iWear
         }
 
         /// <summary>
-        /// Turns magnetic sensor correction on or off (Wrap920 only). If set to true,
-        /// magnetic sensor will autocorrect yaw value; otherwise, the yaw value will
-        /// be purely based on gyroscrope.
-        /// </summary>
-        public bool MagAutoCorrect
-        {
-            set
-            {
-                if (productID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
-                {
-                    iWearDllBridge.IWRSetMagAutoCorrect(value);
-                }
-            }
-        }
-
-        /// <summary>
         /// Gets the low bandwidth gyro sensor data in the x, y, and z directions. The values range from
         /// -2048 to 2048.
         /// </summary>
@@ -326,7 +241,19 @@ namespace GoblinXNA.Device.iWear
         /// <see cref="IsSensorAvailable"/>
         public Vector3 LowBandGyroData
         {
-            get { return lbGyroData; }
+            get 
+            {
+                if (sensorAvailable)
+                {
+                    lbGyroData.X = (short)(((ushort)sensorData.lbgyro_sensor.gyx_msb << 8) |
+                        ((ushort)sensorData.lbgyro_sensor.gyx_lsb));
+                    lbGyroData.Y = (short)(((ushort)sensorData.lbgyro_sensor.gyy_msb << 8) |
+                        ((ushort)sensorData.lbgyro_sensor.gyy_lsb));
+                    lbGyroData.Z = (short)(((ushort)sensorData.lbgyro_sensor.gyz_msb << 8) |
+                        ((ushort)sensorData.lbgyro_sensor.gyz_lsb));
+                }
+                return lbGyroData; 
+            }
         }
 
         /// <summary>
@@ -443,7 +370,7 @@ namespace GoblinXNA.Device.iWear
             if (productID != iWearDllBridge.IWRProductID.IWR_PROD_VR920)
                 return;
 
-            if (stereoAvailable)
+            if (stereoAvailable && isHiDef)
                 g_QueryGPU.Begin();
         }
 
@@ -456,7 +383,7 @@ namespace GoblinXNA.Device.iWear
             if (productID != iWearDllBridge.IWRProductID.IWR_PROD_VR920)
                 return;
 
-            if (stereoAvailable)
+            if (stereoAvailable && isHiDef)
                 g_QueryGPU.End();
         }
 
@@ -472,13 +399,16 @@ namespace GoblinXNA.Device.iWear
 
             iWearDllBridge.IWRWaitForOpenFrame(stereoHandle, false);
             // In windowed mode, we must poll for vSync.
-            if (!State.Graphics.IsFullScreen)
-                while (State.Device.RasterStatus.ScanLine < windowBottomLine) ;
+            //if (!State.Graphics.IsFullScreen)
+            //    while (State.Device.RasterStatus.ScanLine < windowBottomLine) ;
 
-            while (!g_QueryGPU.IsComplete)
+            if (isHiDef)
             {
-                // Waiting on gpu to complete rendering.
-                // MUST be certain the frame will scan out on the next vSync interval.
+                while (!g_QueryGPU.IsComplete)
+                {
+                    // Waiting on gpu to complete rendering.
+                    // MUST be certain the frame will scan out on the next vSync interval.
+                }
             }
 
             if (eye == iWearDllBridge.Eyes.LEFT_EYE)
@@ -496,7 +426,7 @@ namespace GoblinXNA.Device.iWear
             if (productID != iWearDllBridge.IWRProductID.IWR_PROD_VR920)
                 return;
 
-            if (!State.Graphics.IsFullScreen)
+            if (!((GraphicsDeviceManager)State.Graphics).IsFullScreen)
             {
                 // In windowed mode we need the bottom line of our window.
                 // MUST Never be greater than the displays last scanline.
@@ -506,93 +436,51 @@ namespace GoblinXNA.Device.iWear
             }
         }
 
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
             // Get iWear tracking yaw, pitch, roll
-            if (enable6DOFTracking && 
-                (productID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920))
-                iwr_status = (int)iWearDllBridge.IWRGet6DTracking(ref y, ref p, ref r,
-                    ref xtrn, ref ytrn, ref ztrn);
-            else
-                iwr_status = (int)iWearDllBridge.IWRGetTracking(ref y, ref p, ref r);
-
+            iwr_status = (int)iWearDllBridge.IWRGetTracking(ref y, ref p, ref r);
             if (iwr_status == (int)iWearDllBridge.IWRError.IWR_OK)
             {
                 yaw = ConvertToRadians(y);
                 pitch = ConvertToRadians(p);
                 roll = ConvertToRadians(r);
-
-                if (enable6DOFTracking)
-                {
-                    motion.X = xtrn;
-                    motion.Y = ytrn;
-                    motion.Z = ztrn;
-                }
-
                 trackerAvailable = true;
             }
             else
                 trackerAvailable = false;
 
-            if (enableSensorReading &&
-                productID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
+            if (productID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
-                if (useFilteredSensorData)
+                iwr_status = (int)iWearDllBridge.IWRGetSensorData(ref sensorData);
+
+                if (iwr_status == (int)iWearDllBridge.IWRError.IWR_OK)
                 {
-                    iwr_status = (int)iWearDllBridge.IWRGetFilteredSensorData(
-                        ref ax, ref ay, ref az, ref lgx, ref lgy, ref lgz, ref gx,
-                        ref gy, ref gz, ref mx, ref my, ref mz);
+                    magneticData.X = (short)(((ushort)sensorData.mag_sensor.magx_msb << 8) |
+                        ((ushort)sensorData.mag_sensor.magx_lsb));
+                    magneticData.Y = (short)(((ushort)sensorData.mag_sensor.magy_msb << 8) |
+                        ((ushort)sensorData.mag_sensor.magy_lsb));
+                    magneticData.Z = (short)(((ushort)sensorData.mag_sensor.magz_msb << 8) |
+                        ((ushort)sensorData.mag_sensor.magz_lsb));
 
-                    if (iwr_status == (int)iWearDllBridge.IWRError.IWR_OK)
-                    {
-                        magneticData.X = mx; magneticData.Y = my; magneticData.Z = mz;
-                        accelerationData.X = ax; accelerationData.Y = ay; accelerationData.Z = az;
-                        gyroData.X = gx; gyroData.Y = gy; gyroData.Z = gz;
+                    accelerationData.X = (short)(((ushort)sensorData.acc_sensor.accx_msb << 8) |
+                        ((ushort)sensorData.acc_sensor.accx_lsb));
+                    accelerationData.Y = (short)(((ushort)sensorData.acc_sensor.accy_msb << 8) |
+                        ((ushort)sensorData.acc_sensor.accy_lsb));
+                    accelerationData.Z = (short)(((ushort)sensorData.acc_sensor.accz_msb << 8) |
+                        ((ushort)sensorData.acc_sensor.accz_lsb));
 
-                        sensorAvailable = true;
-                    }
-                    else
-                        sensorAvailable = false;
+                    gyroData.X = (short)(((ushort)sensorData.gyro_sensor.gyx_msb << 8) |
+                        ((ushort)sensorData.gyro_sensor.gyx_lsb));
+                    gyroData.Y = (short)(((ushort)sensorData.gyro_sensor.gyy_msb << 8) |
+                        ((ushort)sensorData.gyro_sensor.gyy_lsb));
+                    gyroData.Z = (short)(((ushort)sensorData.gyro_sensor.gyz_msb << 8) |
+                        ((ushort)sensorData.gyro_sensor.gyz_lsb));
+
+                    sensorAvailable = true;
                 }
                 else
-                {
-                    iwr_status = (int)iWearDllBridge.IWRGetSensorData(ref sensorData);
-
-                    if (iwr_status == (int)iWearDllBridge.IWRError.IWR_OK)
-                    {
-                        magneticData.X = (short)(((ushort)sensorData.mag_sensor.magx_msb << 8) |
-                            ((ushort)sensorData.mag_sensor.magx_lsb));
-                        magneticData.Y = (short)(((ushort)sensorData.mag_sensor.magy_msb << 8) |
-                            ((ushort)sensorData.mag_sensor.magy_lsb));
-                        magneticData.Z = (short)(((ushort)sensorData.mag_sensor.magz_msb << 8) |
-                            ((ushort)sensorData.mag_sensor.magz_lsb));
-
-                        accelerationData.X = (short)(((ushort)sensorData.acc_sensor.accx_msb << 8) |
-                            ((ushort)sensorData.acc_sensor.accx_lsb));
-                        accelerationData.Y = (short)(((ushort)sensorData.acc_sensor.accy_msb << 8) |
-                            ((ushort)sensorData.acc_sensor.accy_lsb));
-                        accelerationData.Z = (short)(((ushort)sensorData.acc_sensor.accz_msb << 8) |
-                            ((ushort)sensorData.acc_sensor.accz_lsb));
-
-                        gyroData.X = (short)(((ushort)sensorData.gyro_sensor.gyx_msb << 8) |
-                            ((ushort)sensorData.gyro_sensor.gyx_lsb));
-                        gyroData.Y = (short)(((ushort)sensorData.gyro_sensor.gyy_msb << 8) |
-                            ((ushort)sensorData.gyro_sensor.gyy_lsb));
-                        gyroData.Z = (short)(((ushort)sensorData.gyro_sensor.gyz_msb << 8) |
-                            ((ushort)sensorData.gyro_sensor.gyz_lsb));
-
-                        lbGyroData.X = (short)(((ushort)sensorData.lbgyro_sensor.gyx_msb << 8) |
-                            ((ushort)sensorData.lbgyro_sensor.gyx_lsb));
-                        lbGyroData.Y = (short)(((ushort)sensorData.lbgyro_sensor.gyy_msb << 8) |
-                            ((ushort)sensorData.lbgyro_sensor.gyy_lsb));
-                        lbGyroData.Z = (short)(((ushort)sensorData.lbgyro_sensor.gyz_msb << 8) |
-                            ((ushort)sensorData.lbgyro_sensor.gyz_lsb));
-
-                        sensorAvailable = true;
-                    }
-                    else
-                        sensorAvailable = false;
-                }
+                    sensorAvailable = false;
             }
         }
 
@@ -601,7 +489,8 @@ namespace GoblinXNA.Device.iWear
             if (stereoHandle != ((IntPtr)(-1)))
                 iWearDllBridge.IWRCloseStereo(stereoHandle);
             iWearDllBridge.IWRCloseTracker();
-            g_QueryGPU.Dispose();
+            if(isHiDef)
+                g_QueryGPU.Dispose();
         }
 
         #endregion

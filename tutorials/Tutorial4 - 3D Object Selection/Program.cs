@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial4___3D_Object_Selection
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial4___3D_Object_Selection
             }
         }
     }
+#endif
 }
 

@@ -32,7 +32,6 @@
 
 using System;
 using System.Collections.Generic;
-
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -66,6 +65,10 @@ namespace Tutorial7___Custom_Shape
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -78,14 +81,16 @@ namespace Tutorial7___Custom_Shape
         {
             base.Initialize();
 
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -99,10 +104,6 @@ namespace Tutorial7___Custom_Shape
 
             // Create 3D objects
             CreateObject();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
 
             KeyboardInput.Instance.KeyTypeEvent += new HandleKeyType(KeyTypeHandler);
         }
@@ -266,10 +267,8 @@ namespace Tutorial7___Custom_Shape
             verts[15].TextureCoordinate = new Vector2(0, 1);
 
             pyramid.VertexBuffer = new VertexBuffer(graphics.GraphicsDevice, 
-                VertexPositionNormalTexture.SizeInBytes * 16, BufferUsage.None);
-            pyramid.SizeInBytes = VertexPositionNormalTexture.SizeInBytes;
-            pyramid.VertexDeclaration = new VertexDeclaration(graphics.GraphicsDevice, 
-                VertexPositionNormalTexture.VertexElements);
+                typeof(VertexPositionNormalTexture), 16, BufferUsage.None);
+            pyramid.VertexDeclaration = VertexPositionNormalTexture.VertexDeclaration;
             pyramid.VertexBuffer.SetData(verts);
             pyramid.NumberOfVertices = 16;
 
@@ -358,6 +357,13 @@ namespace Tutorial7___Custom_Shape
             Content.Unload();
         }
 
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -365,6 +371,16 @@ namespace Tutorial7___Custom_Shape
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
             // Update the generic input's base transform to use for panning
             GenericInput.Instance.BaseTransformation = scene.CameraNode.WorldTransformation;
 
@@ -375,7 +391,7 @@ namespace Tutorial7___Custom_Shape
             genericInputNode.Translation = GenericInput.Instance.Translation;
             genericInputNode.Rotation = GenericInput.Instance.Rotation;
 
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -384,10 +400,10 @@ namespace Tutorial7___Custom_Shape
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
-
             UI2DRenderer.WriteText(Vector2.Zero, "Light Direction: " + lightSource.Direction.ToString(),
                 Color.White, textFont);
+
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

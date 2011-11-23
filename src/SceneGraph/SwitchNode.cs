@@ -121,6 +121,7 @@ namespace GoblinXNA.SceneGraph
             return clone;
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -137,6 +138,7 @@ namespace GoblinXNA.SceneGraph
             if (xmlNode.HasAttribute("SwitchID"))
                 switchID = int.Parse(xmlNode.GetAttribute("SwitchID"));
         }
+#endif
 
         #endregion
     }

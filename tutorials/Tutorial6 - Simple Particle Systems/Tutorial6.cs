@@ -32,7 +32,6 @@
 
 using System;
 using System.Collections.Generic;
-
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -44,7 +43,11 @@ using GoblinXNA.SceneGraph;
 using GoblinXNA.Graphics;
 using GoblinXNA.Device.Generic;
 using GoblinXNA.Graphics.Geometry;
+#if WINDOWS_PHONE
+using GoblinXNA.Graphics.ParticleEffects2D;
+#else
 using GoblinXNA.Graphics.ParticleEffects;
+#endif
 using Model = GoblinXNA.Graphics.Model;
 
 namespace Tutorial6___Simple_Particle_Systems
@@ -55,6 +58,10 @@ namespace Tutorial6___Simple_Particle_Systems
     public class Tutorial6 : Microsoft.Xna.Framework.Game
     {
         GraphicsDeviceManager graphics;
+
+#if WINDOWS_PHONE
+        SpriteBatch spriteBatch;
+#endif
 
         Scene scene;
         TransformNode shipTransParentNode;
@@ -67,6 +74,10 @@ namespace Tutorial6___Simple_Particle_Systems
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -79,14 +90,20 @@ namespace Tutorial6___Simple_Particle_Systems
         {
             base.Initialize();
 
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
+
+#if WINDOWS_PHONE
+            spriteBatch = new SpriteBatch(GraphicsDevice);
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -100,10 +117,6 @@ namespace Tutorial6___Simple_Particle_Systems
 
             // Create 3D objects
             CreateObject();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
@@ -199,6 +212,10 @@ namespace Tutorial6___Simple_Particle_Systems
 
             // Create a smoke particle effect and fire particle effect to simulate a
             // ring of fire around the torus model
+#if WINDOWS_PHONE
+            SmokePlumeParticleEffect smokeParticles = new SmokePlumeParticleEffect(20, spriteBatch);
+            FireParticleEffect fireParticles = new FireParticleEffect(40, spriteBatch);
+#else
             SmokePlumeParticleEffect smokeParticles = new SmokePlumeParticleEffect();
             FireParticleEffect fireParticles = new FireParticleEffect();
             // The order defines which particle effect to render first. Since we want
@@ -206,6 +223,7 @@ namespace Tutorial6___Simple_Particle_Systems
             // the smoke particles to be rendered first, and then fire particles
             smokeParticles.DrawOrder = 200;
             fireParticles.DrawOrder = 300;
+#endif
 
             // Create a particle node to hold these two particle effects
             ParticleNode fireRingEffectNode = new ParticleNode();
@@ -220,10 +238,17 @@ namespace Tutorial6___Simple_Particle_Systems
 
             // Create another set of fire and smoke particle effects to simulate the fire
             // the ship catches when the ship passes the ring of fire
+#if WINDOWS_PHONE
+            FireParticleEffect shipFireEffect = new FireParticleEffect(150, spriteBatch);
+            SmokePlumeParticleEffect shipSmokeEffect = new SmokePlumeParticleEffect(80, spriteBatch);
+            shipFireEffect.MinScale *= 1.5f;
+            shipFireEffect.MaxScale *= 1.5f;
+#else
             FireParticleEffect shipFireEffect = new FireParticleEffect();
             SmokePlumeParticleEffect shipSmokeEffect = new SmokePlumeParticleEffect();
             shipSmokeEffect.DrawOrder = 400;
             shipFireEffect.DrawOrder = 500;
+#endif
 
             ParticleNode shipFireNode = new ParticleNode();
             shipFireNode.ParticleEffects.Add(shipFireEffect);
@@ -251,14 +276,25 @@ namespace Tutorial6___Simple_Particle_Systems
                     // model. We want to add more particles when it goes through the torus model
                     // and decrease the number after that
                     int numParticles = 0;
+#if WINDOWS_PHONE
+                    int maxFireParticles = 2;
+#else
+                    int maxFireParticles = 8;
+#endif
                     if (particle is FireParticleEffect)
-                        numParticles = 8 - (int)(diff * 2);
+                        numParticles = maxFireParticles - (int)(diff * 2);
                     else
                         numParticles = 1;
 
+#if WINDOWS_PHONE
+                    for (int i = 0; i < (numParticles + 2) / 3; i++)
+                        particle.AddParticles(Project(worldTransform.Translation + 
+                            worldTransform.Forward * 1000));
+#else
                     for(int i = 0; i < numParticles; i++)
                         particle.AddParticle(worldTransform.Translation + worldTransform.Forward * 1000, 
                             Vector3.Zero);
+#endif
                 }
             }
         }
@@ -274,13 +310,24 @@ namespace Tutorial6___Simple_Particle_Systems
             {
                 if (particle is FireParticleEffect)
                 {
+#if WINDOWS_PHONE
+                    for(int k = 0; k < 1; k++)
+                        particle.AddParticles(Project(RandomPointOnCircle(worldTransform.Translation)));
+#else
                     // Add 10 fire particles every frame
                     for (int k = 0; k < 10; k++)
                         particle.AddParticle(RandomPointOnCircle(worldTransform.Translation), Vector3.Zero);
+#endif
                 }
                 else
+                {
+#if WINDOWS_PHONE
+                    particle.AddParticles(Project(RandomPointOnCircle(worldTransform.Translation)));
+#else
                     // Add 1 smoke particle every frame
                     particle.AddParticle(RandomPointOnCircle(worldTransform.Translation), Vector3.Zero);
+#endif
+                }
             }
         }
 
@@ -301,6 +348,20 @@ namespace Tutorial6___Simple_Particle_Systems
             return new Vector3(x * radius + pos.X, y * radius + pos.Y, pos.Z);
         }
 
+#if WINDOWS_PHONE
+        /// <summary>
+        /// Projects object space coordinate to screen coordinate
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        private Vector2 Project(Vector3 position)
+        {
+            Vector3 pos2d = State.Device.Viewport.Project(position, State.ProjectionMatrix,
+                State.ViewMatrix, Matrix.Identity);
+            return new Vector2(pos2d.X, pos2d.Y);
+        }
+#endif
+
         /// <summary>
         /// UnloadContent will be called once per game and is the place to unload
         /// all content.
@@ -310,6 +371,13 @@ namespace Tutorial6___Simple_Particle_Systems
             Content.Unload();
         }
 
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -317,12 +385,22 @@ namespace Tutorial6___Simple_Particle_Systems
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
             shipAngle += gameTime.ElapsedGameTime.TotalSeconds;
             // Rotate the ship model about the origin along Z axis
             shipTransParentNode.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY,
                 (float)shipAngle);
 
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -331,7 +409,7 @@ namespace Tutorial6___Simple_Particle_Systems
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

@@ -33,7 +33,6 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -68,6 +67,10 @@ namespace Tutorial3___Simple_2D_GUI
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -80,13 +83,15 @@ namespace Tutorial3___Simple_2D_GUI
         {
             base.Initialize();
 
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -103,10 +108,6 @@ namespace Tutorial3___Simple_2D_GUI
 
             // Create 2D GUI
             Create2DGUI();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
         }
 
         private void CreateLights()
@@ -172,7 +173,7 @@ namespace Tutorial3___Simple_2D_GUI
         {
             // Create the main panel which holds all other GUI components
             G2DPanel frame = new G2DPanel();
-            frame.Bounds = new Rectangle(325, 370, 150, 170);
+            frame.Bounds = new Rectangle(325, State.Height - 180, 150, 170);
             frame.Border = GoblinEnums.BorderFactory.LineBorder;
             frame.Transparency = 0.7f;  // Ranges from 0 (fully transparent) to 1 (fully opaque)
 
@@ -258,6 +259,13 @@ namespace Tutorial3___Simple_2D_GUI
             Content.Unload();
         }
 
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -265,12 +273,22 @@ namespace Tutorial3___Simple_2D_GUI
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
             rotationAngle += (float)gameTime.ElapsedGameTime.TotalSeconds * rotationRate;
             // TODO: Add your update logic here
             cylinderTransNode.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ,
                 rotationAngle);
 
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -279,11 +297,11 @@ namespace Tutorial3___Simple_2D_GUI
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
-
             // Draw a 2D text string at the center of the screen
             UI2DRenderer.WriteText(Vector2.Zero, label, Color.Red,
                 textFont, GoblinEnums.HorizontalAlignment.Center, GoblinEnums.VerticalAlignment.Top);
+
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
 
         /// <summary>

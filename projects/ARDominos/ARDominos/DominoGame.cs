@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,8 @@
  * 
  *************************************************************************************/ 
 
+//#define USE_ARTAG
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -53,6 +55,7 @@ using GoblinXNA.Physics;
 using GoblinXNA.Physics.Newton1;
 using GoblinXNA.Sounds;
 using GoblinXNA.Helpers;
+using GoblinXNA.Shaders;
 
 using GoblinXNA.UI.UI2D;
 
@@ -173,6 +176,13 @@ namespace ARDominos
 
         // Whether to always shoot from the center of the screen
         bool shootCenterMode = false;
+
+        // Sound effects
+        SoundEffect hammerWood1Sound;
+        SoundEffect rubberBall01Sound;
+        SoundEffect victorySound;
+        SoundEffect woodHitConcrete1Sound;
+        SoundEffect woodHitWood3Sound;
         #endregion
 
         #region Constructor
@@ -181,19 +191,8 @@ namespace ARDominos
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-            gameState = new GameState();
-            uiManager = new UIManager(this, gameState);
-
-            dominos = new List<GeometryNode>();
-            selectedDominos = new List<GeometryNode>();
-            balls = new List<GeometryNode>();
-            heavyBalls = new List<GeometryNode>();
-            fallenDominos = new List<GeometryNode>();
-
-            pointList = new List<VertexPositionColor>();
-            lineListIndices = new List<short>();
-
-            soundsPlaying = new List<double>();
+            graphics.PreferredBackBufferWidth = 800;
+            graphics.PreferredBackBufferHeight = 600;
         }
         #endregion
 
@@ -206,216 +205,48 @@ namespace ARDominos
         /// </summary>
         protected override void Initialize()
         {
+            base.Initialize();
+
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
-            Sound.Initialize("ARDomino");
+            //State.ThreadOption = (ushort)ThreadOptions.MarkerTracking;
 
             // Initialize the scene graph
-            scene = new Scene(this);
-             
-            scene.PhysicsEngine = new NewtonPhysics();
-            // Make the physics simulation space larger to 500x500 centered at the origin
-            ((NewtonPhysics)scene.PhysicsEngine).WorldSize = new BoundingBox(Vector3.One * -250,
-                Vector3.One * 250);
-            // Increase the gravity
-            scene.PhysicsEngine.Gravity = 30.0f;
+            scene = new Scene();
 
-            ((NewtonPhysics)scene.PhysicsEngine).MaxSimulationSubSteps = 5;
+            gameState = new GameState();
+            uiManager = new UIManager(gameState);
 
-            // Creates several physics material to associate appropriate collision sounds for each
-            // different materials
-            NewtonMaterial physMat = new NewtonMaterial();
-            // Domino to domino material interaction
-            physMat.MaterialName1 = "Domino";
-            physMat.MaterialName2 = "Domino";
-            // Defines the callback function when the two materials contact/collide
-            physMat.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
-                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
-            {
-                // Only play sound if the collision/contact speed is above 4
-                if (contactSpeed > 4f)
-                {
-                    // If we're already playing more than the limited number of sounds, then
-                    // don't play
-                    if (soundsPlaying.Count >= SOUND_LIMIT)
-                        return;
+            dominos = new List<GeometryNode>();
+            selectedDominos = new List<GeometryNode>();
+            balls = new List<GeometryNode>();
+            heavyBalls = new List<GeometryNode>();
+            fallenDominos = new List<GeometryNode>();
 
-                    try
-                    {
-                        // Set the volume proportional to the collision/contact speed
-                        Sound.SetVolume("Default", contactSpeed / 4 * volume);
-                    }
-                    catch (Exception exp) { }
-                    try
-                    {
-                        Sound.Play("wood_hit_wood_3");
-                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
-                    }
-                    catch (Exception exp) { }
-                }
+            pointList = new List<VertexPositionColor>();
+            lineListIndices = new List<short>();
 
-            };
+            soundsPlaying = new List<double>();
 
-            NewtonMaterial physMat2 = new NewtonMaterial();
-            // Gound to ball material interaction
-            physMat2.MaterialName1 = "Ground";
-            physMat2.MaterialName2 = "Ball";
-            physMat2.Elasticity = 0.7f;
-            physMat2.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
-                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
-            {
-                if (contactSpeed > 3f)
-                {
-                    if (soundsPlaying.Count >= SOUND_LIMIT)
-                        return;
+            // Setup for physics simulation
+            SetupPhysics();
 
-                    try
-                    {
-                        Sound.SetVolume("Default", contactSpeed * volume);
-                    }
-                    catch (Exception exp) { }
-                    try
-                    {
-                        Sound.Play("rubber_ball_01");
-                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
-                    }
-                    catch (Exception exp) { }
-                }
-
-            };
-
-            NewtonMaterial physMat3 = new NewtonMaterial();
-            physMat3.MaterialName1 = "Ground";
-            physMat3.MaterialName2 = "Domino";
-            physMat3.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
-                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
-            {
-                if (contactSpeed > 4f)
-                {
-                    if (soundsPlaying.Count >= SOUND_LIMIT)
-                        return;
-
-                    try
-                    {
-                        Sound.SetVolume("Default", contactSpeed / 2 * volume);
-                    }
-                    catch (Exception exp) { }
-                    try
-                    {
-                        Sound.Play("wood_hit_concrete_1");
-                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
-                    }
-                    catch (Exception exp) { }
-                }
-
-            };
-
-            NewtonMaterial physMat4 = new NewtonMaterial();
-            physMat4.MaterialName1 = "Ball";
-            physMat4.MaterialName2 = "Domino";
-            physMat4.Elasticity = 0.5f;
-            physMat4.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
-                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
-            {
-                if (contactSpeed > 4f)
-                {
-                    if (soundsPlaying.Count >= SOUND_LIMIT)
-                        return;
-                    
-                    try
-                    {
-                        Sound.SetVolume("Default", contactSpeed * volume);
-                    }
-                    catch (Exception exp) { }
-                    try
-                    {
-                        Sound.Play("hammer_wood_1");
-                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
-                    }
-                    catch (Exception exp) { }
-                }
-
-            };
-
-            NewtonMaterial physMat5 = new NewtonMaterial();
-            physMat5.MaterialName1 = "Ball";
-            physMat5.MaterialName2 = "Ball";
-            physMat5.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
-                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
-            {
-                if (contactSpeed > 4f)
-                {
-                    if (soundsPlaying.Count >= SOUND_LIMIT)
-                        return;
-
-                    try
-                    {
-                        Sound.SetVolume("Default", contactSpeed * volume);
-                    }
-                    catch (Exception exp) { }
-                    try
-                    {
-                        Sound.Play("rubber_ball_01");
-                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
-                    }
-                    catch (Exception exp) { }
-                }
-
-            };
-
-            NewtonMaterial physMat6 = new NewtonMaterial();
-            physMat6.MaterialName1 = "Ball";
-            physMat6.MaterialName2 = "Obstacle";
-            physMat6.Elasticity = 0.7f;
-            physMat6.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
-                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
-                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
-            {
-                if (contactSpeed > 4f)
-                {
-                    if (soundsPlaying.Count >= SOUND_LIMIT)
-                        return;
-
-                    try
-                    {
-                        Sound.SetVolume("Default", contactSpeed * volume);
-                    }
-                    catch (Exception exp) { }
-                    try
-                    {
-                        Sound.Play("rubber_ball_01");
-                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
-                    }
-                    catch (Exception exp) { }
-                }
-
-            };
-
-            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat);
-            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat2);
-            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat3);
-            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat4);
-            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat5);
-            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat6);
-
+            // Setup marker tracking using ALVAR tracking library
             SetupMarkerTracking();
+
+            // Enable the shadow mapping
+            scene.ShadowMap = new MultiLightShadowMap();
 
             // Set up the lights used in the scene
             CreateLights();
 
-            cguiLogoTexture = Content.Load<Texture2D>("cguiLogo");
- 
             // Create 3D objects
             CreateObject();
 
             // Initialize the UI manager
             uiManager.Initialize(scene, GameModeSwitched, ExtraModeSwitched);
+            uiManager.LoadContent();
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
@@ -429,25 +260,21 @@ namespace ARDominos
             KeyboardInput.Instance.KeyReleaseEvent += new HandleKeyRelease(KeyReleaseHandler);
 
             // Create a basic effect to draw the line for AdditionMode.LineDrawing
-            basicEffect = new BasicEffect(graphics.GraphicsDevice, null);
+            basicEffect = new BasicEffect(graphics.GraphicsDevice);
             basicEffect.DiffuseColor = new Vector3(1.0f, 0.0f, 0.0f);
-
-            base.Initialize();
         }
 
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
         protected override void LoadContent()
         {
-            base.LoadContent();
+            cguiLogoTexture = Content.Load<Texture2D>("cguiLogo");
+
+            hammerWood1Sound = Content.Load<SoundEffect>("hammer_wood_1");
+            rubberBall01Sound = Content.Load<SoundEffect>("rubber_ball_01");
+            victorySound = Content.Load<SoundEffect>("win");
+            woodHitConcrete1Sound = Content.Load<SoundEffect>("wood_hit_concrete_1");
+            woodHitWood3Sound = Content.Load<SoundEffect>("wood_hit_wood_3");
         }
 
-        /// <summary>
-        /// UnloadContent will be called once per game and is the place to unload
-        /// all content.
-        /// </summary>
         protected override void UnloadContent()
         {
             Content.Unload();
@@ -455,11 +282,11 @@ namespace ARDominos
             base.UnloadContent();
         }
 
-        /// <summary>
-        /// Allows the game to run logic such as updating the world,
-        /// checking for collisions, gathering input, and playing audio.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         protected override void Update(GameTime gameTime)
         {
             Vector3 trans, scale;
@@ -507,13 +334,9 @@ namespace ARDominos
             foreach (double playTime in removes)
                 soundsPlaying.Remove(playTime);
 
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
-        /// <summary>
-        /// This is called when the game should draw itself.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
             graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -561,8 +384,8 @@ namespace ARDominos
             {
                 if (!victorySoundPlayed)
                 {
-                    Sound.SetVolume("Default", 5 * volume);
-                    Sound.Play("Victory");
+                    //Sound.SetVolume("Default", 5 * volume);
+                    Sound.Instance.PlaySoundEffect(victorySound);
                     victorySoundPlayed = true;
                 }
             }
@@ -576,10 +399,9 @@ namespace ARDominos
                 basicEffect.Projection = State.ProjectionMatrix;
                 basicEffect.World = Matrix.Identity;
 
-                basicEffect.Begin();
                 foreach (EffectPass pass in basicEffect.CurrentTechnique.Passes)
                 {
-                    pass.Begin();
+                    pass.Apply();
 
                     graphics.GraphicsDevice.DrawUserIndexedPrimitives<VertexPositionColor>(
                         PrimitiveType.LineStrip,
@@ -589,26 +411,14 @@ namespace ARDominos
                         lineListIndices.ToArray(),
                         0,
                         pointList.Count - 1);
-
-                    pass.End();
                 }
-                basicEffect.End();
             }
 
-            // Processes and renders the scene graph
-            base.Draw(gameTime);
+            // Renders GUI
+            uiManager.Draw(gameTime);
 
-            // Draws the rectangle for the selected area in multiple domino selection mode
-            // if current drag mouse position (dragPoint) is different from the start drag 
-            // position (anchorPoint)
-            /*if (!anchorPoint.Equals(dragPoint))
-            {
-                Rectangle rect = new Rectangle(Math.Min(anchorPoint.X, dragPoint.X),
-                    Math.Min(anchorPoint.Y, dragPoint.Y), Math.Abs(anchorPoint.X - dragPoint.X),
-                    Math.Abs(anchorPoint.Y - dragPoint.Y));
-                UI2DRenderer.FillRectangle(rect, null, new Color(200, 200, 0, 100));
-                UI2DRenderer.DrawRectangle(rect, new Color(0, 0, 0, 200), 2);
-            }*/
+            // Processes and renders the scene graph
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
         #endregion
 
@@ -1236,22 +1046,15 @@ namespace ARDominos
             lightSource.Diffuse = Color.White.ToVector4();
             lightSource.Specular = new Vector4(0.6f, 0.6f, 0.6f, 1);
 
-            LightSource lightSource2 = new LightSource();
-            lightSource2.Direction = new Vector3(1, -1, -1);
-            lightSource2.Diffuse = Color.White.ToVector4();
-            lightSource2.Specular = new Vector4(0.6f, 0.6f, 0.6f, 1);
-
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
+            lightNode.CastShadows = true;
+            lightNode.LightProjection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, 1, 1, 500);
             lightNode.AmbientLightColor = new Vector4(0.3f, 0.3f, 0.3f, 1);
             lightNode.LightSource = lightSource;
 
-            LightNode lightNode2 = new LightNode();
-            lightNode2.LightSource = lightSource2;
-
             // Add this light node to the root node
             scene.RootNode.AddChild(lightNode);
-            scene.RootNode.AddChild(lightNode2);
         }
 
         private void SetupMarkerTracking()
@@ -1289,10 +1092,203 @@ namespace ARDominos
             CreateBalls();
         }
 
+        private void SetupPhysics()
+        {
+            scene.PhysicsEngine = new NewtonPhysics();
+            // Make the physics simulation space larger to 500x500 centered at the origin
+            ((NewtonPhysics)scene.PhysicsEngine).WorldSize = new BoundingBox(Vector3.One * -250,
+                Vector3.One * 250);
+            // Increase the gravity
+            scene.PhysicsEngine.Gravity = 60.0f;
+
+            ((NewtonPhysics)scene.PhysicsEngine).MaxSimulationSubSteps = 5;
+
+            // Creates several physics material to associate appropriate collision sounds for each
+            // different materials
+            NewtonMaterial physMat = new NewtonMaterial();
+            // Domino to domino material interaction
+            physMat.MaterialName1 = "Domino";
+            physMat.MaterialName2 = "Domino";
+            // Defines the callback function when the two materials contact/collide
+            physMat.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
+                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
+                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
+            {
+                // Only play sound if the collision/contact speed is above 4
+                if (contactSpeed > 4f)
+                {
+                    // If we're already playing more than the limited number of sounds, then
+                    // don't play
+                    if (soundsPlaying.Count >= SOUND_LIMIT)
+                        return;
+
+                    /*try
+                    {
+                        // Set the volume proportional to the collision/contact speed
+                        Sound.SetVolume("Default", contactSpeed / 4 * volume);
+                    }
+                    catch (Exception exp) { }*/
+                    try
+                    {
+                        Sound.Instance.PlaySoundEffect(woodHitWood3Sound);
+                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
+                    }
+                    catch (Exception exp) { }
+                }
+
+            };
+
+            NewtonMaterial physMat2 = new NewtonMaterial();
+            // Gound to ball material interaction
+            physMat2.MaterialName1 = "Ground";
+            physMat2.MaterialName2 = "Ball";
+            physMat2.Elasticity = 0.7f;
+            physMat2.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
+                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
+                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
+            {
+                if (contactSpeed > 3f)
+                {
+                    if (soundsPlaying.Count >= SOUND_LIMIT)
+                        return;
+
+                    /*try
+                    {
+                        Sound.SetVolume("Default", contactSpeed * volume);
+                    }
+                    catch (Exception exp) { }*/
+                    try
+                    {
+                        Sound.Instance.PlaySoundEffect(rubberBall01Sound);
+                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
+                    }
+                    catch (Exception exp) { }
+                }
+
+            };
+
+            NewtonMaterial physMat3 = new NewtonMaterial();
+            physMat3.MaterialName1 = "Ground";
+            physMat3.MaterialName2 = "Domino";
+            physMat3.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
+                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
+                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
+            {
+                if (contactSpeed > 4f)
+                {
+                    if (soundsPlaying.Count >= SOUND_LIMIT)
+                        return;
+
+                    /*try
+                    {
+                        Sound.SetVolume("Default", contactSpeed / 2 * volume);
+                    }
+                    catch (Exception exp) { }*/
+                    try
+                    {
+                        Sound.Instance.PlaySoundEffect(woodHitConcrete1Sound);
+                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
+                    }
+                    catch (Exception exp) { }
+                }
+
+            };
+
+            NewtonMaterial physMat4 = new NewtonMaterial();
+            physMat4.MaterialName1 = "Ball";
+            physMat4.MaterialName2 = "Domino";
+            physMat4.Elasticity = 0.5f;
+            physMat4.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
+                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
+                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
+            {
+                if (contactSpeed > 4f)
+                {
+                    if (soundsPlaying.Count >= SOUND_LIMIT)
+                        return;
+
+                    /*try
+                    {
+                        Sound.SetVolume("Default", contactSpeed * volume);
+                    }
+                    catch (Exception exp) { }*/
+                    try
+                    {
+                        Sound.Instance.PlaySoundEffect(hammerWood1Sound);
+                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
+                    }
+                    catch (Exception exp) { }
+                }
+
+            };
+
+            NewtonMaterial physMat5 = new NewtonMaterial();
+            physMat5.MaterialName1 = "Ball";
+            physMat5.MaterialName2 = "Ball";
+            physMat5.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
+                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
+                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
+            {
+                if (contactSpeed > 4f)
+                {
+                    if (soundsPlaying.Count >= SOUND_LIMIT)
+                        return;
+
+                    /*try
+                    {
+                        Sound.SetVolume("Default", contactSpeed * volume);
+                    }
+                    catch (Exception exp) { }*/
+                    try
+                    {
+                        Sound.Instance.PlaySoundEffect(rubberBall01Sound);
+                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
+                    }
+                    catch (Exception exp) { }
+                }
+
+            };
+
+            NewtonMaterial physMat6 = new NewtonMaterial();
+            physMat6.MaterialName1 = "Ball";
+            physMat6.MaterialName2 = "Obstacle";
+            physMat6.Elasticity = 0.7f;
+            physMat6.ContactProcessCallback = delegate(Vector3 contactPosition, Vector3 contactNormal,
+                float contactSpeed, float colObj1ContactTangentSpeed, float colObj2ContactTangentSpeed,
+                Vector3 colObj1ContactTangentDirection, Vector3 colObj2ContactTangentDirection)
+            {
+                if (contactSpeed > 4f)
+                {
+                    if (soundsPlaying.Count >= SOUND_LIMIT)
+                        return;
+
+                    /*try
+                    {
+                        Sound.SetVolume("Default", contactSpeed * volume);
+                    }
+                    catch (Exception exp) { }*/
+                    try
+                    {
+                        Sound.Instance.PlaySoundEffect(rubberBall01Sound);
+                        soundsPlaying.Add(DateTime.Now.TimeOfDay.TotalMilliseconds);
+                    }
+                    catch (Exception exp) { }
+                }
+
+            };
+
+            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat);
+            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat2);
+            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat3);
+            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat4);
+            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat5);
+            ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat6);
+        }
+
         private void CreateGround()
         {
             GeometryNode groundNode = new GeometryNode("Ground");
-            groundNode.Model = new Box(129.5f, 99, 0.2f);
+            groundNode.Model = new TexturedBox(129.5f, 99, 0.2f);
 
             groundNode.Physics.Collidable = true;
             groundNode.Physics.Shape = ShapeType.Box;
@@ -1301,7 +1297,8 @@ namespace ARDominos
             groundNode.AddToPhysicsEngine = true;
             groundNode.IsOccluder = true;
 
-            groundNode.Model.ReceiveShadows = true;
+            groundNode.Model.ShadowAttribute = ShadowAttribute.ReceiveOnly;
+            groundNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             Material groundMaterial = new Material();
             groundMaterial.Diffuse = new Vector4(0.5f, 0.5f, 0.5f, 0.5f);
@@ -1318,8 +1315,8 @@ namespace ARDominos
             dominoModel = new DominoBox(new Vector3(dominoSize.X, dominoSize.Z, dominoSize.Y),
                 new Vector2(0.663f, 0.707f));
 
-            dominoModel.CastShadows = true;
-            dominoModel.ReceiveShadows = true;
+            dominoModel.ShadowAttribute = ShadowAttribute.ReceiveCast;
+            dominoModel.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             float radius = 18;
             for (int x = 0; x < 360; x += 30)
@@ -1441,8 +1438,12 @@ namespace ARDominos
         /// </summary>
         private void CreateBalls()
         {
-            PrimitiveModel smallSphere = new Sphere(3.5f, 20, 20);
-            PrimitiveModel bigSphere = new Sphere(6.5f, 20, 20);
+            PrimitiveModel smallSphere = new TexturedSphere(3.5f, 20, 20);
+            PrimitiveModel bigSphere = new TexturedSphere(6.5f, 20, 20);
+
+            smallSphere.Shader = new SimpleShadowShader(scene.ShadowMap);
+            bigSphere.Shader = new SimpleShadowShader(scene.ShadowMap);
+
             for (int i = 0; i < BALL_NUM; i++)
             {
                 if (i == BALL_NUM / 2)
@@ -1459,8 +1460,7 @@ namespace ARDominos
                 else
                     ballNode.Model = bigSphere;
 
-                ballNode.Model.CastShadows = false;
-                ballNode.Model.ReceiveShadows = false;
+                ballNode.Model.ShadowAttribute = ShadowAttribute.None;
                 ballNode.Physics.Collidable = true;
                 ballNode.Physics.Interactable = true;
                 ballNode.AddToPhysicsEngine = true;
@@ -1511,8 +1511,7 @@ namespace ARDominos
             linVel.Normalize();
 
             GeometryNode ballNode = (heavy) ? heavyBalls[curHeavyBall] : balls[curBall];
-            ballNode.Model.CastShadows = true;
-            ballNode.Model.ReceiveShadows = true;
+            ballNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
             Vector4 orig = ballNode.Material.Diffuse;
             ballNode.Material.Diffuse = new Vector4(orig.X, orig.Y, orig.Z, 1);
             Vector3 v = near + linVel * 10;
@@ -1520,7 +1519,7 @@ namespace ARDominos
             // Forces the physics engine to 'transport' this ball to the location 'v' in the simulation world
             ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ballNode.Physics, Matrix.CreateTranslation(v));
             // Apply a linear velocity to this ball
-            ((NewtonPhysics)scene.PhysicsEngine).ApplyLinearVelocity(ballNode.Physics, linVel * (50f + additionalSpeed));
+            ((NewtonPhysics)scene.PhysicsEngine).ApplyLinearVelocity(ballNode.Physics, linVel * (100f + additionalSpeed));
             if (heavy)
             {
                 curHeavyBall++;
@@ -1612,8 +1611,7 @@ namespace ARDominos
                     {
                         ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
                             Matrix.CreateTranslation(Vector3.One * 1000));
-                        ball.Model.CastShadows = false;
-                        ball.Model.ReceiveShadows = false;
+                        ball.Model.ShadowAttribute = ShadowAttribute.None;
                     }
                     // Move the heavy balls out of the sight from the player, and make them
                     // not to cast or receive shadows
@@ -1621,8 +1619,7 @@ namespace ARDominos
                     {
                         ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
                             Matrix.CreateTranslation(Vector3.One * 1000));
-                        ball.Model.CastShadows = false;
-                        ball.Model.ReceiveShadows = false;
+                        ball.Model.ShadowAttribute = ShadowAttribute.None;
                     }
                 }
                 gameState.CurrentGameMode = GameState.GameMode.Add;
@@ -1666,8 +1663,7 @@ namespace ARDominos
                     {
                         ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
                             Matrix.CreateTranslation(Vector3.One * 1000));
-                        ball.Model.CastShadows = false;
-                        ball.Model.ReceiveShadows = false;
+                        ball.Model.ShadowAttribute = ShadowAttribute.None;
                     }
                     // Move the heavy balls out of the sight from the player, and make them
                     // not to cast or receive shadows
@@ -1675,8 +1671,7 @@ namespace ARDominos
                     {
                         ((NewtonPhysics)scene.PhysicsEngine).SetTransform(ball.Physics,
                             Matrix.CreateTranslation(Vector3.One * 1000));
-                        ball.Model.CastShadows = false;
-                        ball.Model.ReceiveShadows = false;
+                        ball.Model.ShadowAttribute = ShadowAttribute.None;
                     }
                 }
                 gameState.CurrentGameMode = GameState.GameMode.Edit;

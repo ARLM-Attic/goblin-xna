@@ -17,6 +17,7 @@ using System.ComponentModel;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 
 using GoblinXNA.Shaders;
 using GoblinXNA.Helpers;
@@ -53,8 +54,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
         protected float maxStartSize;
         protected float minEndSize;
         protected float maxEndSize;
-        protected Blend sourceBlend;
-        protected Blend destinationBlend;
+        protected BlendState blendState;
 
         protected Vector3 up;
         protected Vector3 right;
@@ -77,9 +77,9 @@ namespace GoblinXNA.Graphics.ParticleEffects
         DynamicVertexBuffer vertexBuffer;
 
         /// <summary>
-        /// Vertex declaration describes the format of our ParticleVertex structure.
+        /// Index buffer turns sets of four vertices into particle quads (pairs of triangles).
         /// </summary>
-        VertexDeclaration vertexDeclaration;
+        IndexBuffer indexBuffer;
 
         // The particles array and vertex buffer are treated as a circular queue.
         // Initially, the entire contents of the array are free, because no particles
@@ -179,10 +179,19 @@ namespace GoblinXNA.Graphics.ParticleEffects
         #region Constructors
 
         /// <summary>
+        ///Creates a default particle effect with 100 maximum particles.
+        /// </summary>
+        public ParticleEffect() : this(100) { }
+
+        /// <summary>
         ///Creates a default particle effect.
         /// </summary>
-        public ParticleEffect()
+        /// <param name="maxParticles">
+        /// Maximum number of particles that can be displayed at one time.
+        /// </param>
+        public ParticleEffect(int maxParticles)
         {
+            this.maxParticles = maxParticles;
             Initialize();
             LoadContent();
         }
@@ -228,19 +237,11 @@ namespace GoblinXNA.Graphics.ParticleEffects
         }
 
         /// <summary>
-        /// Gets or sets the maximum number of particles that can be displayed at one time.
+        /// Gets the maximum number of particles that can be displayed at one time.
         /// </summary>
-        public virtual int MaxParticles
+        public int MaxParticles
         {
             get { return maxParticles; }
-            set
-            {
-                if (value != maxParticles)
-                {
-                    maxParticles = value;
-                    particles = new ParticleVertex[maxParticles];
-                }
-            }
         }
 
         /// <summary>
@@ -454,21 +455,12 @@ namespace GoblinXNA.Graphics.ParticleEffects
         }
 
         /// <summary>
-        /// Alpha source blending setting. 
+        /// Alpha blending settings. 
         /// </summary>
-        public virtual Blend SourceBlend
+        public virtual BlendState BlendState
         {
-            get { return sourceBlend; }
-            set { sourceBlend = value; }
-        }
-
-        /// <summary>
-        /// Alpha destination blending setting. 
-        /// </summary>
-        public virtual Blend DestinationBlend
-        {
-            get { return destinationBlend; }
-            set { destinationBlend = value; }
+            get { return blendState; }
+            set { blendState = value; }
         }
 
         /// <summary>
@@ -522,7 +514,6 @@ namespace GoblinXNA.Graphics.ParticleEffects
         protected virtual void Initialize()
         {
             textureName = null;
-            maxParticles = 100;
             duration = TimeSpan.FromSeconds(1);
             durationRandomness = 0;
             emitterVelocitySensitivity = 1;
@@ -532,7 +523,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             maxVerticalVelocity = 0;
             gravity = new Vector3();
             endVelocity = 1;
-            minColor = Color.Black;
+            minColor = Color.White;
             maxColor = Color.White;
             minRotateSpeed = 0;
             maxRotateSpeed = 0;
@@ -540,8 +531,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             maxStartSize = 100;
             minEndSize = 100;
             maxEndSize = 100;
-            sourceBlend = Blend.SourceAlpha;
-            destinationBlend = Blend.InverseSourceAlpha;
+            blendState = BlendState.NonPremultiplied;
             currentTime = 0;
             drawOrder = 0;
 
@@ -549,10 +539,19 @@ namespace GoblinXNA.Graphics.ParticleEffects
             right = Vector3.UnitX;
             forward = Vector3.UnitZ;
 
-            particles = new ParticleVertex[maxParticles];
+            // Allocate the particle array, and fill in the corner fields (which never change).
+            particles = new ParticleVertex[maxParticles * 4];
+
+            for (int i = 0; i < maxParticles; i++)
+            {
+                particles[i * 4 + 0].Corner = new Short2(-1, -1);
+                particles[i * 4 + 1].Corner = new Short2(1, -1);
+                particles[i * 4 + 2].Corner = new Short2(1, 1);
+                particles[i * 4 + 3].Corner = new Short2(-1, 1);
+            }
 
             shader = new ParticleShader();
-            shaderTechnique = "";
+            shaderTechnique = "Particles";
             enabled = true;
         }
 
@@ -561,25 +560,26 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// </summary>
         protected virtual void LoadContent()
         {
-            vertexDeclaration = new VertexDeclaration(State.Device,
-                                                      ParticleVertex.VertexElements);
+            vertexBuffer = new DynamicVertexBuffer(State.Device, ParticleVertex.VertexDeclaration,
+                                                   maxParticles * 4, BufferUsage.WriteOnly);
 
-            // Create a dynamic vertex buffer.
-            BufferUsage usage = BufferUsage.WriteOnly |
-                                BufferUsage.Points;
+            // Create and populate the index buffer.
+            ushort[] indices = new ushort[maxParticles * 6];
 
-            int size = ParticleVertex.SizeInBytes * particles.Length;
+            for (int i = 0; i < maxParticles; i++)
+            {
+                indices[i * 6 + 0] = (ushort)(i * 4 + 0);
+                indices[i * 6 + 1] = (ushort)(i * 4 + 1);
+                indices[i * 6 + 2] = (ushort)(i * 4 + 2);
 
-            vertexBuffer = new DynamicVertexBuffer(State.Device, size, usage);
+                indices[i * 6 + 3] = (ushort)(i * 4 + 0);
+                indices[i * 6 + 4] = (ushort)(i * 4 + 2);
+                indices[i * 6 + 5] = (ushort)(i * 4 + 3);
+            }
 
-            // Initialize the vertex buffer contents. This is necessary in order
-            // to correctly restore any existing particles after a lost device.
-            vertexBuffer.SetData(particles);
+            indexBuffer = new IndexBuffer(State.Device, typeof(ushort), indices.Length, BufferUsage.WriteOnly);
 
-            if ((minRotateSpeed == 0) && (maxRotateSpeed == 0))
-                shaderTechnique = "NonRotatingParticles";
-            else
-                shaderTechnique = "RotatingParticles";
+            indexBuffer.SetData(indices);
         }
 
         #endregion
@@ -589,12 +589,9 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <summary>
         /// Updates the particle system.
         /// </summary>
-        public virtual void Update(GameTime gameTime)
+        public virtual void Update(TimeSpan elapsedTime)
         {
-            if (gameTime == null)
-                throw new GoblinException("gameTime");
-
-            currentTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            currentTime += (float)elapsedTime.TotalSeconds;
 
             RetireActiveParticles();
             FreeRetiredParticles();
@@ -625,18 +622,18 @@ namespace GoblinXNA.Graphics.ParticleEffects
             while (firstActiveParticle != firstNewParticle)
             {
                 // Is this particle old enough to retire?
-                float particleAge = currentTime - particles[firstActiveParticle].Time;
+                float particleAge = currentTime - particles[firstActiveParticle * 4].Time;
 
                 if (particleAge < particleDuration)
                     break;
 
                 // Remember the time at that we retired this particle.
-                particles[firstActiveParticle].Time = drawCounter;
+                particles[firstActiveParticle * 4].Time = drawCounter;
 
                 // Move the particle from the active to the retired queue.
                 firstActiveParticle++;
 
-                if (firstActiveParticle >= particles.Length)
+                if (firstActiveParticle >= maxParticles)
                     firstActiveParticle = 0;
             }
         }
@@ -653,7 +650,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             {
                 // Has this particle been unused long enough that
                 // the GPU is sure to be finished with it?
-                int age = drawCounter - (int)particles[firstRetiredParticle].Time;
+                int age = drawCounter - (int)particles[firstRetiredParticle * 4].Time;
 
                 // The GPU is never supposed to get more than 2 frames behind the CPU.
                 // We add 1 to that, just to be safe in case of buggy drivers that
@@ -664,7 +661,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
                 // Move the particle from the retired to the free queue.
                 firstRetiredParticle++;
 
-                if (firstRetiredParticle >= particles.Length)
+                if (firstRetiredParticle >= maxParticles)
                     firstRetiredParticle = 0;
             }
         }
@@ -680,6 +677,12 @@ namespace GoblinXNA.Graphics.ParticleEffects
         /// <param name="renderMatrix">The transformation to apply to this particle system</param>
         public virtual void Render(Matrix renderMatrix)
         {
+            // Restore the vertex buffer contents if the graphics device was lost.
+            if (vertexBuffer.IsContentLost)
+            {
+                vertexBuffer.SetData(particles);
+            }
+
             // If there are any particles waiting in the newly added queue,
             // we'd better upload them to the GPU ready for drawing.
             if (firstNewParticle != firstFreeParticle)
@@ -690,40 +693,49 @@ namespace GoblinXNA.Graphics.ParticleEffects
             // If there are any active particles, draw them now!
             if (firstActiveParticle != firstFreeParticle)
             {
-                SetParticleRenderStates(State.Device.RenderState);
+                BlendState origBlendState = State.Device.BlendState;
+                State.Device.BlendState = blendState;
+                State.Device.DepthStencilState = DepthStencilState.DepthRead;
 
                 // Set the particle vertex buffer and vertex declaration.
-                State.Device.Vertices[0].SetSource(vertexBuffer, 0,
-                                             ParticleVertex.SizeInBytes);
+                State.Device.SetVertexBuffer(vertexBuffer);
 
-                State.Device.VertexDeclaration = vertexDeclaration;
+                State.Device.Indices = indexBuffer;
 
-                shader.Render(renderMatrix, shaderTechnique,
+                shader.Render(
+                    ref renderMatrix, 
+                    shaderTechnique,
                     delegate
                     {
                         if (firstActiveParticle < firstFreeParticle)
                         {
                             // If the active particles are all in one consecutive range,
                             // we can draw them all in a single call.
-                            State.Device.DrawPrimitives(PrimitiveType.PointList,
-                                firstActiveParticle, firstFreeParticle - firstActiveParticle);
+                            State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0,
+                                                         firstActiveParticle * 4, (firstFreeParticle - firstActiveParticle) * 4,
+                                                         firstActiveParticle * 6, (firstFreeParticle - firstActiveParticle) * 2);
                         }
                         else
                         {
                             // If the active particle range wraps past the end of the queue
                             // back to the start, we must split them over two draw calls.
-                            State.Device.DrawPrimitives(PrimitiveType.PointList,
-                                firstActiveParticle, particles.Length - firstActiveParticle);
+                            State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0,
+                                                         firstActiveParticle * 4, (maxParticles - firstActiveParticle) * 4,
+                                                         firstActiveParticle * 6, (maxParticles - firstActiveParticle) * 2);
 
                             if (firstFreeParticle > 0)
                             {
-                                State.Device.DrawPrimitives(PrimitiveType.PointList,
-                                    0, firstFreeParticle);
+                                State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0,
+                                                             0, firstFreeParticle * 4,
+                                                             0, firstFreeParticle * 2);
                             }
                         }
                     });
 
-                RestoreRenderStates(State.Device.RenderState);
+                // Reset some of the renderstates that we changed,
+                // so as not to mess up any other subsequent drawing.
+                State.Device.DepthStencilState = DepthStencilState.Default;
+                State.Device.BlendState = origBlendState;
             }
 
             drawCounter++;
@@ -742,100 +754,30 @@ namespace GoblinXNA.Graphics.ParticleEffects
             {
                 // If the new particles are all in one consecutive range,
                 // we can upload them all in a single call.
-                vertexBuffer.SetData(firstNewParticle * stride, particles,
-                                     firstNewParticle,
-                                     firstFreeParticle - firstNewParticle,
+                vertexBuffer.SetData(firstNewParticle * stride * 4, particles,
+                                     firstNewParticle * 4,
+                                     (firstFreeParticle - firstNewParticle) * 4,
                                      stride, SetDataOptions.NoOverwrite);
             }
             else
             {
                 // If the new particle range wraps past the end of the queue
                 // back to the start, we must split them over two upload calls.
-                vertexBuffer.SetData(firstNewParticle * stride, particles,
-                                     firstNewParticle,
-                                     particles.Length - firstNewParticle,
+                vertexBuffer.SetData(firstNewParticle * stride * 4, particles,
+                                     firstNewParticle * 4,
+                                     (maxParticles - firstNewParticle) * 4,
                                      stride, SetDataOptions.NoOverwrite);
 
                 if (firstFreeParticle > 0)
                 {
                     vertexBuffer.SetData(0, particles,
-                                         0, firstFreeParticle,
+                                         0, firstFreeParticle * 4,
                                          stride, SetDataOptions.NoOverwrite);
                 }
             }
 
             // Move the particles we just uploaded from the new to the active queue.
             firstNewParticle = firstFreeParticle;
-        }
-
-        #region Restore variables
-
-        private bool originalPointSprintEnable;
-        private float originalPointSizeMax;
-        private bool originalAlphaBlendEnable;
-        private BlendFunction originalAlphaBlendOperation;
-        private Blend originalSourceBlend;
-        private Blend originalDestinationBlend;
-        private bool originalAlphaTestEnable;
-        private CompareFunction originalAlphaFunction;
-        private int originalReferenceAlpha;
-        private bool originalDepthBufferEnable;
-        private bool originalDepthBufferWriteEnable;
-
-        #endregion
-
-        /// <summary>
-        /// Helper for setting the renderstates used to draw particles.
-        /// </summary>
-        protected virtual void SetParticleRenderStates(RenderState renderState)
-        {
-            originalPointSprintEnable = renderState.PointSpriteEnable;
-            originalPointSizeMax = renderState.PointSizeMax;
-            originalAlphaBlendEnable = renderState.AlphaBlendEnable;
-            originalAlphaBlendOperation = renderState.AlphaBlendOperation;
-            originalSourceBlend = renderState.SourceBlend;
-            originalDestinationBlend = renderState.DestinationBlend;
-            originalAlphaTestEnable = renderState.AlphaTestEnable;
-            originalAlphaFunction = renderState.AlphaFunction;
-            originalReferenceAlpha = renderState.ReferenceAlpha;
-            originalDepthBufferEnable = renderState.DepthBufferEnable;
-            originalDepthBufferWriteEnable = renderState.DepthBufferWriteEnable;
-
-            // Enable point sprites.
-            renderState.PointSpriteEnable = true;
-            renderState.PointSizeMax = 256;
-
-            // Set the alpha blend mode.
-            renderState.AlphaBlendEnable = true;
-            renderState.AlphaBlendOperation = BlendFunction.Add;
-            renderState.SourceBlend = sourceBlend;
-            renderState.DestinationBlend = destinationBlend;
-
-            // Set the alpha test mode.
-            renderState.AlphaTestEnable = true;
-            renderState.AlphaFunction = CompareFunction.Greater;
-            renderState.ReferenceAlpha = 0;
-
-            // Enable the depth buffer (so particles will not be visible through
-            // solid objects like the ground plane), but disable depth writes
-            // (so particles will not obscure other particles).
-            renderState.DepthBufferEnable = true;
-            renderState.DepthBufferWriteEnable = false;
-        }
-
-        protected virtual void RestoreRenderStates(RenderState renderState)
-        {
-            renderState.PointSpriteEnable = originalPointSprintEnable;
-            renderState.PointSizeMax = originalPointSizeMax;
-            renderState.AlphaBlendEnable = originalAlphaBlendEnable;
-            renderState.AlphaBlendOperation = originalAlphaBlendOperation;
-            renderState.SourceBlend = originalSourceBlend;
-            renderState.DestinationBlend = originalDestinationBlend;
-            renderState.AlphaTestEnable = originalAlphaTestEnable;
-            renderState.AlphaFunction = originalAlphaFunction;
-            renderState.ReferenceAlpha = originalReferenceAlpha;
-            renderState.DepthBufferEnable = originalDepthBufferEnable;
-            renderState.DepthBufferWriteEnable = originalDepthBufferWriteEnable;
         }
 
         #endregion
@@ -849,7 +791,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             // Figure out where in the circular queue to allocate the new particle.
             int nextFreeParticle = firstFreeParticle + 1;
 
-            if (nextFreeParticle >= particles.Length)
+            if (nextFreeParticle >= maxParticles)
                 nextFreeParticle = 0;
 
             // If there are no free particles, we just have to give up.
@@ -883,10 +825,13 @@ namespace GoblinXNA.Graphics.ParticleEffects
                                            (byte)random.Next(255));
 
             // Fill in the particle vertex structure.
-            particles[firstFreeParticle].Position = position;
-            particles[firstFreeParticle].Velocity = velocity;
-            particles[firstFreeParticle].Random = randomValues;
-            particles[firstFreeParticle].Time = currentTime;
+            for (int i = 0; i < 4; i++)
+            {
+                particles[firstFreeParticle * 4 + i].Position = position;
+                particles[firstFreeParticle * 4 + i].Velocity = velocity;
+                particles[firstFreeParticle * 4 + i].Random = randomValues;
+                particles[firstFreeParticle * 4 + i].Time = currentTime;
+            }
 
             firstFreeParticle = nextFreeParticle;
         }
@@ -923,8 +868,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             xmlNode.SetAttribute("MaxStartSize", maxStartSize.ToString());
             xmlNode.SetAttribute("MinEndSize", minEndSize.ToString());
             xmlNode.SetAttribute("MaxEndSize", maxEndSize.ToString());
-            xmlNode.SetAttribute("SourceBlend", sourceBlend.ToString());
-            xmlNode.SetAttribute("DestinationBlend", destinationBlend.ToString());
+            xmlNode.SetAttribute("BlendState", blendState.ToString());
             xmlNode.SetAttribute("DrawOrder", drawOrder.ToString());
             xmlNode.SetAttribute("Shader", TypeDescriptor.GetClassName(shader));
             if (shaderTechnique.Length > 0)
@@ -940,7 +884,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             if (xmlNode.HasAttribute("TextureName"))
                 textureName = xmlNode.GetAttribute("TextureName");
             if (xmlNode.HasAttribute("MaxParticles"))
-                MaxParticles = int.Parse(xmlNode.GetAttribute("MaxParticles"));
+                maxParticles = int.Parse(xmlNode.GetAttribute("MaxParticles"));
             if (xmlNode.HasAttribute("Duration"))
                 duration = TimeSpan.FromMilliseconds(double.Parse(xmlNode.GetAttribute("Duration")));
             if (xmlNode.HasAttribute("DurationRandomness"))
@@ -975,10 +919,8 @@ namespace GoblinXNA.Graphics.ParticleEffects
                 minEndSize = float.Parse(xmlNode.GetAttribute("MinEndSize"));
             if (xmlNode.HasAttribute("MaxEndSize"))
                 maxEndSize = float.Parse(xmlNode.GetAttribute("MaxEndSize"));
-            if (xmlNode.HasAttribute("SourceBlend"))
-                sourceBlend = (Blend)Enum.Parse(typeof(Blend), xmlNode.GetAttribute("SourceBlend"));
-            if (xmlNode.HasAttribute("DestinationBlend"))
-                destinationBlend = (Blend)Enum.Parse(typeof(Blend), xmlNode.GetAttribute("DestinationBlend"));
+            if (xmlNode.HasAttribute("BlendState"))
+                blendState = (BlendState)Enum.Parse(typeof(BlendState), xmlNode.GetAttribute("BlendState"));
             if (xmlNode.HasAttribute("DrawOrder"))
                 drawOrder = int.Parse(xmlNode.GetAttribute("DrawOrder"));
             if (xmlNode.HasAttribute("Shader"))

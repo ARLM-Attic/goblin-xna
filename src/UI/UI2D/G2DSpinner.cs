@@ -407,6 +407,7 @@ namespace GoblinXNA.UI.UI2D
         public virtual void DoNextClick()
         {
             model.Value = model.NextValue;
+            textField.Text = "" + model.Value;
         }
         /// <summary>
         /// Programmatically perform 'down arrow' click.
@@ -414,6 +415,7 @@ namespace GoblinXNA.UI.UI2D
         public virtual void DoPreviousClick()
         {
             model.Value = model.PreviousValue;
+            textField.Text = "" + model.Value;
         }
         #endregion
 

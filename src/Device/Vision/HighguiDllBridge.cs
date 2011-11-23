@@ -1,36 +1,4 @@
-﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Authors: Ohan Oda (ohan@cs.columbia.edu) 
- * 
- *************************************************************************************/
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -41,6 +9,7 @@ namespace GoblinXNA.Device.Vision
     public partial class OpenCVWrapper
     {
         //private const String HIGHGUI_DLL_LIB = "libhighgui200.dll";
+        //private const String HIGHGUI_DLL_LIB = "opencv_highgui220.dll";
         private const String HIGHGUI_DLL_LIB = "highgui210.dll";
 
         #region highgui.dll wrapper code
@@ -77,10 +46,10 @@ namespace GoblinXNA.Device.Vision
 
         #endregion
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvLoadImage")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvLoadImage", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvLoadImage(string filename, int iscolor);
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvSaveImage")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvSaveImage", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvSaveImage(string filename, IntPtr imageData, IntPtr param);
 
         /// <summary>
@@ -88,16 +57,16 @@ namespace GoblinXNA.Device.Vision
         /// </summary>
         /// <param name="index">Index of the camera to be used.</param>
         /// <returns>This pointer corresponds to the CvCatpure pointer used throughout OpenCV</returns>
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvCreateCameraCapture")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvCreateCameraCapture", CallingConvention=CallingConvention.Cdecl)]
         public static extern IntPtr cvCaptureFromCAM(int index);
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvCreateFileCapture")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvCreateFileCapture", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCaptureFromFile(string filename);
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvGetCaptureProperty")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvGetCaptureProperty", CallingConvention = CallingConvention.Cdecl)]
         public static extern double cvGetCaptureProperty(IntPtr capture, int propertyId);
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvGrabFrame")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvGrabFrame", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvGrabFrame(IntPtr capture);
 
         /// <summary>
@@ -105,10 +74,10 @@ namespace GoblinXNA.Device.Vision
         /// </summary>
         /// <param name="capture"></param>
         /// <returns>IplImage</returns>
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvQueryFrame")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvQueryFrame", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvQueryFrame(IntPtr capture);
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvReleaseCapture")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvReleaseCapture", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvReleaseCapture(ref IntPtr capture);
 
         /// <summary>
@@ -116,10 +85,10 @@ namespace GoblinXNA.Device.Vision
         /// </summary>
         /// <param name="capture"></param>
         /// <returns>IplImage</returns>
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvRetrieveFrame")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvRetrieveFrame", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvRetrieveFrame(IntPtr capture);
 
-        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvSetCaptureProperty")]
+        [DllImport(HIGHGUI_DLL_LIB, EntryPoint = "cvSetCaptureProperty", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvSetCaptureProperty(IntPtr capture, int propertyId, double value);
 
         #endregion

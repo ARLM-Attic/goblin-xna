@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2009, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -136,11 +136,10 @@ namespace ARDominos
             for (int i = 20; i < 24; i++)
                 vertices[i].Normal = nY;
 
-            mesh.VertexDeclaration = new VertexDeclaration(State.Device,
-                VertexPositionNormalTexture.VertexElements);
+            mesh.VertexDeclaration = VertexPositionNormalTexture.VertexDeclaration;
 
             mesh.VertexBuffer = new VertexBuffer(State.Device,
-                VertexPositionNormalTexture.SizeInBytes * 24, BufferUsage.None);
+                typeof(VertexPositionNormalTexture), 24, BufferUsage.None);
             mesh.VertexBuffer.SetData(vertices);
 
             // Since there are 12 triangle faces (6 rectangle faces, and each rectangle face contains
@@ -164,7 +163,6 @@ namespace ARDominos
                 BufferUsage.None);
             mesh.IndexBuffer.SetData(indices);
 
-            mesh.SizeInBytes = VertexPositionNormalTexture.SizeInBytes;
             mesh.NumberOfVertices = 24;
             mesh.NumberOfPrimitives = 12;
 

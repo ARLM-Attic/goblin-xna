@@ -1,40 +1,7 @@
-﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Authors: Ohan Oda (ohan@cs.columbia.edu) 
- * 
- *************************************************************************************/
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Drawing;
 using System.Runtime.InteropServices;
 
 using GoblinXNA.Device.Vision;
@@ -42,16 +9,11 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace GoblinXNA.Device.Capture
 {
-    /// <summary>
-    /// A video capture class that uses the OpenCV library.
-    /// </summary>
     public class OpenCVCapture : IVideoCapture
     {
         #region Member Fields
 
         private IntPtr capture;
-
-        private PointF focalPoint;
 
         private int videoDeviceID;
 
@@ -86,8 +48,6 @@ namespace GoblinXNA.Device.Capture
         public OpenCVCapture()
         {
             cameraInitialized = false;
-            videoDeviceID = -1;
-            focalPoint = new PointF(0, 0);
 
             cameraWidth = 0;
             cameraHeight = 0;
@@ -110,12 +70,6 @@ namespace GoblinXNA.Device.Capture
         public int Height
         {
             get { return cameraHeight; }
-        }
-
-        public PointF FocalPoint
-        {
-            get { return focalPoint; }
-            set { focalPoint = value; }
         }
 
         public int VideoDeviceID
@@ -158,7 +112,7 @@ namespace GoblinXNA.Device.Capture
 
         #region Public Methods
 
-        public void InitVideoCapture(int videoDeviceID, FrameRate framerate, Resolution resolution, 
+        public void InitVideoCapture(int videoDeviceID, FrameRate framerate, Resolution resolution,
             ImageFormat format, bool grayscale)
         {
             if (cameraInitialized)
@@ -264,14 +218,14 @@ namespace GoblinXNA.Device.Capture
                         {
                             for (int j = 0; j < videoImage.width * videoImage.nChannels; j += videoImage.nChannels)
                             {
-                                returnImage[index++] = (int)((*(src + 2) << 16) | (*(src + 1) << 8) | *(src));
+                                returnImage[index++] = (int)((*(src) << 16) | (*(src + 1) << 8) | *(src + 2));
                                 src += videoImage.nChannels;
                             }
                         }
                     }
                 }
 
-                if(imagePtr != IntPtr.Zero)
+                if (imagePtr != IntPtr.Zero)
                     imagePtr = videoImage.imageData;
             }
             else

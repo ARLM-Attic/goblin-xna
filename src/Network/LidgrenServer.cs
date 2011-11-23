@@ -292,9 +292,10 @@ namespace GoblinXNA.Network
             }
         }
 
-        public void ReceiveMessage(ref List<byte[]> messages)
+        public int ReceiveMessage(ref byte[] messages)
         {
             NetIncomingMessage msg;
+            int totalLength = 0;
             
             // read a packet if available
             while ((msg = netServer.ReadMessage()) != null)
@@ -320,7 +321,7 @@ namespace GoblinXNA.Network
                     case NetIncomingMessageType.ConnectionApproval:
                         if (!approveList.ContainsKey(msg.SenderEndpoint.ToString()))
                         {
-                            Log.Write("Connection request from IP address: " + msg.SenderEndpoint.ToString(),
+                            Log.Write("Connection request from IP address: " + msg.SenderEndpoint.Address.ToString(),
                                 Log.LogLevel.Log);
                             msg.SenderConnection.Approve();
                             approveList.Add(msg.SenderEndpoint.ToString(), "");
@@ -332,36 +333,36 @@ namespace GoblinXNA.Network
                         Log.Write("New status: " + status + " (" + reason + ")", Log.LogLevel.Log);
                         if (status == NetConnectionStatus.Connected)
                         {
-                            byte[] data = ByteHelper.ConvertToByte("NewConnectionEstablished");
-                            byte[] size = BitConverter.GetBytes((short)data.Length);
-                            messages.Add(ByteHelper.ConcatenateBytes(size, data));
                             clients.Add(msg.SenderEndpoint.ToString(), msg.SenderConnection);
                             clientList.Add(msg.SenderConnection);
                             approveList.Remove(msg.SenderEndpoint.ToString());
                             if (msg.SenderConnection != null)
                                 prevSender = clients[msg.SenderEndpoint.ToString()];
                             if (ClientConnected != null)
-                                ClientConnected(msg.SenderEndpoint.ToString());
+                                ClientConnected(msg.SenderEndpoint.Address.ToString(), msg.SenderEndpoint.Port);
                         }
                         else if (status == NetConnectionStatus.Disconnected)
                         {
                             clientList.Remove(clients[msg.SenderEndpoint.ToString()]);
                             clients.Remove(msg.SenderEndpoint.ToString());
                             if (ClientDisconnected != null)
-                                ClientDisconnected(msg.SenderEndpoint.ToString());
+                                ClientDisconnected(msg.SenderEndpoint.Address.ToString(), msg.SenderEndpoint.Port);
                         }
 
                         break;
                     case NetIncomingMessageType.Data:
-                        byte[] content = new byte[msg.LengthBytes];
-                        msg.ReadBytes(content, 0, msg.LengthBytes);
-                        messages.Add(content);
+                        totalLength += msg.LengthBytes;
+                        if (messages.Length < totalLength)
+                            ByteHelper.ExpandArray(ref messages, totalLength);
+                        msg.ReadBytes(messages, totalLength - msg.LengthBytes, msg.LengthBytes);
                         if (msg.SenderConnection != null)
                             prevSender = clients[msg.SenderEndpoint.ToString()];
                         break;
                 }
                 netServer.Recycle(msg);
             }
+
+            return totalLength;
         }
 
         public void Shutdown()

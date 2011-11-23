@@ -28,12 +28,11 @@
  * ===================================================================================
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
- *************************************************************************************/ 
+ *************************************************************************************/
 
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -46,8 +45,8 @@ using GoblinXNA.Graphics.Geometry;
 using GoblinXNA.Device.Generic;
 using GoblinXNA.UI.UI2D;
 
-// A GoblinXNA project is created by selecting the project type "XNA Game Studio 3.1"
-// under "Visual C#", and selecting the template "Windows Game(3.1)".
+// A GoblinXNA project is created by selecting the project type "XNA Game Studio 4.0"
+// under "Visual C#", and selecting the template "Windows Game(4.0)".
 
 namespace Tutorial1___Getting_Started
 {
@@ -64,6 +63,10 @@ namespace Tutorial1___Getting_Started
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -76,14 +79,16 @@ namespace Tutorial1___Getting_Started
         {
             base.Initialize();
 
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
             
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -97,10 +102,6 @@ namespace Tutorial1___Getting_Started
 
             // Create 3D objects
             CreateObject();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
 
             // Show Frames-Per-Second on the screen for debugging
             State.ShowFPS = true;
@@ -195,6 +196,13 @@ namespace Tutorial1___Getting_Started
             Content.Unload();
         }
 
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -203,7 +211,16 @@ namespace Tutorial1___Getting_Started
        
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -212,13 +229,13 @@ namespace Tutorial1___Getting_Started
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
-
             // Draw a 2D text string at the center of the screen
             // NOTE: Since scene.Draw(..) (which is called by base.Draw(..)) will clear the 
             // background this WriteText function should be called after base.Draw(..). 
             UI2DRenderer.WriteText(Vector2.Zero, "Hello World!!", Color.GreenYellow, textFont,
                 GoblinEnums.HorizontalAlignment.Center, GoblinEnums.VerticalAlignment.Center);
+
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

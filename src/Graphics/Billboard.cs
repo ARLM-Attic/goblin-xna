@@ -42,23 +42,17 @@ using GoblinXNA.Shaders;
 
 namespace GoblinXNA.Graphics
 {
-    /// <summary>
-    /// A billboarded model. To assign a billboard texture, set the GeometryNode.Material.Texture
-    /// associated with this billboard model.
-    /// </summary>
     public class Billboard : PrimitiveModel
     {
         private Matrix tmpMat1;
 
-        /// <summary>
-        /// Creates a billboard with the given dimension.
-        /// </summary>
-        /// <param name="dimension">Dimension that defines the billboard quad</param>
         public Billboard(Vector2 dimension) :
             base()
         {
+            shader = new AlphaTestShader();
+#if !WINDOWS_PHONE
             shaderName = TypeDescriptor.GetClassName(shader);
-            useLighting = false;
+#endif
 
             CreateBillboardMesh(dimension);
 
@@ -84,8 +78,7 @@ namespace GoblinXNA.Graphics
             vertices[2].TextureCoordinate = new Vector2(1, 1);
             vertices[3].TextureCoordinate = new Vector2(0, 1);
 
-            this.customMesh.VertexDeclaration = new VertexDeclaration(State.Device,
-                VertexPositionTexture.VertexElements);
+            this.customMesh.VertexDeclaration = VertexPositionTexture.VertexDeclaration;
 
             this.customMesh.VertexBuffer = new VertexBuffer(State.Device,
                 typeof(VertexPositionTexture), 4, BufferUsage.None);
@@ -100,12 +93,11 @@ namespace GoblinXNA.Graphics
                 BufferUsage.None);
             this.customMesh.IndexBuffer.SetData(indices);
 
-            this.customMesh.SizeInBytes = VertexPositionTexture.SizeInBytes;
             this.customMesh.NumberOfVertices = 4;
             this.customMesh.NumberOfPrimitives = 2;
         }
 
-        public override void Render(Matrix renderMatrix, Material material)
+        public override void Render(ref Matrix renderMatrix, Material material)
         {
             if ((shader.CurrentMaterial != material) || material.HasChanged)
             {
@@ -124,14 +116,12 @@ namespace GoblinXNA.Graphics
             tmpMat1.Translation = renderMatrix.Translation;
 
             shader.Render(
-                tmpMat1,
+                ref tmpMat1,
                 technique,
                 delegate
                 {
-                    State.Device.Vertices[0].SetSource(
-                        customMesh.VertexBuffer, 0, customMesh.SizeInBytes);
+                    State.Device.SetVertexBuffer(customMesh.VertexBuffer);
                     State.Device.Indices = customMesh.IndexBuffer;
-                    State.Device.VertexDeclaration = customMesh.VertexDeclaration;
                     State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
                         0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
                 });
@@ -139,7 +129,7 @@ namespace GoblinXNA.Graphics
             foreach (IShader afterEffect in afterEffectShaders)
             {
                 afterEffect.Render(
-                    tmpMat1,
+                    ref tmpMat1,
                     technique,
                     delegate
                     {
@@ -149,7 +139,7 @@ namespace GoblinXNA.Graphics
             }
 
             if (showBoundingBox)
-                RenderBoundingBox(tmpMat1);
+                RenderBoundingBox(ref tmpMat1);
         }
     }
 }

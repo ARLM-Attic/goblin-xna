@@ -33,7 +33,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Forms;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -238,11 +237,10 @@ namespace GoblinXNA.UI.UI3D
             if (widgetComponent != null && widgetEffect == null)
                 throw new GoblinException("Widget Effect needs to be set before you can call this method");
 
-            widgetEffect.Begin();
             // Render the 3D widget components
             foreach (EffectPass pass in widgetEffect.CurrentTechnique.Passes)
             {
-                pass.Begin();
+                pass.Apply();
 
                 foreach (ModelMesh modmesh in widgetComponent.Meshes)
                 {
@@ -253,10 +251,7 @@ namespace GoblinXNA.UI.UI3D
                     }
                     modmesh.Draw();
                 }
-
-                pass.End();
             }
-            widgetEffect.End();
         }
         /// <summary>
         /// Implements how this component should be rendered
@@ -289,7 +284,7 @@ namespace GoblinXNA.UI.UI3D
             Model mod = State.Content.Load<Model>(asset);
             foreach (ModelMesh modmesh in mod.Meshes)
                 foreach (ModelMeshPart modmeshpart in modmesh.MeshParts)
-                    modmeshpart.Effect = widgetEffect.Clone(State.Device);
+                    modmeshpart.Effect = widgetEffect.Clone();
             return mod;
         }
         #endregion

@@ -487,8 +487,7 @@ namespace GoblinXNA.UI.UI2D.Fancy
 
         protected virtual void GenerateDefaultPlayTexture()
         {
-            playTexture = new Texture2D(State.Device, controlButton.Bounds.Width, controlButton.Bounds.Height, 1, 
-                TextureUsage.None, SurfaceFormat.Bgra5551);
+            playTexture = new Texture2D(State.Device, controlButton.Bounds.Width, controlButton.Bounds.Height, false, SurfaceFormat.Bgra5551);
 
             int sixth = controlButton.Bounds.Width / 6;
             List<Point> points = new List<Point>();
@@ -503,8 +502,7 @@ namespace GoblinXNA.UI.UI2D.Fancy
 
         protected virtual void GenerateDefaultPauseTexture()
         {
-            pauseTexture = new Texture2D(State.Device, controlButton.Bounds.Height, controlButton.Bounds.Height, 1, 
-                TextureUsage.None, SurfaceFormat.Bgra5551);
+            pauseTexture = new Texture2D(State.Device, controlButton.Bounds.Height, controlButton.Bounds.Height, false, SurfaceFormat.Bgra5551);
 
             ushort[] data = new ushort[pauseTexture.Width * playTexture.Height];
 

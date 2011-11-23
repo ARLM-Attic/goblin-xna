@@ -80,12 +80,21 @@ namespace GoblinXNA.Device.Vision.Marker
         /// <returns>An identifier for this marker object</returns>
         Object AssociateMarker(params Object[] markerConfigs);
 
+#if WINDOWS
         /// <summary>
         /// Processes the video image captured from an initialized video capture device. 
         /// </summary>
         /// <param name="captureDevice">An initialized video capture device</param>
         /// <param name="imagePtr">A pointer that contains an image to be processed</param>
         void ProcessImage(IVideoCapture captureDevice, IntPtr imagePtr);
+#else
+        /// <summary>
+        /// Processes the video image captured from an initialized video capture device. 
+        /// </summary>
+        /// <param name="captureDevice">An initialized video capture device</param>
+        /// <param name="imagePtr"></param>
+        void ProcessImage(IVideoCapture captureDevice, byte[] imagePtr);
+#endif
 
         /// <summary>
         /// Checks whether a marker identified by 'markerID' is found in the processed image

@@ -156,7 +156,7 @@ float4 PS_NormalMap(VertexOutput In) : COLOR
     return color;
 }
 
-Technique NormalMap
+Technique NormalMapOnly
 {
     Pass P0
     {

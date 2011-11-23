@@ -78,8 +78,7 @@ namespace Tutorial12___Advanced_Physics
             GeometryNode carNode = new GeometryNode("Race Car");
             carNode.Model = new Box(3, 1.0f, 2);
             carNode.Material = carMat;
-            carNode.Model.CastShadows = true;
-            carNode.Model.ReceiveShadows = true;
+            carNode.Model.ShadowAttribute = ShadowAttribute.ReceiveCast;
 
             NewtonPhysics physicsEngine = (NewtonPhysics)scene.PhysicsEngine;
 

@@ -28,7 +28,9 @@
  * ===================================================================================
  * Author: Ohan Oda (ohan@cs.columbia.edu)
  * 
- *************************************************************************************/ 
+ *************************************************************************************/
+
+//#define USE_SOCKET_NETWORK
 
 using System;
 using System.Collections.Generic;
@@ -48,7 +50,12 @@ using GoblinXNA.Device;
 using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Network;
 using GoblinXNA.Physics;
+using GoblinXNA.UI;
+#if WINDOWS
 using GoblinXNA.Physics.Newton1;
+#else
+using GoblinXNA.Physics.Matali;
+#endif
 
 namespace Tutorial10___Networking
 {
@@ -69,6 +76,7 @@ namespace Tutorial10___Networking
 
         // A material for the shooting boxes
         Material shootMat;
+        Box boxModel;
         int shooterID = 0;
 
         // A network object which transmits mouse press information
@@ -77,11 +85,20 @@ namespace Tutorial10___Networking
         // Indicates whether this is a server
         bool isServer;
 
+        public Tutorial10()
+            : this(false)
+        {
+        }
+
         public Tutorial10(bool isServer)
         {
             this.isServer = isServer;
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -93,17 +110,22 @@ namespace Tutorial10___Networking
         protected override void Initialize()
         {
             base.Initialize();
-
+#if WINDOWS
             this.IsMouseVisible = true;
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             State.EnableNetworking = true;
             State.IsServer = isServer;
+
+            State.ShowNotifications = true;
+            State.ShowFPS = true;
+            Notifier.FadeOutTime = 2000;
 
             // Set up the lights used in the scene
             CreateLights();
@@ -114,10 +136,6 @@ namespace Tutorial10___Networking
             // Create 3D objects
             CreateObject();
 
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
-
             // Create a network object that contains mouse press information to be
             // transmitted over network
             mouseNetworkObj = new MouseNetworkObject();
@@ -127,26 +145,55 @@ namespace Tutorial10___Networking
             mouseNetworkObj.CallbackFunc = ShootBox;
 
             // Create a network handler for handling the network transfers
-            NetworkHandler networkHandler = new NetworkHandler();
+            INetworkHandler networkHandler = null;
+
+#if USE_SOCKET_NETWORK || WINDOWS_PHONE
+            networkHandler = new SocketNetworkHandler();
+#else
+            networkHandler = new NetworkHandler();
+#endif
 
             if (State.IsServer)
             {
-                networkHandler.NetworkServer = new LidgrenServer("Tutorial10", 14242);
+                IServer server = null;
+#if WINDOWS
+#if USE_SOCKET_NETWORK
+                server = new SocketServer(14242);
+#else
+                server = new LidgrenServer("Tutorial10", 14242);
+#endif
+                State.NumberOfClientsToWait = 1;
                 scene.PhysicsEngine = new NewtonPhysics();
+#else
+
+                scene.PhysicsEngine = new MataliPhysics();
+                ((MataliPhysics)scene.PhysicsEngine).SimulationTimeStep = 1 / 30f;
+#endif
                 scene.PhysicsEngine.Gravity = 30;
+                server.ClientConnected += new HandleClientConnection(ClientConnected);
+                server.ClientDisconnected += new HandleClientDisconnection(ClientDisconnected);
+                networkHandler.NetworkServer = server;
             }
             else
             {
+                IClient client = null;
                 // Create a client that connects to the local machine assuming that both
                 // the server and client will be running on the same machine. In order to 
                 // connect to a remote machine, you need to either pass the host name or
                 // the IP address of the remote machine in the 3rd parameter. 
-                byte[] addr = { 66, 65, 28, 148 };
-                LidgrenClient client = new LidgrenClient("Tutorial10", 14242, "localhost");
+#if WINDOWS
+                client = new LidgrenClient("Tutorial10", 14242, "Localhost");
+#else
+                client = new SocketClient("10.0.0.2", 14242);
+#endif
 
                 // If the server is not running when client is started, then wait for the
                 // server to start up.
                 client.WaitForServer = true;
+                client.ConnectionTrialTimeOut = 60 * 1000; // 1 minute timeout
+
+                client.ServerConnected += new HandleServerConnection(ServerConnected);
+                client.ServerDisconnected += new HandleServerDisconnection(ServerDisconnected);
 
                 networkHandler.NetworkClient = client;
             }
@@ -159,6 +206,26 @@ namespace Tutorial10___Networking
             scene.NetworkHandler.AddNetworkObject(mouseNetworkObj);
 
             MouseInput.Instance.MousePressEvent += new HandleMousePress(MouseInput_MousePressEvent);
+        }
+
+        private void ServerDisconnected()
+        {
+            Notifier.AddMessage("Disconnected from the server");
+        }
+
+        private void ServerConnected()
+        {
+            Notifier.AddMessage("Connected to the server");
+        }
+
+        private void ClientDisconnected(string clientIP, int portNumber)
+        {
+            Notifier.AddMessage("Disconnected from " + clientIP + " at port " + portNumber);
+        }
+
+        private void ClientConnected(string clientIP, int portNumber)
+        {
+            Notifier.AddMessage("Accepted connection from " + clientIP + " at port " + portNumber);
         }
 
         private void CreateLights()
@@ -245,7 +312,7 @@ namespace Tutorial10___Networking
             sphereNode.Physics.Shape = GoblinXNA.Physics.ShapeType.Sphere;
             sphereNode.Physics.Mass = 0;
 
-            transNode.Rotation = Quaternion.CreateFromAxisAngle(new Vector3(1, 0, 0), -MathHelper.PiOver2);
+            transNode.Rotation = Quaternion.CreateFromAxisAngle(new Vector3(0, 0, 1), -MathHelper.PiOver2);
             transNode.Translation = new Vector3(0, 12, 0);
 
             scene.RootNode.AddChild(parentTrans);
@@ -257,6 +324,8 @@ namespace Tutorial10___Networking
             shootMat.Diffuse = Color.Pink.ToVector4();
             shootMat.Specular = Color.Yellow.ToVector4();
             shootMat.SpecularPower = 10;
+
+            boxModel = new Box(1);
         }
 
         private void MouseInput_MousePressEvent(int button, Point mouseLocation)
@@ -303,10 +372,17 @@ namespace Tutorial10___Networking
         /// Disposed by the GraphicsDevice during a Reset.
         /// </summary>
         /// <param name="unloadAllContent">Which type of content to unload.</param>
-        protected override void  UnloadContent()
+        protected override void UnloadContent()
         {
             Content.Unload();
         }
+
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
 
         /// <summary>
         /// Allows the game to run logic such as updating the world,
@@ -315,7 +391,17 @@ namespace Tutorial10___Networking
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -328,7 +414,7 @@ namespace Tutorial10___Networking
             Vector3 camPos = scene.CameraNode.Camera.Translation;
 
             SynchronizedGeometryNode shootBox = new SynchronizedGeometryNode("ShooterBox" + shooterID++);
-            shootBox.Model = new Box(1);
+            shootBox.Model = boxModel;
             shootBox.Material = shootMat;
             shootBox.Physics.Interactable = true;
             shootBox.Physics.Collidable = true;
@@ -344,9 +430,12 @@ namespace Tutorial10___Networking
 
             // Assign the initial velocity to this shooting box
             shootBox.Physics.InitialLinearVelocity = linVel;
-            shootBox.Physics.InitialWorldTransform = Matrix.CreateTranslation(near);
 
-            scene.RootNode.AddChild(shootBox);
+            TransformNode shooterTrans = new TransformNode();
+            shooterTrans.Translation = near;
+
+            scene.RootNode.AddChild(shooterTrans);
+            shooterTrans.AddChild(shootBox);
         }
 
         /// <summary>
@@ -355,7 +444,7 @@ namespace Tutorial10___Networking
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

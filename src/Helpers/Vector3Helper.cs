@@ -122,6 +122,9 @@ namespace GoblinXNA.Helpers
 
         public static void FromFloats(float[] values, out Vector3 vec3)
         {
+#if WINDOWS_PHONE
+            vec3 = Vector3.Zero;
+#endif
             vec3.X = values[0];
             vec3.Y = values[1];
             vec3.Z = values[2];

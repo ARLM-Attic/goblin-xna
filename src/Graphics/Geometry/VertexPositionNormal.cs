@@ -42,8 +42,7 @@ namespace GoblinXNA.Graphics.Geometry
     /// <summary>
     /// Custom vertex format with position and normal information
     /// </summary>
-    [Serializable]
-    public struct VertexPositionNormal
+    public struct VertexPositionNormal : IVertexType
     {
         Vector3 pos;
         Vector3 normal;
@@ -54,13 +53,11 @@ namespace GoblinXNA.Graphics.Geometry
             this.normal = normal;
         }
 
-        public static readonly VertexElement[] VertexElements =
-            new VertexElement[] { 
-                new VertexElement(0,0,VertexElementFormat.Vector3,
-                    VertexElementMethod.Default, VertexElementUsage.Position, 0),
-                new VertexElement(0,sizeof(float)*3,VertexElementFormat.Vector3,
-                    VertexElementMethod.Default,VertexElementUsage.Normal,0),                
-            };
+        public readonly static VertexDeclaration VertexDeclaration =
+            new VertexDeclaration (
+                new VertexElement(0,VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+                new VertexElement(sizeof(float)*3,VertexElementFormat.Vector3,VertexElementUsage.Normal,0)               
+            );
 
         public static bool operator !=(VertexPositionNormal left, VertexPositionNormal right)
         {
@@ -77,6 +74,11 @@ namespace GoblinXNA.Graphics.Geometry
             return this == (VertexPositionNormal)obj;
         }
 
+        VertexDeclaration IVertexType.VertexDeclaration
+        {
+            get{return VertexDeclaration;}
+        }
+
         /// <summary>
         /// Gets or sets the position of this vertex.
         /// </summary>
@@ -91,16 +93,6 @@ namespace GoblinXNA.Graphics.Geometry
         /// Gets the size of this vertex structure in bytes.
         /// </summary>
         public static int SizeInBytes { get { return sizeof(float) * 6; } }
-
-        public override int GetHashCode()
-        {
-            return pos.GetHashCode() | normal.GetHashCode();
-        }
-
-        public override string ToString()
-        {
-            return string.Format("{0},{1},{2}", pos.X, pos.Y, pos.Z);
-        }
 
     }
 }

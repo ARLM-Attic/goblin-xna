@@ -33,6 +33,7 @@
 // When you use Havok physics, make sure to add HavokWrapper.dll to your solution and make
 // the "Copy to Output" option "Copy if Newer". 
 //#define USE_HAVOK
+//#define USE_MATALI
 
 using System;
 using System.Collections.Generic;
@@ -51,6 +52,8 @@ using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Physics;
 #if USE_HAVOK
 using GoblinXNA.Physics.Havok;
+#elif USE_MATALI || WINDOWS_PHONE
+using GoblinXNA.Physics.Matali;
 #else
 using GoblinXNA.Physics.Newton1;
 #endif
@@ -59,10 +62,7 @@ namespace Tutorial5___Simple_Physics
 {
     /// <summary>
     /// This tutorial demonstrates how to perform physical simulation using the wrapped Netwon
-    /// physics library or wrapped Havok physics library with our Geometry nodes. To switch to
-    /// Havok physics, please uncomment the very first line of this file #define USE_HAVOK.
-    /// When you use Havok physics, make sure to add HavokWrapper.dll to your solution and make
-    /// the "Copy to Output" option "Copy if Newer". 
+    /// physics library with our Geometry nodes. 
     /// </summary>
     public class Tutorial5 : Microsoft.Xna.Framework.Game
     {
@@ -76,6 +76,10 @@ namespace Tutorial5___Simple_Physics
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -87,15 +91,16 @@ namespace Tutorial5___Simple_Physics
         protected override void Initialize()
         {
             base.Initialize();
-
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -112,6 +117,14 @@ namespace Tutorial5___Simple_Physics
 
             // Use the havok physics engine to perform physics simulation
             scene.PhysicsEngine = new HavokPhysics(info);
+#elif USE_MATALI || WINDOWS_PHONE
+
+            scene.PhysicsEngine = new MataliPhysics();
+            scene.PhysicsEngine.Gravity = 30;
+#if WINDOWS_PHONE
+            ((MataliPhysics)scene.PhysicsEngine).SimulationTimeStep = 1 / 30f;
+#endif
+
 #else
             // We will use the Newton physics engine (http://www.newtondynamics.com)
             // for processing the physical simulation
@@ -127,10 +140,6 @@ namespace Tutorial5___Simple_Physics
 
             // Create 3D objects
             CreateObjects();
-
-            // Use per pixel lighting for better quality (If you using non NVidia graphics card,
-            // setting this to true may reduce the performance significantly)
-            scene.PreferPerPixelLighting = true;
 
             // Add a mouse click handler for shooting a box model from the mouse location 
             MouseInput.Instance.MouseClickEvent += new HandleMouseClick(MouseClickHandler);
@@ -297,9 +306,12 @@ namespace Tutorial5___Simple_Physics
 
             // Assign the initial velocity to this shooting box
             shootBox.Physics.InitialLinearVelocity = linVel;
-            shootBox.Physics.InitialWorldTransform = Matrix.CreateTranslation(near);
 
-            scene.RootNode.AddChild(shootBox);
+            TransformNode shooterTrans = new TransformNode();
+            shooterTrans.Translation = near;
+
+            scene.RootNode.AddChild(shooterTrans);
+            shooterTrans.AddChild(shootBox);
         }
 
         /// <summary>
@@ -311,6 +323,13 @@ namespace Tutorial5___Simple_Physics
             Content.Unload();
         }
 
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -318,7 +337,17 @@ namespace Tutorial5___Simple_Physics
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -327,7 +356,7 @@ namespace Tutorial5___Simple_Physics
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

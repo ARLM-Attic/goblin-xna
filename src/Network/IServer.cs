@@ -40,13 +40,15 @@ namespace GoblinXNA.Network
     /// A callback/delegate function for client connection event
     /// </summary>
     /// <param name="clientIP">The IP address of the client that got connected</param>
-    public delegate void HandleClientConnection(String clientIP);
+    /// <param name="portNumber">The port number used for the connection</param>
+    public delegate void HandleClientConnection(String clientIP, int portNumber);
 
     /// <summary>
     /// A callback/delegate function for client disconnection event
     /// </summary>
     /// <param name="clientIP">The IP address of the client that got disconnected</param>
-    public delegate void HandleClientDisconnection(String clientIP);
+    /// <param name="portNumber">The port number used for the connection</param>
+    public delegate void HandleClientDisconnection(String clientIP, int portNumber);
 
     /// <summary>
     /// An interface that defines the properties and methods of a network server.
@@ -123,7 +125,8 @@ namespace GoblinXNA.Network
         /// Concatenates received messages in byte arrays to the passed list.
         /// </summary>
         /// <param name="messages">Received messages in array of bytes</param>
-        void ReceiveMessage(ref List<byte[]> messages);
+        /// <param name="inOrder">Whether the message arrives in order at the receiver side</param>
+        int ReceiveMessage(ref byte[] messages);
 
         /// <summary>
         /// Shuts down the server.

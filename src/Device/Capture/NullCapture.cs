@@ -35,8 +35,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
-using System.Drawing;
-using System.Drawing.Imaging;
+
 using System.Runtime.InteropServices;
 
 using Microsoft.Xna.Framework;
@@ -52,7 +51,6 @@ namespace GoblinXNA.Device.Capture
     {
         #region Member Fields
 
-        private PointF focalPoint;
         private int videoDeviceID;
 
         private string imageFilename;
@@ -68,8 +66,13 @@ namespace GoblinXNA.Device.Capture
         private ImageReadyCallback imageReadyCallback;
 
         private Texture2D imageTexture;
+        private int[] intImage;
+#if !WINDOWS
+        private byte[] byteImage;
+#endif
 
         private bool isImageAlreadyProcessed;
+        private bool processing;
 
         #endregion
 
@@ -81,8 +84,6 @@ namespace GoblinXNA.Device.Capture
         public NullCapture()
         {
             cameraInitialized = false;
-
-            focalPoint = new PointF(0, 0);
 
             videoDeviceID = -1;
 
@@ -106,12 +107,6 @@ namespace GoblinXNA.Device.Capture
         public int Height
         {
             get { return cameraHeight; }
-        }
-
-        public PointF FocalPoint
-        {
-            get { return focalPoint; }
-            set { focalPoint = value; }
         }
 
         public int VideoDeviceID
@@ -177,16 +172,69 @@ namespace GoblinXNA.Device.Capture
                 {
                     imageFilename = value;
 
-                    if(Path.GetExtension(imageFilename).Length > 0)
-                        imageTexture = Texture2D.FromFile(State.Device, imageFilename);
+                    if (Path.GetExtension(imageFilename).Length > 0)
+#if WINDOWS
+                        imageTexture = Texture2D.FromStream(State.Device, new FileStream(imageFilename, FileMode.Open, FileAccess.Read));
+#else
+                        imageTexture = Texture2D.FromStream(State.Device, TitleContainer.OpenStream(imageFilename));
+#endif
                     else
                         imageTexture = State.Content.Load<Texture2D>(imageFilename);
+
+                    while (processing) { }
 
                     cameraWidth = imageTexture.Width;
                     cameraHeight = imageTexture.Height;
 
+                    intImage = new int[cameraWidth * cameraHeight];
+
+                    imageTexture.GetData<int>(intImage);
+#if !WINDOWS
+                    byteImage = new byte[cameraWidth * cameraHeight * 4];
+                    CopyIntArrayToByteArray();
+#endif
+
                     isImageAlreadyProcessed = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Sets the image data for tracking directly.
+        /// </summary>
+        public int[] ImageData
+        {
+            set
+            {
+                while (processing) { }
+
+                if (intImage == null || intImage.Length != value.Length)
+                    intImage = new int[value.Length];
+
+                Buffer.BlockCopy(value, 0, intImage, 0, value.Length * 4);
+
+                if (intImage.Length == 320 * 240)
+                {
+                    cameraWidth = 320;
+                    cameraHeight = 240;
+                }
+                else if (intImage.Length == 640 * 480)
+                {
+                    cameraWidth = 640;
+                    cameraHeight = 480;
+                }
+                else if (intImage.Length == 800 * 600)
+                {
+                    cameraWidth = 800;
+                    cameraHeight = 600;
+                }
+                else if (intImage.Length == 1024 * 768)
+                {
+                    cameraWidth = 1024;
+                    cameraHeight = 768;
+                }
+                else
+                    throw new GoblinException("Unsupported image dimension for size: " + intImage.Length);
             }
         }
 
@@ -194,39 +242,53 @@ namespace GoblinXNA.Device.Capture
 
         #region Public Methods
 
-        /// <summary>
-        /// Initializes a static image capture. 'videoDeviceID', 'framerate', 'resolution',
-        /// and 'grayscale' parameters are ignored.
-        /// </summary>
-        /// <param name="videoDeviceID">Ignored</param>
-        /// <param name="framerate">Ignored</param>
-        /// <param name="resolution">Ignored</param>
-        /// <param name="format">The format of how the ImagePtr property, which will be passed to
-        /// the marker tracker, will be stored (e.g., ARTag uses R8G8B8_24 format)</param>
-        /// <param name="grayscale">Ignored</param>
         public void InitVideoCapture(int videoDeviceID, FrameRate framerate, Resolution resolution, 
             ImageFormat format, bool grayscale)
         {
             if (cameraInitialized)
                 return;
 
+            this.videoDeviceID = videoDeviceID;
             this.format = format;
+            this.grayscale = grayscale;
 
             cameraInitialized = true;
         }
 
+#if WINDOWS
         public void GetImageTexture(int[] returnImage, ref IntPtr imagePtr)
+        {
+            if (intImage != null)
+            {
+                processing = true;
+
+                if(returnImage != null)
+                    Buffer.BlockCopy(intImage, 0, returnImage, 0, intImage.Length * 4);
+
+                if (imagePtr != IntPtr.Zero)
+                    CopyIntArrayToIntPtr(intImage, ref imagePtr);
+
+                if (imageReadyCallback != null)
+                    imageReadyCallback(imagePtr, returnImage);
+
+                processing = false;
+            }
+        }
+#else
+        public void GetImageTexture(int[] returnImage, byte[] imagePtr)
         {
             if (imageFilename.Length > 0)
             {
-                imageTexture.GetData<int>(returnImage);
-
-                CopyIntArrayToIntPtr(returnImage, ref imagePtr);
+                if(returnImage != null)
+                    Buffer.BlockCopy(intImage, 0, returnImage, 0, intImage.Length * 4);
+                if(imagePtr != null)
+                    Buffer.BlockCopy(byteImage, 0, imagePtr, 0, byteImage.Length);
 
                 if (imageReadyCallback != null)
                     imageReadyCallback(imagePtr, returnImage);
             }
         }
+#endif
 
         public void Dispose()
         {
@@ -237,7 +299,7 @@ namespace GoblinXNA.Device.Capture
         #endregion
 
         #region Private Methods
-
+#if WINDOWS
         private void CopyIntArrayToIntPtr(int[] imageData, ref IntPtr imagePtr)
         {
             byte R, G, B, A;
@@ -324,7 +386,7 @@ namespace GoblinXNA.Device.Capture
                             for (int j = 0; j < cameraWidth * 4; j += 4)
                             {
                                 color = imageData[i * cameraWidth + j / 4];
-                                *(dst + j + A) = (byte)255;
+                                //*(dst + j + A) = (byte)255;
                                 *(dst + j + R) = (byte)(color >> 16);
                                 *(dst + j + G) = (byte)(color >> 8);
                                 *(dst + j + B) = (byte)(color);
@@ -336,7 +398,48 @@ namespace GoblinXNA.Device.Capture
                 }
             }
         }
+#else
+        private void CopyIntArrayToByteArray()
+        {
+            byte R, G, B, A;
+            int color;
 
+            switch (format)
+            {
+                case ImageFormat.GRAYSCALE_8:
+                    break;
+                case ImageFormat.R5G6B5_16:
+                    break;
+                case ImageFormat.B8G8R8_24:
+                case ImageFormat.R8G8B8_24:
+                    break;
+                case ImageFormat.A8B8G8R8_32:
+                case ImageFormat.B8G8R8A8_32:
+                case ImageFormat.R8G8B8A8_32:
+                    if (format == ImageFormat.A8B8G8R8_32)
+                    {
+                        A = 0; B = 1; G = 2; R = 3;
+                    }
+                    else if (format == ImageFormat.B8G8R8A8_32)
+                    {
+                        B = 0; G = 1; R = 2; A = 3;
+                    }
+                    else
+                    {
+                        R = 0; G = 1; B = 2; A = 3;
+                    }
+
+                    for (int i = 0, j = 0; i < intImage.Length; ++i, j += 4)
+                    {
+                        color = intImage[i];
+                        byteImage[j + R] = (byte)(color >> 16);
+                        byteImage[j + G] = (byte)(color >> 8);
+                        byteImage[j + B] = (byte)(color);
+                    }
+                    break;
+            }
+        }
+#endif
         #endregion
     }
 }

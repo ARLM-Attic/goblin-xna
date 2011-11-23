@@ -397,7 +397,7 @@ namespace GoblinXNA.Device.Generic
 
         #region Update
 
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
             // If the window is not on focus (only for the case of windowed version)
             // then we don't need to process the keyboard events
@@ -420,7 +420,7 @@ namespace GoblinXNA.Device.Generic
 
                 if (keysPressedLastFrame.Contains(keyPressed.Key))
                 {
-                    repetitionTime += (int)gameTime.ElapsedGameTime.TotalMilliseconds;
+                    repetitionTime += (int)elapsedTime.TotalMilliseconds;
                     bool processTypeEvent = false;
 
                     if (keyPressed.JustPressed)

@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial6___Simple_Particle_Systems
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial6___Simple_Particle_Systems
             }
         }
     }
+#endif
 }
 

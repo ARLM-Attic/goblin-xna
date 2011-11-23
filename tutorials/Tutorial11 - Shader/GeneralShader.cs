@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
  * 
  * ===================================================================================
  * Author: Fan Lin (linfan68@gmail.com)
+ *         Ohan Oda (ohan@cs.columbia.edu) modified for XNA 4.0
  * 
  *************************************************************************************/
 
@@ -43,14 +44,20 @@ using Microsoft.Xna.Framework.Input;
 using GoblinXNA;
 using GoblinXNA.Graphics;
 using GoblinXNA.SceneGraph;
+using GoblinXNA.Shaders;
 using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Graphics.Geometry;
 using GoblinXNA.Helpers;
 using Texture = Microsoft.Xna.Framework.Graphics.Texture2D;
-using GoblinXNA.Shaders;
 
 namespace Tutorial11___Shader
 {
+    /// <summary>
+    /// A shader that implements the DirectX 9's fixed-pipeline lighting, and there is no limitation
+    /// on the number of light sources it can handle. This shader can render directional, point,
+    /// and spot lights (the equations used for each light type can be found from 
+    /// http://msdn.microsoft.com/en-us/library/bb174697(VS.85).aspx). 
+    /// </summary>
     public class GeneralShader : Shader
     {
         private EffectParameter
@@ -63,7 +70,6 @@ namespace Tutorial11___Shader
             specularColor,
             specularPower,
             diffuseTexture,
-            diffuseTexEnabled,
 
             //Light paramters
             lights,
@@ -78,10 +84,19 @@ namespace Tutorial11___Shader
         private List<LightSource> spotLightSources;
 
         private int maxNumLightsPerPass;
-        private Material material;
         private bool is_3_0;
         private bool forcePS20;
 
+        BlendState blendState;
+        DepthStencilState depthState;
+        DepthStencilState depthState2;
+
+        private Vector3 cameraPos;
+        private string defaultTechnique;
+
+        /// <summary>
+        /// Creates a DirectX shader that uses 'DirectXShader.fx' shader file. 
+        /// </summary>
         public GeneralShader()
             : base("DirectXShader")
         {
@@ -90,11 +105,28 @@ namespace Tutorial11___Shader
             pointLightSources = new List<LightSource>();
             spotLightSources = new List<LightSource>();
 
+            blendState = new BlendState();
+            blendState.ColorBlendFunction = BlendFunction.Add;
+            blendState.ColorSourceBlend = Blend.One;
+            blendState.ColorDestinationBlend = Blend.One;
+
+            depthState = new DepthStencilState();
+            depthState.DepthBufferEnable = true;
+            depthState.DepthBufferFunction = CompareFunction.LessEqual;
+            depthState.DepthBufferWriteEnable = true;
+
+            depthState2 = new DepthStencilState();
+            depthState2.DepthBufferEnable = true;
+            depthState2.DepthBufferFunction = CompareFunction.LessEqual;
+            depthState2.DepthBufferWriteEnable = false;
+
+            defaultTechnique = "GeneralLighting";
+
             maxNumLightsPerPass = 12;
             is_3_0 = false;
             forcePS20 = true;
 
-            if ((State.Device.GraphicsDeviceCapabilities.PixelShaderVersion.Major >= 3) && ! forcePS20)
+            if ((State.Device.GraphicsProfile == GraphicsProfile.HiDef) && ! forcePS20)
             {
                 is_3_0 = true;
             }
@@ -123,6 +155,19 @@ namespace Tutorial11___Shader
             get { return 1000; }
         }
 
+        private void GetMinimumParameters()
+        {
+            world = effect.Parameters["world"];
+            viewProj = effect.Parameters["viewProjection"];
+            worldForNormal = effect.Parameters["worldForNormal"];
+            cameraPosition = effect.Parameters["cameraPosition"];
+
+            lights = effect.Parameters["lights"];
+            light = effect.Parameters["light"];
+            ambientLightColor = effect.Parameters["ambientLightColor"];
+            numberOfLights = effect.Parameters["numberOfLights"];
+        }
+
         protected override void GetParameters()
         {
             //Binding the effect parameters in to Effect File;
@@ -139,7 +184,6 @@ namespace Tutorial11___Shader
             specularColor = effect.Parameters["specularColor"];
             specularPower = effect.Parameters["specularPower"];
             diffuseTexture = effect.Parameters["diffuseTexture"];
-            diffuseTexEnabled = effect.Parameters["diffuseTexEnabled"];
 
             // Lights
             lights = effect.Parameters["lights"];
@@ -150,20 +194,36 @@ namespace Tutorial11___Shader
 
         public override void SetParameters(Material material)
         {
-            this.material = material;
-            emissiveColor.SetValue(material.Emissive);
-            diffuseColor.SetValue(material.Diffuse);
-            specularColor.SetValue(material.Specular);
-            specularPower.SetValue(material.SpecularPower);
-            if (material.HasTexture)
+            if (material.InternalEffect != null)
             {
-                diffuseTexEnabled.SetValue(true);
-                diffuseTexture.SetValue(material.Texture);
+                effect = material.InternalEffect;
+                GetMinimumParameters();
+                cameraPosition.SetValue(cameraPos);
+                defaultTechnique = "GeneralLightingWithTexture";
             }
             else
             {
-                diffuseTexEnabled.SetValue(false);
+                emissiveColor.SetValue(material.Emissive);
+                diffuseColor.SetValue(material.Diffuse);
+                specularColor.SetValue(material.Specular);
+                specularPower.SetValue(material.SpecularPower);
+                if (material.HasTexture)
+                {
+                    diffuseTexture.SetValue(material.Texture);
+                    defaultTechnique = "GeneralLightingWithTexture";
+                }
+                else
+                {
+                    defaultTechnique = "GeneralLighting";
+                }
             }
+        }
+
+        public override void SetParameters(CameraNode camera)
+        {
+            cameraPos = camera.WorldTransformation.Translation;
+
+            cameraPosition.SetValue(cameraPos);
         }
 
         public override void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
@@ -191,11 +251,9 @@ namespace Tutorial11___Shader
 
                 LightSource source = new LightSource(lNode.LightSource);
                 if (lNode.LightSource.Type != LightType.Directional)
-                    source.Position = ((Matrix)(lNode.WorldTransformation *
-                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                    source.Position = lNode.LightSource.TransformedPosition;
                 if (lNode.LightSource.Type != LightType.Point)
-                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
-                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                    source.Direction = lNode.LightSource.TransformedDirection;
 
                 lightSources.Add(source);
             }
@@ -217,11 +275,9 @@ namespace Tutorial11___Shader
 
                 LightSource source = new LightSource(lNode.LightSource);
                 if (lNode.LightSource.Type != LightType.Directional)
-                    source.Position = ((Matrix)(lNode.WorldTransformation *
-                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                    source.Position = lNode.LightSource.TransformedPosition;
                 if (lNode.LightSource.Type != LightType.Point)
-                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
-                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                    source.Direction = lNode.LightSource.TransformedDirection;
 
                 lightSources.Add(source);
             }
@@ -247,44 +303,29 @@ namespace Tutorial11___Shader
             this.ambientLightColor.SetValue(ambientLightColor);
         }
 
-        public override void Render(Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
+        public override void Render(ref Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
         {
             if (renderDelegate == null)
                 throw new GoblinException("renderDelegate is null");
 
             world.SetValue(worldMatrix);
-            cameraPosition.SetValue(Vector3.Transform(Vector3.Zero, Matrix.Invert(State.ViewMatrix)));
-            viewProj.SetValue(State.ViewMatrix * State.ProjectionMatrix);
+            viewProj.SetValue(State.ViewProjectionMatrix);
             worldForNormal.SetValue(Matrix.Transpose(Matrix.Invert(worldMatrix)));
 
             // Start shader
-            effect.CurrentTechnique = effect.Techniques["GeneralLighting"];
+            effect.CurrentTechnique = effect.Techniques[defaultTechnique];
 
             {
-                BlendFunction origBlendFunc = State.Device.RenderState.BlendFunction;
-                Blend origDestBlend = State.Device.RenderState.DestinationBlend;
-                Blend origSrcBlend = State.Device.RenderState.SourceBlend;
-                CompareFunction origDepthFunc = State.Device.RenderState.DepthBufferFunction;
-                bool origAlphaEnable = State.Device.RenderState.AlphaBlendEnable;
-                bool origDepthWriteEnable = State.Device.RenderState.DepthBufferWriteEnable;
+                BlendState origBlendState = State.Device.BlendState;
+                DepthStencilState origDepthState = State.Device.DepthStencilState;
 
-                State.Device.RenderState.BlendFunction = BlendFunction.Add;
-                State.Device.RenderState.DestinationBlend = Blend.One;
-                State.Device.RenderState.SourceBlend = Blend.One;
-                State.Device.RenderState.DepthBufferFunction = CompareFunction.LessEqual;
-                State.Device.RenderState.DepthBufferEnable = true;
-
-                effect.Begin();
-
-                State.Device.RenderState.DepthBufferWriteEnable = true;
-                State.Device.RenderState.AlphaBlendEnable = false;
-                effect.CurrentTechnique.Passes["Ambient"].Begin();
+                State.Device.DepthStencilState = depthState;
+                State.Device.BlendState = BlendState.Opaque;
+                effect.CurrentTechnique.Passes["Ambient"].Apply();
                 renderDelegate();
-                effect.CurrentTechnique.Passes["Ambient"].End();
+                State.Device.BlendState = blendState;
 
-                State.Device.RenderState.AlphaBlendEnable = true;
-                State.Device.RenderState.DepthBufferWriteEnable = false;
-               // System.Diagnostics.Debug.Assert(false);
+                State.Device.DepthStencilState = depthState2;
 
                 if (is_3_0)
                 {
@@ -298,14 +339,9 @@ namespace Tutorial11___Shader
                     DoRendering20(renderDelegate, pointLightSources);
                     DoRendering20(renderDelegate, spotLightSources);
                 }
-                effect.End();
 
-                State.Device.RenderState.BlendFunction = origBlendFunc;
-                State.Device.RenderState.DestinationBlend = origDestBlend;
-                State.Device.RenderState.SourceBlend = origSrcBlend;
-                State.Device.RenderState.DepthBufferFunction = origDepthFunc;
-                State.Device.RenderState.AlphaBlendEnable = origAlphaEnable;
-                State.Device.RenderState.DepthBufferWriteEnable = origDepthWriteEnable;
+                State.Device.BlendState = origBlendState;
+                State.Device.DepthStencilState = origDepthState;
             }
         }
 
@@ -337,10 +373,9 @@ namespace Tutorial11___Shader
                 }
                
                 numberOfLights.SetValue(count);
-                
-                effect.CurrentTechnique.Passes[passName].Begin();
+
+                effect.CurrentTechnique.Passes[passName].Apply();
                 renderDelegate();
-                effect.CurrentTechnique.Passes[passName].End();
             }
         }
 
@@ -358,9 +393,8 @@ namespace Tutorial11___Shader
             for (int passCount = 0; passCount < lightSources.Count; passCount++)
             {
                 SetUpSingleLightSource(lightSources[passCount]);
-                effect.CurrentTechnique.Passes[passName].Begin();
+                effect.CurrentTechnique.Passes[passName].Apply();
                 renderDelegate();
-                effect.CurrentTechnique.Passes[passName].End();
             }
         }
         private void SetUpLightSource(LightSource lightSource, int index)
@@ -418,6 +452,16 @@ namespace Tutorial11___Shader
                     return "SpotLight";
             }
             return null;
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            lightSources.Clear();
+            dirLightSources.Clear();
+            pointLightSources.Clear();
+            spotLightSources.Clear();
         }
     }
 }

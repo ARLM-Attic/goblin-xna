@@ -36,7 +36,9 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA.Graphics;
+#if !WINDOWS_PHONE
 using GoblinXNA.Graphics.ParticleEffects;
+#endif
 using GoblinXNA.SceneGraph;
 
 namespace GoblinXNA.Shaders
@@ -75,11 +77,13 @@ namespace GoblinXNA.Shaders
         /// <param name="localLights">A list of local light nodes</param>
         void SetParameters(List<LightNode> globalLights, List<LightNode> localLights);
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// Sets the particle effect to be applied for the rendering.
         /// </summary>
         /// <param name="particleEffect">The particle effect properties</param>
         void SetParameters(ParticleEffect particleEffect);
+#endif
 
         /// <summary>
         /// Sets the special camera effect to be applied for the rendering.
@@ -107,18 +111,18 @@ namespace GoblinXNA.Shaders
         Material CurrentMaterial { get; }
 
         /// <summary>
-        /// Sets the world transform
-        /// </summary>
-        Matrix WorldTransform { set; }
-
-        /// <summary>
         /// Renders a 3D mesh provided in the renderDelegate function with the specified
         /// world transformation and shader technique name.
         /// </summary>
         /// <param name="worldMatrix">The world transformation of the mesh to be rendered</param>
         /// <param name="techniqueName">The name of the shader technique to use</param>
         /// <param name="renderDelegate">A delegate function which contains the mesh preparation</param>
-        void Render(Matrix worldMatrix, String techniqueName, RenderHandler renderDelegate);
+        void Render(ref Matrix worldMatrix, String techniqueName, RenderHandler renderDelegate);
+
+        /// <summary>
+        /// This function is called after rendering each IModel.
+        /// </summary>
+        void RenderEnd();
 
         /// <summary>
         /// Disposes this shader.

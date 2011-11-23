@@ -93,7 +93,7 @@ namespace GoblinXNA.SceneGraph
             Vector3.Subtract(ref up, ref location, out up);
             Matrix.CreateLookAt(ref location, ref target, ref up, out view);
             
-            fieldOfView = (float)Math.PI / 4;
+            fieldOfView = MathHelper.PiOver4;
             aspectRatio = State.Width / (float)State.Height;
             zNearPlane = 1.0f;
             zFarPlane = 1000.0f;
@@ -286,6 +286,7 @@ namespace GoblinXNA.SceneGraph
 
         #region Public Method
 
+#if !WINDOWS_PHONE
         public virtual XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
@@ -324,6 +325,7 @@ namespace GoblinXNA.SceneGraph
             if (xmlNode.HasAttribute("ProjectionMatrix"))
                 projection = MatrixHelper.FromString(xmlNode.GetAttribute("ProjectionMatrix"));
         }
+#endif
 
         #endregion
     }

@@ -1,7 +1,6 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ALVARWrapper", "ALVARWrapper\ALVARWrapper.vcproj", "{1BA41F2F-3C11-4483-98D8-542CB3E5BBFC}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ALVARWrapper", "ALVARWrapper/ALVARWrapper.vcproj", "{1BA41F2F-3C11-4483-98D8-542CB3E5BBFC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

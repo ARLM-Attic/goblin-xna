@@ -57,6 +57,7 @@ namespace GoblinXNA.Device.Util
         /// </summary>
         void ResetHistory();
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// Saves the information of this smoother to an XML element.
         /// </summary>
@@ -69,5 +70,6 @@ namespace GoblinXNA.Device.Util
         /// </summary>
         /// <param name="xmlNode"></param>
         void Load(XmlElement xmlNode);
+#endif
     }
 }

@@ -68,41 +68,41 @@ namespace GoblinXNA.Device.Capture.PointGrey
         // Follow this format to import any DLL with a specific function.
         //
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureCreateContext(int* flycapcontext);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureStart(int flycapcontext,
             PGRFlyModule.FlyCaptureVideoMode videoMode,
             PGRFlyModule.FlyCaptureFrameRate frameRate);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern string flycaptureErrorToString(int error);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureInitialize(int flycapContext,
             int cameraIndex);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureGetCameraInformation(int flycapContext,
             ref PGRFlyModule.FlyCaptureInfo arInfo);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         unsafe public static extern int flycaptureGrabImage2(int flycapContext,
             ref PGRFlyModule.FlyCaptureImage image);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         unsafe public static extern int flycaptureSaveImage(int flycapContext,
             ref PGRFlyModule.FlyCaptureImage image, string filename,
             PGRFlyModule.FlyCaptureImageFileFormat fileFormat);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureStop(int flycapContext);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureDestroyContext(int flycapContext);
 
-        [DllImport("pgrflycapture.dll")]
+        [DllImport("pgrflycapture.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int flycaptureConvertImage(int flycapContext,
             ref PGRFlyModule.FlyCaptureImage image, ref PGRFlyModule.FlyCaptureImage imageConvert);
         #endregion

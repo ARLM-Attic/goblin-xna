@@ -27,6 +27,7 @@
  * 
  * ===================================================================================
  * Author: Fan Lin (linfan68@gmail.com)
+ *         Ohan Oda (ohan@cs.columbia.edu) modified for XNA 4.0
  * 
  *************************************************************************************/
 
@@ -68,7 +69,6 @@ namespace GoblinXNA.Shaders
             specularColor,
             specularPower,
             diffuseTexture,
-            diffuseTexEnabled,
 
             //Light paramters
             lights,
@@ -86,7 +86,12 @@ namespace GoblinXNA.Shaders
         private bool is_3_0;
         private bool forcePS20;
 
+        BlendState blendState;
+        DepthStencilState depthState;
+        DepthStencilState depthState2;
+
         private Vector3 cameraPos;
+        private string defaultTechnique;
 
         /// <summary>
         /// Creates a DirectX shader that uses 'DirectXShader.fx' shader file. 
@@ -99,11 +104,28 @@ namespace GoblinXNA.Shaders
             pointLightSources = new List<LightSource>();
             spotLightSources = new List<LightSource>();
 
+            blendState = new BlendState();
+            blendState.ColorBlendFunction = BlendFunction.Add;
+            blendState.ColorSourceBlend = Blend.One;
+            blendState.ColorDestinationBlend = Blend.One;
+
+            depthState = new DepthStencilState();
+            depthState.DepthBufferEnable = true;
+            depthState.DepthBufferFunction = CompareFunction.LessEqual;
+            depthState.DepthBufferWriteEnable = true;
+
+            depthState2 = new DepthStencilState();
+            depthState2.DepthBufferEnable = true;
+            depthState2.DepthBufferFunction = CompareFunction.LessEqual;
+            depthState2.DepthBufferWriteEnable = false;
+
+            defaultTechnique = "GeneralLighting";
+
             maxNumLightsPerPass = 12;
             is_3_0 = false;
             forcePS20 = true;
 
-            if ((State.Device.GraphicsDeviceCapabilities.PixelShaderVersion.Major >= 3) && ! forcePS20)
+            if ((State.Device.GraphicsProfile == GraphicsProfile.HiDef) && ! forcePS20)
             {
                 is_3_0 = true;
             }
@@ -161,7 +183,6 @@ namespace GoblinXNA.Shaders
             specularColor = effect.Parameters["specularColor"];
             specularPower = effect.Parameters["specularPower"];
             diffuseTexture = effect.Parameters["diffuseTexture"];
-            diffuseTexEnabled = effect.Parameters["diffuseTexEnabled"];
 
             // Lights
             lights = effect.Parameters["lights"];
@@ -177,6 +198,7 @@ namespace GoblinXNA.Shaders
                 effect = material.InternalEffect;
                 GetMinimumParameters();
                 cameraPosition.SetValue(cameraPos);
+                defaultTechnique = "GeneralLightingWithTexture";
             }
             else
             {
@@ -186,12 +208,12 @@ namespace GoblinXNA.Shaders
                 specularPower.SetValue(material.SpecularPower);
                 if (material.HasTexture)
                 {
-                    diffuseTexEnabled.SetValue(true);
                     diffuseTexture.SetValue(material.Texture);
+                    defaultTechnique = "GeneralLightingWithTexture";
                 }
                 else
                 {
-                    diffuseTexEnabled.SetValue(false);
+                    defaultTechnique = "GeneralLighting";
                 }
             }
         }
@@ -228,11 +250,9 @@ namespace GoblinXNA.Shaders
 
                 LightSource source = new LightSource(lNode.LightSource);
                 if (lNode.LightSource.Type != LightType.Directional)
-                    source.Position = ((Matrix)(lNode.WorldTransformation *
-                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                    source.Position = lNode.LightSource.TransformedPosition;
                 if (lNode.LightSource.Type != LightType.Point)
-                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
-                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                    source.Direction = lNode.LightSource.TransformedDirection;
 
                 lightSources.Add(source);
             }
@@ -254,11 +274,9 @@ namespace GoblinXNA.Shaders
 
                 LightSource source = new LightSource(lNode.LightSource);
                 if (lNode.LightSource.Type != LightType.Directional)
-                    source.Position = ((Matrix)(lNode.WorldTransformation *
-                        Matrix.CreateTranslation(lNode.LightSource.Position))).Translation;
+                    source.Position = lNode.LightSource.TransformedPosition;
                 if (lNode.LightSource.Type != LightType.Point)
-                    source.Direction = ((Matrix)(Matrix.CreateTranslation(lNode.LightSource.Direction) *
-                        MatrixHelper.GetRotationMatrix(lNode.WorldTransformation))).Translation;
+                    source.Direction = lNode.LightSource.TransformedDirection;
 
                 lightSources.Add(source);
             }
@@ -284,7 +302,7 @@ namespace GoblinXNA.Shaders
             this.ambientLightColor.SetValue(ambientLightColor);
         }
 
-        public override void Render(Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
+        public override void Render(ref Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
         {
             if (renderDelegate == null)
                 throw new GoblinException("renderDelegate is null");
@@ -294,32 +312,19 @@ namespace GoblinXNA.Shaders
             worldForNormal.SetValue(Matrix.Transpose(Matrix.Invert(worldMatrix)));
 
             // Start shader
-            effect.CurrentTechnique = effect.Techniques["GeneralLighting"];
+            effect.CurrentTechnique = effect.Techniques[defaultTechnique];
 
             {
-                BlendFunction origBlendFunc = State.Device.RenderState.BlendFunction;
-                Blend origDestBlend = State.Device.RenderState.DestinationBlend;
-                Blend origSrcBlend = State.Device.RenderState.SourceBlend;
-                CompareFunction origDepthFunc = State.Device.RenderState.DepthBufferFunction;
-                bool origAlphaEnable = State.Device.RenderState.AlphaBlendEnable;
-                bool origDepthWriteEnable = State.Device.RenderState.DepthBufferWriteEnable;
+                BlendState origBlendState = State.Device.BlendState;
+                DepthStencilState origDepthState = State.Device.DepthStencilState;
 
-                State.Device.RenderState.BlendFunction = BlendFunction.Add;
-                State.Device.RenderState.DestinationBlend = Blend.One;
-                State.Device.RenderState.SourceBlend = Blend.One;
-                State.Device.RenderState.DepthBufferFunction = CompareFunction.LessEqual;
-                State.Device.RenderState.DepthBufferEnable = true;
-
-                effect.Begin();
-
-                State.Device.RenderState.DepthBufferWriteEnable = true;
-                State.Device.RenderState.AlphaBlendEnable = false;
-                effect.CurrentTechnique.Passes["Ambient"].Begin();
+                State.Device.DepthStencilState = depthState;
+                State.Device.BlendState = BlendState.Opaque;
+                effect.CurrentTechnique.Passes["Ambient"].Apply();
                 renderDelegate();
-                effect.CurrentTechnique.Passes["Ambient"].End();
+                State.Device.BlendState = blendState;
 
-                State.Device.RenderState.AlphaBlendEnable = true;
-                State.Device.RenderState.DepthBufferWriteEnable = false;
+                State.Device.DepthStencilState = depthState2;
 
                 if (is_3_0)
                 {
@@ -333,14 +338,9 @@ namespace GoblinXNA.Shaders
                     DoRendering20(renderDelegate, pointLightSources);
                     DoRendering20(renderDelegate, spotLightSources);
                 }
-                effect.End();
 
-                State.Device.RenderState.BlendFunction = origBlendFunc;
-                State.Device.RenderState.DestinationBlend = origDestBlend;
-                State.Device.RenderState.SourceBlend = origSrcBlend;
-                State.Device.RenderState.DepthBufferFunction = origDepthFunc;
-                State.Device.RenderState.AlphaBlendEnable = origAlphaEnable;
-                State.Device.RenderState.DepthBufferWriteEnable = origDepthWriteEnable;
+                State.Device.BlendState = origBlendState;
+                State.Device.DepthStencilState = origDepthState;
             }
         }
 
@@ -372,10 +372,9 @@ namespace GoblinXNA.Shaders
                 }
                
                 numberOfLights.SetValue(count);
-                
-                effect.CurrentTechnique.Passes[passName].Begin();
+
+                effect.CurrentTechnique.Passes[passName].Apply();
                 renderDelegate();
-                effect.CurrentTechnique.Passes[passName].End();
             }
         }
 
@@ -393,9 +392,8 @@ namespace GoblinXNA.Shaders
             for (int passCount = 0; passCount < lightSources.Count; passCount++)
             {
                 SetUpSingleLightSource(lightSources[passCount]);
-                effect.CurrentTechnique.Passes[passName].Begin();
+                effect.CurrentTechnique.Passes[passName].Apply();
                 renderDelegate();
-                effect.CurrentTechnique.Passes[passName].End();
             }
         }
         private void SetUpLightSource(LightSource lightSource, int index)

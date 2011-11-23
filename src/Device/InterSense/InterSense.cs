@@ -395,7 +395,7 @@ namespace GoblinXNA.Device.InterSense
 			return true;
 		}
 
-		public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
 		{
 			if (!IsAvailable)
 				return;

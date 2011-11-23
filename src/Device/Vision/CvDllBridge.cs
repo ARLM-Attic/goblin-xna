@@ -1,37 +1,4 @@
-﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Authors: Ohan Oda (ohan@cs.columbia.edu) 
- *          Ketaki Kulkarni (ketakik86@gmail.com) 
- * 
- *************************************************************************************/
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -43,6 +10,7 @@ namespace GoblinXNA.Device.Vision
     public partial class OpenCVWrapper
     {
         //private const String CV_DLL_LIB = "libcv200.dll";
+        //private const String CV_DLL_LIB = "opencv_imgproc220.dll";
         private const String CV_DLL_LIB = "cv210.dll";
 
         #region Color conversion code
@@ -178,10 +146,10 @@ namespace GoblinXNA.Device.Vision
         #endregion
 
         #region Shapes
-        public static int CV_SHAPE_RECT    = 0;
-        public static int CV_SHAPE_CROSS   = 1;
+        public static int CV_SHAPE_RECT = 0;
+        public static int CV_SHAPE_CROSS = 1;
         public static int CV_SHAPE_ELLIPSE = 2;
-        public static int CV_SHAPE_CUSTOM  = 100;
+        public static int CV_SHAPE_CUSTOM = 100;
         #endregion
 
         #region CvTermCriteria
@@ -212,26 +180,26 @@ namespace GoblinXNA.Device.Vision
 
         #endregion
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvCvtColor")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvCvtColor", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvCvtColor(IntPtr image, IntPtr outputImage, int code);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvResize")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvResize", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvResize(IntPtr src, IntPtr dst, int interpolation);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvSobel")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvSobel", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSobel(IntPtr src, IntPtr dst, int xorder, int yorder, int apertureSize);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvLaplace")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvLaplace", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvLaplace(IntPtr src, IntPtr dst, int apertureSize);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvSmooth")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvSmooth", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSmooth(IntPtr src, IntPtr dst, int smoothType, int size1, int size2,
             double sigma1, double sigma2);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvPyrDown")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvPyrDown", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvPyrDown(IntPtr src, IntPtr dst, int filter);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvLaplace")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvLaplace", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvPyrUp(IntPtr src, IntPtr dst, int filter);
 
         /// <summary>
@@ -247,23 +215,23 @@ namespace GoblinXNA.Device.Vision
         /// <param name="threshold1"></param>
         /// <param name="threshold2"></param>
         /// <param name="apetureSize">Aperture parameter for the Sobel operator</param>
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvCanny")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvCanny", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvCanny(IntPtr image, IntPtr edges, double threshold1, 
             double threshold2, int apetureSize);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvFindContours")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvFindContours", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvFindContours(IntPtr img, IntPtr storage, IntPtr firstContour, int cntHeaderSize,
             int mode, int method, IntPtr offset);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvErode")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvErode", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvErode(IntPtr src, IntPtr dst, IntPtr element, int iterations);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvDilate")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvDilate", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvDilate(IntPtr src, IntPtr dst, IntPtr element, int iterations);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvCreateStructuringElementEx")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvCreateStructuringElementEx", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCreateStructuringElementEx(int cols, int rows, int anchor_x, int anchor_y, int shape, IntPtr values);
-        
+
         /// <summary>
         /// Finds a sparse set of points within the selected region that seem to be easy to track
         /// </summary>
@@ -278,12 +246,12 @@ namespace GoblinXNA.Device.Vision
         /// <param name="blockSize">Default is 3</param>
         /// <param name="useHarris">Default is 0</param>
         /// <param name="k">Default is 0.04</param>
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvGoodFeaturesToTrack")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvGoodFeaturesToTrack", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvGoodFeaturesToTrack(IntPtr image, IntPtr eigImage, IntPtr tempImage,
             IntPtr corners, ref int cornerCount, double qualityLevel, double minDistance, IntPtr mask,
             int blockSize, int useHarris, double k);
 
-        [DllImport(CV_DLL_LIB, EntryPoint = "cvCalcOpticalFlowPyrLK")]
+        [DllImport(CV_DLL_LIB, EntryPoint = "cvCalcOpticalFlowPyrLK", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvCalcOpticalFlowPyrLK(IntPtr prev, IntPtr curr, IntPtr prevPyr,
             IntPtr currPyr, IntPtr prevFeatures, IntPtr currFeatures, int count, CvSize winSize, 
             int level, IntPtr status, IntPtr trackError, CvTermCriteria criteria, int flags);

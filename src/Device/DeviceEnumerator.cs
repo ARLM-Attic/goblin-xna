@@ -36,7 +36,6 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 
-using GoblinXNA.Device.InterSense;
 using GoblinXNA.Device.Generic;
 
 namespace GoblinXNA.Device
@@ -119,6 +118,7 @@ namespace GoblinXNA.Device
                 availableDevices.Clear();
                 available6DOFDevices.Clear();
 
+#if !XBOX
                 // Add all of the non-6DOF input devices if available
                 MouseInput mouseInput = MouseInput.Instance;
                 if (mouseInput.IsAvailable)
@@ -131,6 +131,8 @@ namespace GoblinXNA.Device
                 GenericInput genericInput = GenericInput.Instance;
                 if (genericInput.IsAvailable)
                     available6DOFDevices.Add(genericInput.Identifier, genericInput);
+
+#endif
 
                 foreach (InputDevice device in additionalDevices.Values)
                     if (device.IsAvailable)
@@ -149,15 +151,15 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="gameTime"></param>
         /// <param name="deviceActive"></param>
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
             updating = true;
 
             foreach (InputDevice inputDevice in availableDevices.Values)
-                inputDevice.Update(gameTime, deviceActive);
+                inputDevice.Update(elapsedTime, deviceActive);
 
             foreach (InputDevice_6DOF inputDevice6DOF in available6DOFDevices.Values)
-                inputDevice6DOF.Update(gameTime, deviceActive);
+                inputDevice6DOF.Update(elapsedTime, deviceActive);
 
             updating = false;
 

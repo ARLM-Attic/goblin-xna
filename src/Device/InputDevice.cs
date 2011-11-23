@@ -57,7 +57,7 @@ namespace GoblinXNA.Device
         /// </summary>
         /// <param name="gameTime"></param>
         /// <param name="deviceActive"></param>
-        void Update(GameTime gameTime, bool deviceActive);
+        void Update(TimeSpan elapsedTime, bool deviceActive);
 
         /// <summary>
         /// Triggers the callback functions specified in this InputDevice programatically.

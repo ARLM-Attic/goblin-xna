@@ -283,7 +283,7 @@ namespace GoblinXNA.Physics
             set { shapeModified = value; }
         }
 
-        public Matrix PhysicsWorldTransform
+        public virtual Matrix PhysicsWorldTransform
         {
             get { return physicsWorldTransform; }
             set { physicsWorldTransform = value; }
@@ -293,16 +293,6 @@ namespace GoblinXNA.Physics
         {
             get { return compoundInitialWorldTransform; }
             set { compoundInitialWorldTransform = value; }
-        }
-
-        public Matrix InitialWorldTransform
-        {
-            set
-            {
-                initialWorldTransform = MatrixHelper.CopyMatrix(value);
-                modified = true;
-            }
-            get { return initialWorldTransform; }
         }
 
         public Vector3 InitialLinearVelocity
@@ -349,6 +339,7 @@ namespace GoblinXNA.Physics
 
         #region Public Methods
 
+#if !WINDOWS_PHONE
         public virtual XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
@@ -433,6 +424,7 @@ namespace GoblinXNA.Physics
             if (xmlNode.HasAttribute("AngularDamping"))
                 angularDamping = Vector3Helper.FromString(xmlNode.GetAttribute("AngularDamping"));
         }
+#endif
 
         #endregion
     }

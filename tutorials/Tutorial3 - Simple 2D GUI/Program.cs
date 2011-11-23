@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial3___Simple_2D_GUI
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial3___Simple_2D_GUI
             }
         }
     }
+#endif
 }
 

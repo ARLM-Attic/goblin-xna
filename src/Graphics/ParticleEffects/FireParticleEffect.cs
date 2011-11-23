@@ -22,11 +22,20 @@ namespace GoblinXNA.Graphics.ParticleEffects
     public class FireParticleEffect : ParticleEffect
     {
         #region Constructors
+
+        /// <summary>
+        /// Creates a fire particle system with 2400 maximum particles.
+        /// </summary>
+        public FireParticleEffect() : this(2400) { }
+
         /// <summary>
         /// Creates a fire particle system.
         /// </summary>
-        public FireParticleEffect()
-            : base()
+        /// <param name="maxParticles">
+        /// Maximum number of particles that can be displayed at one time.
+        /// </param>
+        public FireParticleEffect(int maxParticles)
+            : base(maxParticles)
         {
         }
         #endregion
@@ -37,9 +46,6 @@ namespace GoblinXNA.Graphics.ParticleEffects
             base.Initialize();
 
             textureName = "fire";
-
-            maxParticles = 2400;
-            particles = new ParticleVertex[maxParticles];
 
             duration = TimeSpan.FromSeconds(2);
             durationRandomness = 1;
@@ -62,8 +68,7 @@ namespace GoblinXNA.Graphics.ParticleEffects
             minEndSize = 10;
             maxEndSize = 40;
 
-            sourceBlend = Blend.SourceAlpha;
-            destinationBlend = Blend.One;
+            blendState = BlendState.Additive;
         }
         #endregion
     }

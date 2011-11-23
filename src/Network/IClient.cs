@@ -111,7 +111,8 @@ namespace GoblinXNA.Network
         /// Concatenates received messages from the server in byte arrays to the passed list.
         /// </summary>
         /// <param name="messages">Received messages in array of bytes</param>
-        void ReceiveMessage(ref List<byte[]> messages);
+        /// <returns>The number of received bytes</returns>
+        int ReceiveMessage(ref byte[] messages);
 
         /// <summary>
         /// Sends a message to the server.

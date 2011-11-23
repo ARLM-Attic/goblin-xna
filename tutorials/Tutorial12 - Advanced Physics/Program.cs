@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial12___Advanced_Physics
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial12___Advanced_Physics
             }
         }
     }
+#endif
 }
 

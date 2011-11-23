@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2011, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,11 +40,15 @@
 using namespace std;
 using namespace alvar;
 
-Camera cam;
-int cam_width;
-int cam_height;
-MarkerDetector<MarkerData> markerDetector;
-MarkerDetector<MarkerData> markerDetector2;
+struct ALVARCamera
+{
+	Camera* cam;
+	int width;
+	int height;
+};
+
+vector<ALVARCamera> cams;
+vector<MarkerDetector<MarkerData> *> markerDetectors;
 vector<MultiMarker> multiMarkers;
 IplImage image;
 IplImage *hide_texture;
@@ -54,86 +58,81 @@ double margin;
 map<int, int> idTable;
 map<int, int>::const_iterator foundPtr;
 vector<int> foundMarkers;
-bool detect_additional;
 double curMaxTrackError;
-int detector_id;
 
 // Used for camera calibration
 ProjPoints pp;
 bool calibration_started;
 
-// Used for automatic configuration generation (marker bundle)
-MultiMarkerInitializer *multi_marker_init;
-MultiMarkerBundle *multi_marker_bundle;
-Pose bundle_pose;
-bool bundle_initialized;
-
 extern "C"
 {
-	__declspec(dllexport) int alvar_init_camera(char* calibFile, int width, int height)
+	__declspec(dllexport) void alvar_init()
+	{
+		calibration_started = false;
+	}
+
+	// returns the ID of the added camera if succeeds, otherwise, returns -1
+	__declspec(dllexport) int alvar_add_camera(char* calibFile, int width, int height)
 	{
 		int ret = -1;
-		if((calibFile != NULL) && cam.SetCalib(calibFile, width, height))
-			ret = 0;
+		ALVARCamera camera;
+		camera.cam = new Camera();
+		if((calibFile != NULL) && camera.cam->SetCalib(calibFile, width, height))
+			ret = cams.size();
 		else
-			cam.SetRes(width, height);
+			camera.cam->SetRes(width, height);
 
-		cam_width = width;
-		cam_height = height;
-		detector_id = 0;
-
-		detect_additional = false;
-		bundle_initialized = false;
-		calibration_started = false;
+		camera.width = width;
+		camera.height = height;
+		cams.push_back(camera);
 
 		return ret;
 	}
 
-	__declspec(dllexport) void alvar_get_camera_params(double* projMat, double* fovX, double* fovY)
+	__declspec(dllexport) void alvar_get_camera_projection(char* calibFile, int width, int height, 
+		float farClip, float nearClip, double* projMat)
 	{
-		cam.GetOpenglProjectionMatrix(projMat, cam_width, cam_height);
-
-		*fovX = cam.GetFovX();
-		*fovY = cam.GetFovY();
+		Camera cam;
+		if(calibFile != NULL)
+			cam.SetCalib(calibFile, width, height);
+		
+		cam.GetOpenglProjectionMatrix(projMat, width, height, farClip, nearClip);
 	}
 
-	__declspec(dllexport) void alvar_init_marker_detector(double markerSize, int markerRes = 5, double margin = 2)
+	__declspec(dllexport) int alvar_get_camera_params(int camID, double* projMat, double* fovX, double* fovY, float farClip, float nearClip)
 	{
-		markerDetector.SetMarkerSize(markerSize, markerRes, margin);
-		markerDetector2.SetMarkerSize(markerSize, markerRes, margin);
+		if(camID >= cams.size())
+			return -1;
+
+		cams[camID].cam->GetOpenglProjectionMatrix(projMat, cams[camID].width, cams[camID].height, farClip, nearClip);
+
+		*fovX = cams[camID].cam->GetFovX();
+		*fovY = cams[camID].cam->GetFovY();
+		return 0;
 	}
 
-	__declspec(dllexport) void alvar_set_detect_additional(bool enable)
+	// returns the ID of the added marker detector
+	__declspec(dllexport) int alvar_add_marker_detector(double markerSize, int markerRes = 5, double margin = 2)
 	{
-		detect_additional = enable;
+		MarkerDetector<MarkerData>* markerDetector = new MarkerDetector<MarkerData>();
+		markerDetector->SetMarkerSize(markerSize, markerRes, margin);
+		
+		markerDetectors.push_back(markerDetector);
+		return markerDetectors.size() - 1;
 	}
 
-	__declspec(dllexport) void alvar_set_marker_size(int id, double markerSize)
+	__declspec(dllexport) int alvar_set_marker_size(int detectorID, int markerID, double markerSize)
 	{
-		markerDetector.SetMarkerSizeForId(id, markerSize);
+		if(detectorID >= markerDetectors.size())
+			return -1;
+
+		markerDetectors[detectorID]->SetMarkerSizeForId(markerID, markerSize);
+		return 0;
 	}
 
-	__declspec(dllexport) void alvar_set_hide_texture_configuration(unsigned int size, unsigned int depth, 
-		unsigned int _channels, double _margin)
+	__declspec(dllexport) void alvar_add_multi_marker(char* filename)
 	{
-		hide_texture = cvCreateImage(cvSize(size, size), depth, _channels);
-		hide_texture_size = size * size * _channels;
-		channels = _channels;
-		margin = _margin;
-	}
-
-	__declspec(dllexport) void alvar_select_detector(int _detector_id)
-	{
-		detector_id = _detector_id;
-	}
-
-	__declspec(dllexport) void alvar_add_multi_marker(int num_ids, int* ids, char* filename)
-	{
-		vector<int> vector_id;
-		for(int i = 0; i < num_ids; i++)
-			vector_id.push_back(ids[i]);
-
-		MultiMarker marker(vector_id);
+		MultiMarker marker;
 		if(strstr(filename, ".xml") != NULL)
 			marker.Load(filename, FILE_FORMAT_XML);
 		else
@@ -141,10 +140,14 @@ extern "C"
 		multiMarkers.push_back(marker);
 	}
 
-	__declspec(dllexport) void alvar_detect_marker(int nChannels, char* colorModel, char* channelSeq,
-		char* imageData, int* interestedMarkerIDs, int* numFoundMarkers, int* numInterestedMarkers,
-		double maxMarkerError = 0.08, double maxTrackError = 0.2)
+	__declspec(dllexport) void alvar_detect_marker(int detectorID, int camID, int nChannels, 
+		char* colorModel, char* channelSeq, char* imageData, int* interestedMarkerIDs, 
+		int* numFoundMarkers, int* numInterestedMarkers, double maxMarkerError = 0.08, 
+		double maxTrackError = 0.2)
 	{
+		if(detectorID >= markerDetectors.size() || camID >= cams.size())
+			return;
+
 		image.nSize = sizeof(IplImage);
 		image.ID = 0;
 		image.nChannels = nChannels;
@@ -157,43 +160,34 @@ extern "C"
 
 		image.origin = 0;
 		image.align = 4;
-		image.width = cam_width;
-		image.height = cam_height;
+		image.width = cams[camID].width;
+		image.height = cams[camID].height;
 
 		image.roi = NULL;
 		image.maskROI = NULL;
 		image.imageId = NULL;
 		image.tileInfo = NULL;
-		image.widthStep = cam_width * nChannels;
-		image.imageSize = cam_height * image.widthStep;
+		image.widthStep = cams[camID].width * nChannels;
+		image.imageSize = cams[camID].height * image.widthStep;
 
 		image.imageData = imageData;
 		image.imageDataOrigin = NULL;
 
-		if(detector_id == 0)
-			markerDetector.Detect(&image, &cam, true, false, maxMarkerError, maxTrackError);
-		else
-			markerDetector2.Detect(&image, &cam, true, false, maxMarkerError, maxTrackError);
+		markerDetectors[detectorID]->Detect(&image, cams[camID].cam, true, false, maxMarkerError, maxTrackError);
 		curMaxTrackError = maxTrackError;
-		if(detector_id == 0)
-			*numFoundMarkers = markerDetector.markers->size();
-		else
-			*numFoundMarkers = markerDetector2.markers->size();
+		*numFoundMarkers = markerDetectors[detectorID]->markers->size();
 
 		int interestedMarkerNum = *numInterestedMarkers;
 		int markerCount = 0;
 		int tmpID = 0;
 		foundMarkers.clear();
-		int size = (detector_id == 0) ? markerDetector.markers->size() : markerDetector2.markers->size();
+		int size = markerDetectors[detectorID]->markers->size();
 		if(size > 0 && interestedMarkerNum > 0)
 		{
 			idTable.clear();
 			for(int i = 0; i < size; ++i)
 			{
-				if(detector_id == 0)
-					tmpID = (*(markerDetector.markers))[i].GetId();
-				else
-					tmpID = (*(markerDetector2.markers))[i].GetId();
+				tmpID = (*(markerDetectors[detectorID]->markers))[i].GetId();
 				idTable[tmpID] = i;
 			}
 
@@ -211,9 +205,11 @@ extern "C"
 		*numInterestedMarkers = markerCount;
 	}
 
-	__declspec(dllexport) void alvar_get_poses(int* ids, double* poseMats, bool returnHideTextures,
-		unsigned char* hideTextures)
+	__declspec(dllexport) void alvar_get_poses(int detectorID, int* ids, double* poseMats)
 	{
+		if(detectorID >= markerDetectors.size())
+			return;
+
 		int size = foundMarkers.size();
 		if(size == 0)
 			return;
@@ -223,40 +219,21 @@ extern "C"
 		for(size_t i = 0; i < foundMarkers.size(); ++i)
 		{
 			Pose p;
-			if(detector_id == 0)
-			{
-				ids[i] = (*(markerDetector.markers))[foundMarkers[i]].GetId();
-				p = (*(markerDetector.markers))[foundMarkers[i]].pose;
-			}
-			else
-			{
-				ids[i] = (*(markerDetector2.markers))[foundMarkers[i]].GetId();
-				p = (*(markerDetector2.markers))[foundMarkers[i]].pose;
-			}
+			ids[i] = (*(markerDetectors[detectorID]->markers))[foundMarkers[i]].GetId();
+			p = (*(markerDetectors[detectorID]->markers))[foundMarkers[i]].pose;
+
 			p.GetMatrixGL(mat);
 			memcpy(poseMats + i * 16, &mat, sizeof(double) * 16);
-
-			if(returnHideTextures)
-			{
-				BuildHideTexture(&image, hide_texture, &cam, mat, PointDouble(-margin, -margin),
-					PointDouble(margin, margin));
-				for(int j = 0; j < hide_texture_size; j += channels, textureIndex += channels)
-				{
-					hideTextures[textureIndex] = hide_texture->imageData[j];
-					hideTextures[textureIndex + 1] = hide_texture->imageData[j + 1];
-					hideTextures[textureIndex + 2] = hide_texture->imageData[j + 2];
-
-					if(channels == 4)
-						hideTextures[textureIndex + 3] = hide_texture->imageData[j + 3];
-				}
-			}
 		}
 	}
 
-	__declspec(dllexport) void alvar_get_multi_marker_poses(int* ids, double* poseMats, double* errors, 
-		bool returnHideTextures, unsigned char* hideTextures)
+	__declspec(dllexport) void alvar_get_multi_marker_poses(int detectorID, int camID, bool detectAdditional,
+		int* ids, double* poseMats, double* errors)
 	{
-		int size = (detector_id == 0) ? markerDetector.markers->size() : markerDetector2.markers->size();
+		if(detectorID >= markerDetectors.size() || camID >= cams.size())
+			return;
+
+		int size = markerDetectors[detectorID]->markers->size();
 		if(size == 0)
 			return;
 
@@ -267,40 +244,26 @@ extern "C"
 			ids[i] = i;
 			Pose pose;
 
-			if(detect_additional)
+			if(detectAdditional)
 			{
-				errors[i] = multiMarkers.at(i).Update(markerDetector.markers, &cam, pose);
-				multiMarkers.at(i).SetTrackMarkers(markerDetector, &cam, pose);
-				markerDetector.DetectAdditional(&image, &cam, false, curMaxTrackError);
+				errors[i] = multiMarkers.at(i).Update(markerDetectors[detectorID]->markers, 
+					cams[camID].cam, pose);
+				multiMarkers.at(i).SetTrackMarkers(*markerDetectors[detectorID], cams[camID].cam, pose);
+				markerDetectors[detectorID]->DetectAdditional(&image, cams[camID].cam, false, curMaxTrackError);
 			}
 
-			if(detector_id == 0)	
-				errors[i] = multiMarkers.at(i).Update(markerDetector.markers, &cam, pose);
-			else
-				errors[i] = multiMarkers.at(i).Update(markerDetector2.markers, &cam, pose);
+			errors[i] = multiMarkers.at(i).Update(markerDetectors[detectorID]->markers, cams[camID].cam, pose);
 			pose.GetMatrixGL(mat);
 			memcpy(poseMats + i * 16, &mat, sizeof(double) * 16);
-
-			if(returnHideTextures)
-			{
-				BuildHideTexture(&image, hide_texture, &cam, mat, PointDouble(-margin, -margin),
-					PointDouble(margin, margin));
-				for(int j = 0; j < hide_texture_size; j += channels, textureIndex += channels)
-				{
-					hideTextures[textureIndex] = hide_texture->imageData[j + 2];
-					hideTextures[textureIndex + 1] = hide_texture->imageData[j + 1];
-					hideTextures[textureIndex + 2] = hide_texture->imageData[j];
-
-					if(channels == 4)
-						hideTextures[textureIndex + 3] = hide_texture->imageData[j + 3];
-				}
-			}
 		}
 	}
 
-	__declspec(dllexport) bool alvar_calibrate_camera(int nChannels, char* colorModel, char* channelSeq,
+	__declspec(dllexport) bool alvar_calibrate_camera(int camID, int nChannels, char* colorModel, char* channelSeq,
 		char* imageData, double etalon_square_size, int etalon_rows, int etalon_columns)
 	{
+		if(camID >= cams.size())
+			return false;
+
 		image.nSize = sizeof(IplImage);
 		image.ID = 0;
 		image.nChannels = nChannels;
@@ -313,15 +276,15 @@ extern "C"
 
 		image.origin = 0;
 		image.align = 4;
-		image.width = cam_width;
-		image.height = cam_height;
+		image.width = cams[camID].width;
+		image.height = cams[camID].height;
 
 		image.roi = NULL;
 		image.maskROI = NULL;
 		image.imageId = NULL;
 		image.tileInfo = NULL;
-		image.widthStep = cam_width * nChannels;
-		image.imageSize = cam_height * image.widthStep;
+		image.widthStep = cams[camID].width * nChannels;
+		image.imageSize = cams[camID].height * image.widthStep;
 
 		image.imageData = imageData;
 		image.imageDataOrigin = NULL;
@@ -332,39 +295,17 @@ extern "C"
 		return ret;
 	}
 
-	__declspec(dllexport) bool alvar_finalize_calibration(char* calibrationFilename)
+	__declspec(dllexport) bool alvar_finalize_calibration(int camID, char* calibrationFilename)
 	{
-		if(!calibration_started)
+		if(!calibration_started || (camID >= cams.size()))
 			return false;
 
-		cam.Calibrate(pp);
+		cams[camID].cam->Calibrate(pp);
 		pp.Reset();
 	
-		bool ret = cam.SaveCalib(calibrationFilename);
+		bool ret = cams[camID].cam->SaveCalib(calibrationFilename);
 		if(ret)
 			calibration_started = false;
 		return ret;
 	}
-
-	/*__declspec(dllexport) void alvar_bundle_init(int num_ids, int* ids, double marker_size,
-		int min_num_images, int max_num_images)
-	{
-		if(bundle_initialized)
-			return;
-
-		vector<int> vector_id;
-		for(int i = 0; i < num_ids; i++)
-			vector_id.push_back(ids[i]);
-
-		multi_marker_init = new MultiMarkerInitializer(vector_id, min_num_images, max_num_images);
-		bundle_pose.Reset();
-		multi_marker_init->PointCloudAdd(vector_id[0], marker_size, bundle_pose);
-		multi_marker_bundle = new MultiMarkerBundle(vector_id);
-
-		bundle_initialized = true;
-	}
-
-	__declspec(dllexport) void alvar_bundle_add_measurement()
-	{
-	}*/
 }

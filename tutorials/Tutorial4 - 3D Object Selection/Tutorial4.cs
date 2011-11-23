@@ -76,14 +76,16 @@ namespace Tutorial4___3D_Object_Selection
         {
             base.Initialize();
 
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
@@ -339,6 +341,11 @@ namespace Tutorial4___3D_Object_Selection
             Content.Unload();
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -346,7 +353,7 @@ namespace Tutorial4___3D_Object_Selection
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -355,11 +362,11 @@ namespace Tutorial4___3D_Object_Selection
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            base.Draw(gameTime);
-
             // Draw a 2D text string at the center of the screen
             UI2DRenderer.WriteText(Vector2.Zero, label, Color.Black,
                 textFont, GoblinEnums.HorizontalAlignment.Center, GoblinEnums.VerticalAlignment.Top);
+
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

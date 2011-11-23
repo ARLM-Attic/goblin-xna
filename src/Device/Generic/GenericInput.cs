@@ -286,7 +286,7 @@ namespace GoblinXNA.Device.Generic
             rotation = initialRotation;
         }
 
-        public void Update(GameTime gameTime, bool deviceActive)
+        public void Update(TimeSpan elapsedTime, bool deviceActive)
         {
             // nothing to update
         }

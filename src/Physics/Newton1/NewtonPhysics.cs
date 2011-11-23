@@ -762,7 +762,7 @@ namespace GoblinXNA.Physics.Newton1
             // if none of the physics properties are modified, then we only need to set the transform
             if (!physObj.Modified && scaleTable[body].Equals(scale))
             {
-                SetTransform(physObj, startTransform);
+                SetTransform(physObj, newTransform);
                 return;
             }
 
@@ -1049,7 +1049,7 @@ namespace GoblinXNA.Physics.Newton1
                 int updateTime = Math.Max((int)(elapsedTime / simulationTimeStep * 2), 2);
                 updateTime = Math.Min(numSubSteps, updateTime);
                 for(int i = 0; i < updateTime; i++)
-                    Newton.NewtonUpdate(nWorld, updateTime);
+                    Newton.NewtonUpdate(nWorld, simulationTimeStep);
             }
             else
                 Newton.NewtonUpdate(nWorld, elapsedTime);
@@ -1785,29 +1785,6 @@ namespace GoblinXNA.Physics.Newton1
 
                                     Newton.NewtonTreeCollisionAddFace(collision, 3, vertPtr.ToArray(),
                                         sizeof(float) * 3, 1);
-                                }
-                            }
-                            else if (physObj.MeshProvider.PrimitiveType == PrimitiveType.TriangleFan)
-                            {
-                                for (int i = 0; i < 2; i++)
-                                {
-                                    ndx = indices[1];
-                                    vertPtr.Add(vertices[ndx].X * scale.X);
-                                    vertPtr.Add(vertices[ndx].Y * scale.Y);
-                                    vertPtr.Add(vertices[ndx].Z * scale.Z);
-                                }
-
-                                for (int i = 2; i < indices.Count; i++)
-                                {
-                                    ndx = indices[i];
-                                    vertPtr.Add(vertices[ndx].X * scale.X);
-                                    vertPtr.Add(vertices[ndx].Y * scale.Y);
-                                    vertPtr.Add(vertices[ndx].Z * scale.Z);
-
-                                    Newton.NewtonTreeCollisionAddFace(collision, 3, vertPtr.ToArray(),
-                                        sizeof(float) * 3, 1);
-
-                                    vertPtr.RemoveRange(6, 3);
                                 }
                             }
                             else if (physObj.MeshProvider.PrimitiveType == PrimitiveType.TriangleStrip)

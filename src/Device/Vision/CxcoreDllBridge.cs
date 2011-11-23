@@ -1,36 +1,4 @@
-﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Columbia University nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY COLUMBIA UNIVERSITY ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * 
- * ===================================================================================
- * Authors: Ohan Oda (ohan@cs.columbia.edu) 
- * 
- *************************************************************************************/
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -42,6 +10,7 @@ namespace GoblinXNA.Device.Vision
     public partial class OpenCVWrapper
     {
         //private const String CXCORE_DLL_LIB = "libcxcore200.dll";
+        //private const String CXCORE_DLL_LIB = "opencv_core220.dll";
         private const String CXCORE_DLL_LIB = "cxcore210.dll";
 
         #region Fourier Transform Constants
@@ -472,62 +441,62 @@ namespace GoblinXNA.Device.Vision
         }
         #endregion
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateMat")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateMat", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCreateMat(int rows, int cols, int type);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseMat")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseMat", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvReleaseMat(ref IntPtr mat);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateMemStorage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateMemStorage", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCreateMemStorage(int blockSize);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateChildMemStorage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateChildMemStorage", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCreateChildMemStorage(IntPtr parent);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseMemStorage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseMemStorage", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvReleaseMemStorage(ref IntPtr storage);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvClearMemStorage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvClearMemStorage", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvClearMemStorage(IntPtr storage);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateImageHeader")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateImageHeader", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCreateImageHeader(CvSize size, int depth, int channels);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvInitImageHeader")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvInitImageHeader", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvInitImageHeader(IntPtr image, CvSize size, int depth,
             int channels, int origin, int align);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateImage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCreateImage", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCreateImage(CvSize size, int depth, int channels);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseImageHeader")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseImageHeader", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvReleaseImageHeader(ref IntPtr image);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseImage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvReleaseImage", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvReleaseImage(ref IntPtr image);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCloneImage")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCloneImage", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvCloneImage(IntPtr image);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSetImageCOI")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSetImageCOI", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSetImageCOI(IntPtr image, int coi);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetImageCOI")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetImageCOI", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvGetImageCOI(IntPtr image);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSetImageROI")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSetImageROI", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSetImageROI(IntPtr image, CvRect rect);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvResetImageROI")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvResetImageROI", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvResetImageROI(IntPtr image);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetImageROI")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetImageROI", CallingConvention = CallingConvention.Cdecl)]
         public static extern CvRect cvGetImageROI(IntPtr image);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetSize")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetSize", CallingConvention = CallingConvention.Cdecl)]
         public static extern CvSize cvGetSize(IntPtr arr);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetElemType")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetElemType", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvGetElemType(IntPtr arr);
 
         /// <summary>
@@ -537,10 +506,10 @@ namespace GoblinXNA.Device.Vision
         /// <param name="dst"></param>
         /// <param name="flags"></param>
         /// <param name="nonzeroRows">Default is 0</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvDFT")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvDFT", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvDFT(IntPtr arr, IntPtr dst, int flags, int nonzeroRows);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvDCT")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvDCT", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvDCT(IntPtr arr, IntPtr dst, int flags);
 
         /// <summary>
@@ -554,7 +523,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="dst"></param>
         /// <param name="scale">Default is 1</param>
         /// <param name="shift">Default is 0</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvConvertScale")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvConvertScale", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvConvertScale(IntPtr arr, IntPtr dst, double scale, double shift);
 
         /// <summary>
@@ -563,14 +532,14 @@ namespace GoblinXNA.Device.Vision
         /// <param name="src"></param>
         /// <param name="dst"></param>
         /// <param name="mask">Default is IntPtr.Zero</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCopy")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvCopy", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvCopy(IntPtr src, IntPtr dst, IntPtr mask);
 
         /// <summary>
         /// Clears all the array elements (sets them to 0)
         /// </summary>
         /// <param name="arr"></param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSetZero")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSetZero", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSetZero(IntPtr arr);
 
         /// <summary>
@@ -582,7 +551,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="dst1"></param>
         /// <param name="dst2"></param>
         /// <param name="dst3"></param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSplit")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSplit", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSplit(IntPtr src, IntPtr dst0, IntPtr dst1, 
             IntPtr dst2, IntPtr dst3);
 
@@ -595,7 +564,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="src2"></param>
         /// <param name="src3"></param>
         /// <param name="dst"></param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvMerge")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvMerge", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvMerge(IntPtr src0, IntPtr src1, IntPtr src2,
             IntPtr src3, IntPtr dst);
 
@@ -604,7 +573,7 @@ namespace GoblinXNA.Device.Vision
         /// </summary>
         /// <param name="size"></param>
         /// <returns></returns>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetOptimalDFTSize")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetOptimalDFTSize", CallingConvention = CallingConvention.Cdecl)]
         public static extern int cvGetOptimalDFTSize(int size0);
 
         /// <summary>
@@ -614,7 +583,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="submat">CvMat*</param>
         /// <param name="rect"></param>
         /// <returns>CvMat*</returns>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetSubRect")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvGetSubRect", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr cvGetSubRect(IntPtr arr, IntPtr submat, CvRect rect);
 
         /// <summary>
@@ -624,7 +593,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="src2"></param>
         /// <param name="dst"></param>
         /// <param name="mask">Default is IntPtr.Zero</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvAdd")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvAdd", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvAdd(IntPtr src1, IntPtr src2, IntPtr dst, IntPtr mask);
 
         /// <summary>
@@ -634,7 +603,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="value"></param>
         /// <param name="dst"></param>
         /// <param name="mask">Default is IntPtr.Zero</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvAddS")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvAddS", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvAddS(IntPtr src, CvScalar value, IntPtr dst, IntPtr mask);
 
         /// <summary>
@@ -644,7 +613,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="src2"></param>
         /// <param name="dst"></param>
         /// <param name="mask">Default is IntPtr.Zero</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSub")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSub", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSub(IntPtr src1, IntPtr src2, IntPtr dst, IntPtr mask);
 
         /// <summary>
@@ -654,10 +623,10 @@ namespace GoblinXNA.Device.Vision
         /// <param name="value"></param>
         /// <param name="dst"></param>
         /// <param name="mask">Default is IntPtr.Zero</param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSubS")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvSubS", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvSubS(IntPtr src, CvScalar value, IntPtr dst, IntPtr mask);
 
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvLog")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvLog", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvLog(IntPtr src, IntPtr dst);
 
         /// <summary>
@@ -666,11 +635,8 @@ namespace GoblinXNA.Device.Vision
         /// <param name="src"></param>
         /// <param name="dst"></param>
         /// <param name="power"></param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvPow")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvPow", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvPow(IntPtr src, IntPtr dst, double power);
-
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvConvertScaleAbs")]
-        public static extern void cvConvertScaleAbs(IntPtr src, IntPtr dst, double scale, double shift);
 
         /// <summary>
         /// Finds global minimum, maximum and their positions
@@ -681,7 +647,7 @@ namespace GoblinXNA.Device.Vision
         /// <param name="minLoc">CvPoint*</param>
         /// <param name="maxLoc">CvPoint*</param>
         /// <param name="mask"></param>
-        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvMinMaxLoc")]
+        [DllImport(CXCORE_DLL_LIB, EntryPoint = "cvMinMaxLoc", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cvMinMaxLoc(IntPtr arr, ref double minVal, ref double maxVal,
             IntPtr minLoc, IntPtr maxLoc, IntPtr mask);
 

@@ -71,6 +71,9 @@ namespace GoblinXNA.SceneGraph
 
         protected Object[] markerConfigs;
 
+        protected Matrix inverseCameraView;
+        protected bool isInverseViewSet;
+
         #endregion
 
         #region Constructors
@@ -102,6 +105,8 @@ namespace GoblinXNA.SceneGraph
             smooth = false;
             predict = false;
             predictionTime = 0;
+
+            inverseCameraView = Matrix.Identity;
         }
 
         /// <summary>
@@ -183,6 +188,21 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
+        /// Gets or sets the inverse transform of the current camera's view matrix. Set this property
+        /// if your camera's view matrix is other than an Identity matrix. Setting this properly will 
+        /// ensure that your geometry attached to this marker node will appear on top of the marker.
+        /// </summary>
+        public Matrix InverseCameraView
+        {
+            get { return inverseCameraView; }
+            set
+            {
+                inverseCameraView = value;
+                isInverseViewSet = true;
+            }
+        }
+
+        /// <summary>
         /// Gets the transformation of the detected marker. 
         /// </summary>
         /// <remarks>
@@ -219,6 +239,7 @@ namespace GoblinXNA.SceneGraph
                 + "Marker node associated with one marker array");
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -262,6 +283,7 @@ namespace GoblinXNA.SceneGraph
                 }
             }
         }
+#endif
 
         #endregion
 
@@ -285,8 +307,6 @@ namespace GoblinXNA.SceneGraph
                 Quaternion q = Quaternion.Identity;
                 Matrix rawMat = tracker.GetMarkerTransform();
 
-                //MatrixHelper.PrintMatrix(rawMat);
-
                 if (smooth || predict)
                 {
                     Vector3 scale;
@@ -297,6 +317,9 @@ namespace GoblinXNA.SceneGraph
                     smoother.FilterMatrix(ref p, ref q, out worldTransformation);
                 else
                     worldTransformation = rawMat;
+
+                if (isInverseViewSet)
+                    Matrix.Multiply(ref worldTransformation, ref inverseCameraView, out worldTransformation);
 
                 if (predict)
                 {

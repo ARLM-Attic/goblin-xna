@@ -34,8 +34,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Drawing;
-
 using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA;
@@ -113,7 +111,11 @@ namespace GoblinXNA.Device.Capture
 
     #region Delegates
 
+#if WINDOWS
     public delegate bool ImageReadyCallback(IntPtr image, int[] background);
+#else
+    public delegate bool ImageReadyCallback(byte[] image, int[] background);
+#endif
 
     #endregion
 
@@ -131,11 +133,6 @@ namespace GoblinXNA.Device.Capture
         /// Gets the camera height in pixels.
         /// </summary>
         int Height { get; }
-
-        /// <summary>
-        /// Gets the focal point of this camera.
-        /// </summary>
-        PointF FocalPoint { get; set; }
 
         /// <summary>
         /// Gets the video device ID.
@@ -200,6 +197,7 @@ namespace GoblinXNA.Device.Capture
         void InitVideoCapture(int videoDeviceID, FrameRate frameRate, Resolution resolution, 
             ImageFormat format, bool grayscale);
 
+#if WINDOWS
         /// <summary>
         /// Gets an array of video image pixels in Microsoft.Xna.Framework.Graphics.SurfaceFormat.Bgr32 
         /// format. The size is CameraWidth * CameraHeight.
@@ -211,6 +209,19 @@ namespace GoblinXNA.Device.Capture
         /// if you don't need the int[] image.</param>
         /// <returns></returns>
         void GetImageTexture(int[] returnImage, ref IntPtr imagePtr);
+#else
+        /// <summary>
+        /// Gets an array of video image pixels in Microsoft.Xna.Framework.Graphics.SurfaceFormat.Bgr32 
+        /// format. The size is CameraWidth * CameraHeight.
+        /// </summary>
+        /// <param name="imagePtr">A byte array where to copy the video image so that the
+        /// marker tracker library can use it to process the image and detect marker transformations.
+        /// Pass null if you don't need to get back the image.</param>
+        /// <param name="returnImage">An array of int in which the video pixels are copied to. Pass null
+        /// if you don't need the int[] image.</param>
+        /// <returns></returns>
+        void GetImageTexture(int[] returnImage, byte[] imagePtr);
+#endif
 
         /// <summary>
         /// Disposes the video capture device.

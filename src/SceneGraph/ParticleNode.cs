@@ -37,7 +37,11 @@ using System.Xml;
 
 using Microsoft.Xna.Framework;
 using GoblinXNA.Graphics;
+#if WINDOWS_PHONE
+using GoblinXNA.Graphics.ParticleEffects2D;
+#else
 using GoblinXNA.Graphics.ParticleEffects;
+#endif
 
 namespace GoblinXNA.SceneGraph
 {
@@ -62,6 +66,8 @@ namespace GoblinXNA.SceneGraph
         protected bool isRendered;
         protected bool shouldRender;
 
+        protected Matrix tmpMat;
+
         #endregion
 
         #region Events
@@ -85,6 +91,7 @@ namespace GoblinXNA.SceneGraph
             UpdateHandler = null;
             isRendered = false;
             shouldRender = false;
+            tmpMat = Matrix.Identity;
         }
 
         public ParticleNode() : this("") { }
@@ -147,15 +154,15 @@ namespace GoblinXNA.SceneGraph
         /// <summary>
         /// Updates the associated particle effects.
         /// </summary>
-        /// <param name="gameTime"></param>
-        internal void Update(GameTime gameTime)
+        /// <param name="elapsedTime"></param>
+        internal void Update(TimeSpan elapsedTime)
         {
             if (UpdateHandler != null)
                 UpdateHandler(worldTransformation, particleEffects);
 
             foreach (ParticleEffect effect in particleEffects)
                 if(effect.Enabled)
-                    effect.Update(gameTime);
+                    effect.Update(elapsedTime);
         }
 
         /// <summary>
@@ -166,7 +173,9 @@ namespace GoblinXNA.SceneGraph
             foreach (ParticleEffect effect in particleEffects)
                 if (effect.Enabled)
                 {
+#if !WINDOWS_PHONE
                     effect.Shader.SetParameters(effect);
+#endif
                     if(markerTransform.M44 == 1)
                         effect.Render(markerTransform);
                 }
@@ -185,6 +194,7 @@ namespace GoblinXNA.SceneGraph
             return node;
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -206,6 +216,7 @@ namespace GoblinXNA.SceneGraph
                 particleEffects.Add(effect);
             }
         }
+#endif
 
         public override void Dispose()
         {

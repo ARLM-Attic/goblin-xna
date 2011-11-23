@@ -273,6 +273,7 @@ namespace GoblinXNA.Device.Util
             restartCount = 0;
         }
 
+#if !WINDOWS_PHONE
         public virtual XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
@@ -311,6 +312,7 @@ namespace GoblinXNA.Device.Util
             if (xmlNode.HasAttribute("RotThreshold"))
                 rotThreshold = float.Parse(xmlNode.GetAttribute("RotThreshold"));
         }
+#endif
 
         #endregion
 

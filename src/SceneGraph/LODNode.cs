@@ -225,6 +225,7 @@ namespace GoblinXNA.SceneGraph
             throw new GoblinException("You should not clone LOD node");
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -240,6 +241,7 @@ namespace GoblinXNA.SceneGraph
 
             // NOT FINISHED YET
         }
+#endif
 
         #endregion
     }

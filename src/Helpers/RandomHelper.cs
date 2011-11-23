@@ -47,9 +47,9 @@ namespace GoblinXNA.Helpers
         /// </summary>
         /// <param name="max">Maximum</param>
         /// <returns>Int</returns>
-        public static int GetRandomInt(int max)
+        public static int GetRandomInt(int min, int max)
         {
-            return globalRandomGenerator.Next(max);
+            return globalRandomGenerator.Next(min, max);
         }
 
         /// <summary>

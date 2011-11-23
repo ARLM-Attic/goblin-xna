@@ -186,11 +186,10 @@ namespace GoblinXNA.Graphics.Geometry
                 }
             }
 
-            mesh.VertexDeclaration = new VertexDeclaration(State.Device,
-                VertexPositionNormal.VertexElements);
+            mesh.VertexDeclaration = VertexPositionNormal.VertexDeclaration;
 
-            mesh.VertexBuffer = new VertexBuffer(State.Device,
-                VertexPositionNormal.SizeInBytes * vertices.Count, BufferUsage.None);
+            mesh.VertexBuffer = new VertexBuffer(State.Device, typeof(VertexPositionNormal),
+                vertices.Count, BufferUsage.None);
             mesh.VertexBuffer.SetData(vertices.ToArray());
 
             List<short> indices = new List<short>();
@@ -244,7 +243,6 @@ namespace GoblinXNA.Graphics.Geometry
                 BufferUsage.None);
             mesh.IndexBuffer.SetData(indices.ToArray());
 
-            mesh.SizeInBytes = VertexPositionNormal.SizeInBytes;
             mesh.NumberOfVertices = vertices.Count;
             mesh.NumberOfPrimitives = indices.Count / 3;
 

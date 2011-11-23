@@ -59,7 +59,11 @@ namespace GoblinXNA.Physics
         /// </summary>
         Compound, 
         ConvexHull,
-        TriangleMesh
+        TriangleMesh,
+        /// <summary>
+        /// A shape that is none of the above
+        /// </summary>
+        Extra
     }
     #endregion
 
@@ -189,7 +193,7 @@ namespace GoblinXNA.Physics
         Matrix PhysicsWorldTransform { get; set; }
 
         /// <summary>
-        /// Gets or sets the compound initial world transform with the InitialWorldTransform
+        /// Gets the compound initial world transform with the InitialWorldTransform
         /// and its parent world transform
         /// </summary>
         Matrix CompoundInitialWorldTransform { get; set; }
@@ -197,7 +201,7 @@ namespace GoblinXNA.Physics
         /// <summary>
         /// Gets the initial world transform of this physics object when added to the physics engine.
         /// </summary>
-        Matrix InitialWorldTransform { get; set; }
+        //Matrix InitialWorldTransform { get; set; }
 
         /// <summary>
         /// Gets or sets the initial linear velocity of this physics object.
@@ -223,6 +227,7 @@ namespace GoblinXNA.Physics
 
         #region Methods
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// Saves the information of this physics object to an XML element.
         /// </summary>
@@ -235,6 +240,7 @@ namespace GoblinXNA.Physics
         /// </summary>
         /// <param name="xmlNode"></param>
         void Load(XmlElement xmlNode);
+#endif
 
         #endregion
     }

@@ -245,6 +245,7 @@ namespace GoblinXNA.SceneGraph
 
         #region Override Methods
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -262,6 +263,7 @@ namespace GoblinXNA.SceneGraph
             if (xmlNode.HasAttribute("Prune"))
                 prune = bool.Parse(xmlNode.GetAttribute("Prune"));
         }
+#endif
 
         public override void Dispose()
         {

@@ -6,12 +6,19 @@
  *************************************************************************************/
 
 using Microsoft.Xna.Framework;
+#if !WINDOWS_PHONE
 using Microsoft.Xna.Framework.Storage;
+#endif
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Reflection;
+
+#if WINDOWS_PHONE
+using System.IO.IsolatedStorage;
+#endif
 
 namespace GoblinXNA.Helpers
 {
@@ -31,11 +38,22 @@ namespace GoblinXNA.Helpers
         public static FileStream CreateGameContentFile(string relativeFilename,
             bool createNew)
         {
-            string fullPath = Path.Combine(
-                StorageContainer.TitleLocation, relativeFilename);
+            String strAppDir = "";
+#if WINDOWS
+            strAppDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+#elif WINDOWS_PHONE 
+            strAppDir = "";
+#endif
+            string fullPath = Path.Combine(strAppDir, relativeFilename);
+
+#if WINDOWS_PHONE
+            IsolatedStorageFile store = IsolatedStorageFile.GetUserStoreForApplication();
+            return store.CreateFile(fullPath);
+#else
             return File.Open(fullPath,
                 createNew ? FileMode.Create : FileMode.OpenOrCreate,
                 FileAccess.Write, FileShare.ReadWrite);
+#endif
         }
         #endregion
 
@@ -47,23 +65,28 @@ namespace GoblinXNA.Helpers
         /// <returns>File stream</returns>
         public static FileStream LoadGameContentFile(string relativeFilename)
         {
-            string fullPath = Path.Combine(
-                StorageContainer.TitleLocation, relativeFilename);
-            if (File.Exists(fullPath) == false)
-                return null;
-            else
-                return File.Open(fullPath,
-                    FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            return (FileStream)TitleContainer.OpenStream(relativeFilename);
         }
         #endregion
 
         #region SaveGameContentFile
         public static FileStream SaveGameContentFile(string relativeFilename)
         {
-            string fullPath = Path.Combine(
-                StorageContainer.TitleLocation, relativeFilename);
+            String strAppDir = "";
+#if WINDOWS
+            strAppDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+#elif WINDOWS_PHONE 
+            strAppDir = "";
+#endif
+            string fullPath = Path.Combine(strAppDir, relativeFilename);
+
+#if WINDOWS_PHONE
+            IsolatedStorageFile store = IsolatedStorageFile.GetUserStoreForApplication();
+            return store.CreateFile(fullPath);
+#else
             return File.Open(fullPath,
                 FileMode.Create, FileAccess.Write);
+#endif
         }
         #endregion
 

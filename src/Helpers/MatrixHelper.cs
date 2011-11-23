@@ -33,8 +33,10 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace GoblinXNA.Helpers
 {
@@ -45,6 +47,18 @@ namespace GoblinXNA.Helpers
     public class MatrixHelper
     {
         private static Matrix emptyMatrix = new Matrix();
+
+        // for optimized unproject method
+        private static Matrix invProjView;  
+        private static Vector4 screenPosition;  
+        private static Vector4 worldSpace;  
+        private static Vector3 a;  
+        private static Vector3 b; 
+        private static float w;
+
+        // for optimized project method
+        private static Matrix viewProj;
+        private static Matrix worldViewProj;
 
         /// <summary>
         /// Copies the contents from a 'src' matrix.
@@ -76,6 +90,9 @@ namespace GoblinXNA.Helpers
 
         public static void FloatsToMatrix(float[] mat, out Matrix m)
         {
+#if WINDOWS_PHONE
+            m = Matrix.Identity;
+#endif
             m.M11 = mat[0]; m.M12 = mat[1]; m.M13 = mat[2]; m.M14 = mat[3];
             m.M21 = mat[4]; m.M22 = mat[5]; m.M23 = mat[6]; m.M24 = mat[7];
             m.M31 = mat[8]; m.M32 = mat[9]; m.M33 = mat[10]; m.M34 = mat[11];
@@ -97,6 +114,9 @@ namespace GoblinXNA.Helpers
 
         public static void GetRotationMatrix(ref Matrix src, out Matrix dest)
         {
+#if WINDOWS_PHONE
+            dest = Matrix.Identity;
+#endif
             dest.M11 = src.M11; dest.M12 = src.M12; dest.M13 = src.M13; dest.M14 = src.M14;
             dest.M21 = src.M21; dest.M22 = src.M22; dest.M23 = src.M23; dest.M24 = src.M24;
             dest.M31 = src.M31; dest.M32 = src.M32; dest.M33 = src.M33; dest.M34 = src.M34;
@@ -225,9 +245,29 @@ namespace GoblinXNA.Helpers
         /// the scale is not Vector.One, and translation (3 floats), and pack these information
         /// into an array of bytes for efficiently transfering over the network.
         /// </summary>
-        /// <param name="mat"></param>
-        /// <returns></returns>
+        /// <param name="mat">A matrix to be converted</param>
+        /// <returns>The resulting byte array</returns>
         public static byte[] ConvertToOptimizedBytes(Matrix mat)
+        {
+            return ByteHelper.ConvertFloatArray(ConvertToOptimizedFloats(mat));
+        }
+
+        /// <summary>
+        /// Decompose the matrix into rotation (Quaternion: 4 floats), scale (3 floats) if
+        /// the scale is not Vector.One, and translation (3 floats), and pack these information
+        /// into an array of bytes for efficiently transfering over the network.
+        /// </summary>
+        /// <param name="mat">A matrix to be converted</param>
+        /// <param name="bytes">The resulting byte array</param>
+        /// <returns>Number of resulting bytes</returns>
+        public static int ConvertToOptimizedBytes(Matrix mat, byte[] bytes)
+        {
+            List<float> data = ConvertToOptimizedFloats(mat);
+            ByteHelper.ConvertFloatArray(data, bytes);
+            return data.Count * sizeof(float);
+        }
+
+        private static List<float> ConvertToOptimizedFloats(Matrix mat)
         {
             Quaternion rot;
             Vector3 scale;
@@ -251,16 +291,16 @@ namespace GoblinXNA.Helpers
                 data.Add(scale.Z);
             }
 
-            return ByteHelper.ConvertFloatArray(data);
+            return data;
         }
 
         /// <summary>
         /// Converts an array of bytes containing transformation (rotation, scale, and
         /// translation) into a matrix. Use this method to convert back the information
-        /// packed by ConvertToBytes method.
+        /// packed by ConvertToOptimizedBytes method.
         /// </summary>
         /// <param name="bytes"></param>
-        /// <see cref="ConvertToBytes"/>
+        /// <see cref="ConvertToOptimizedBytes"/>
         /// <returns></returns>
         public static Matrix ConvertFromOptimizedBytes(byte[] bytes)
         {
@@ -272,37 +312,79 @@ namespace GoblinXNA.Helpers
         /// <summary>
         /// Converts an array of bytes containing transformation (rotation, scale, and
         /// translation) into a matrix. Use this method to convert back the information
-        /// packed by ConvertToBytes method.
+        /// packed by ConvertToOptimizedBytes method.
         /// </summary>
         /// <param name="bytes"></param>
-        /// <see cref="ConvertToBytes"/>
+        /// <param name="startIndex"></param>
+        /// <param name="length"></param>
+        /// <see cref="ConvertToOptimizedBytes"/>
         /// <returns></returns>
-        public static void ConvertFromOptimizedBytes(byte[] bytes, ref Matrix mat)
+        public static Matrix ConvertFromOptimizedBytes(byte[] bytes, int startIndex, int length)
         {
-            Quaternion rot = new Quaternion(
-                ByteHelper.ConvertToFloat(bytes, 0),
-                ByteHelper.ConvertToFloat(bytes, 4),
-                ByteHelper.ConvertToFloat(bytes, 8),
-                ByteHelper.ConvertToFloat(bytes, 12));
-
-            Vector3 trans = new Vector3(
-                ByteHelper.ConvertToFloat(bytes, 16),
-                ByteHelper.ConvertToFloat(bytes, 20),
-                ByteHelper.ConvertToFloat(bytes, 24));
-
-            Vector3 scale = Vector3.One;
-            if (bytes.Length > 28)
-            {
-                scale = new Vector3(
-                    ByteHelper.ConvertToFloat(bytes, 28),
-                    ByteHelper.ConvertToFloat(bytes, 32),
-                    ByteHelper.ConvertToFloat(bytes, 36));
-            }
-
-            mat = Matrix.CreateScale(scale) *
-                Matrix.CreateFromQuaternion(rot) * Matrix.CreateTranslation(trans);
+            Matrix mat = Matrix.Identity;
+            ConvertFromOptimizedBytes(bytes, startIndex, length, ref mat);
+            return mat;
         }
 
+        /// <summary>
+        /// Converts an array of bytes containing transformation (rotation, scale, and
+        /// translation) into a matrix. Use this method to convert back the information
+        /// packed by ConvertToOptimizedBytes method.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <param name="mat"></param>
+        /// <see cref="ConvertToOptimizedBytes"/>
+        public static void ConvertFromOptimizedBytes(byte[] bytes, ref Matrix mat)
+        {
+            ConvertFromOptimizedBytes(bytes, 0, bytes.Length, ref mat);
+        }
+
+        /// <summary>
+        /// Converts an array of bytes containing transformation (rotation, scale, and
+        /// translation) into a matrix. Use this method to convert back the information
+        /// packed by ConvertToOptimizedBytes method.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <param name="startIndex"></param>
+        /// <param name="length"></param>
+        /// <param name="mat"></param>
+        public static void ConvertFromOptimizedBytes(byte[] bytes, int startIndex, int length, ref Matrix mat)
+        {
+            float[] vals = new float[length / 4];
+            Buffer.BlockCopy(bytes, startIndex, vals, 0, length);
+
+            Quaternion rot = new Quaternion(vals[0], vals[1], vals[2], vals[3]);
+            Vector3 trans = new Vector3(vals[4], vals[5], vals[6]);
+            Vector3 scale = Vector3.One;
+
+            Matrix temp = Matrix.Identity;
+            Matrix temp2 = Matrix.Identity;
+
+            if (length > 28)
+            {
+                scale = new Vector3(vals[7], vals[8], vals[9]);
+
+                Matrix.CreateScale(ref scale, out mat);
+                Matrix.CreateFromQuaternion(ref rot, out temp);
+                Matrix.Multiply(ref mat, ref temp, out temp2);
+                Matrix.CreateTranslation(ref trans, out temp);
+                Matrix.Multiply(ref temp2, ref temp, out mat);
+            }
+            else
+            {
+                Matrix.CreateFromQuaternion(ref rot, out temp);
+                Matrix.CreateTranslation(ref trans, out temp2);
+                Matrix.Multiply(ref temp, ref temp2, out mat);
+            }
+        }
+
+        /// <summary>
+        /// Converts an array of bytes containing transformation (rotation, scale, and
+        /// translation) into a matrix. Use this method to convert back the information
+        /// packed by ConvertToUnptimizedBytes method.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
         public static Matrix ConvertFromUnoptimizedBytes(byte[] bytes)
         {
             Matrix mat = Matrix.Identity;
@@ -310,27 +392,47 @@ namespace GoblinXNA.Helpers
             return mat;
         }
 
+        /// <summary>
+        /// Converts an array of bytes containing transformation (rotation, scale, and
+        /// translation) into a matrix. Use this method to convert back the information
+        /// packed by ConvertToUnptimizedBytes method.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <param name="mat"></param>
         public static void ConvertFromUnoptimizedBytes(byte[] bytes, ref Matrix mat)
         {
-            mat.M11 = BitConverter.ToSingle(bytes, 0);
-            mat.M12 = BitConverter.ToSingle(bytes, 4);
-            mat.M13 = BitConverter.ToSingle(bytes, 8);
-            mat.M14 = BitConverter.ToSingle(bytes, 12);
+            ConvertFromUnoptimizedBytes(bytes, 0, ref mat);
+        }
 
-            mat.M21 = BitConverter.ToSingle(bytes, 16);
-            mat.M22 = BitConverter.ToSingle(bytes, 20);
-            mat.M23 = BitConverter.ToSingle(bytes, 24);
-            mat.M24 = BitConverter.ToSingle(bytes, 28);
+        /// <summary>
+        /// Converts an array of bytes containing transformation (rotation, scale, and
+        /// translation) into a matrix. Use this method to convert back the information
+        /// packed by ConvertToUnptimizedBytes method.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <param name="startIndex"></param>
+        /// <param name="mat"></param>
+        public static void ConvertFromUnoptimizedBytes(byte[] bytes, int startIndex, ref Matrix mat)
+        {
+            mat.M11 = BitConverter.ToSingle(bytes, startIndex);
+            mat.M12 = BitConverter.ToSingle(bytes, startIndex + 4);
+            mat.M13 = BitConverter.ToSingle(bytes, startIndex + 8);
+            mat.M14 = BitConverter.ToSingle(bytes, startIndex + 12);
 
-            mat.M31 = BitConverter.ToSingle(bytes, 32);
-            mat.M32 = BitConverter.ToSingle(bytes, 36);
-            mat.M33 = BitConverter.ToSingle(bytes, 40);
-            mat.M34 = BitConverter.ToSingle(bytes, 44);
+            mat.M21 = BitConverter.ToSingle(bytes, startIndex + 16);
+            mat.M22 = BitConverter.ToSingle(bytes, startIndex + 20);
+            mat.M23 = BitConverter.ToSingle(bytes, startIndex + 24);
+            mat.M24 = BitConverter.ToSingle(bytes, startIndex + 28);
 
-            mat.M41 = BitConverter.ToSingle(bytes, 48);
-            mat.M42 = BitConverter.ToSingle(bytes, 52);
-            mat.M43 = BitConverter.ToSingle(bytes, 56);
-            mat.M44 = BitConverter.ToSingle(bytes, 60);
+            mat.M31 = BitConverter.ToSingle(bytes, startIndex + 32);
+            mat.M32 = BitConverter.ToSingle(bytes, startIndex + 36);
+            mat.M33 = BitConverter.ToSingle(bytes, startIndex + 40);
+            mat.M34 = BitConverter.ToSingle(bytes, startIndex + 44);
+
+            mat.M41 = BitConverter.ToSingle(bytes, startIndex + 48);
+            mat.M42 = BitConverter.ToSingle(bytes, startIndex + 52);
+            mat.M43 = BitConverter.ToSingle(bytes, startIndex + 56);
+            mat.M44 = BitConverter.ToSingle(bytes, startIndex + 60);
         }
 
         public static Matrix FromString(String matVals)
@@ -415,5 +517,249 @@ namespace GoblinXNA.Helpers
         {
             return Matrix.CreateFromYawPitchRoll(Rotation.Y, Rotation.X, Rotation.Z);
         }
+
+        /// <summary>
+        /// Prepares for the Unproject function (which is 30 times faster than Viewport.Unproject)
+        /// </summary>
+        /// <param name="viewportX"></param>
+        /// <param name="viewportY"></param>
+        /// <param name="viewportWidth"></param>
+        /// <param name="viewportHeight"></param>
+        /// <param name="maxDepth"></param>
+        /// <param name="minDepth"></param>
+        /// <param name="viewMat"></param>
+        /// <param name="projMat"></param>
+        public static void PrepareUnproject(float viewportX, float viewportY, float viewportWidth,
+            float viewportHeight, float maxDepth, float minDepth, Matrix viewMat, Matrix projMat)
+        {
+            Matrix invProj = Matrix.Invert(projMat);
+            Matrix invView = Matrix.Invert(viewMat);
+            invProjView = invProj * invView;
+            screenPosition = new Vector4(1f);
+            screenPosition.W = 1f;
+            a.X = 2f * (1f / viewportWidth);
+            b.X = a.X * viewportX + 1f;
+            a.Y = 2f * (1f / viewportHeight);
+            b.Y = a.Y * viewportY + 1f;
+            a.Z = minDepth;
+            b.Z = 1f / (maxDepth - minDepth);
+        }
+
+        /// <summary>
+        /// Unproject method that is 30 times faster than the Viewport.Unproject function due to
+        /// the usage of pre-computed values. Make sure to call PrepareUnproject method for the
+        /// pre-computation to happen, and then call this Unproject method unless any of the variables
+        /// passed in to PrepareUnproject changes (if they do change, make sure to call it again with
+        /// update values to guarantee correct unprojection).
+        /// </summary>
+        /// <remarks>
+        /// This code is from MSDN forum (http://forums.create.msdn.com/forums/p/57082/348602.aspx).
+        /// Credit goes to nathanjervis. 
+        /// </remarks>
+        /// <see cref="PrepareUnproject"/>
+        /// <param name="screenSpace"></param>
+        public static void Unproject(ref Vector3 screenSpace, ref Vector3 result)
+        {
+            screenPosition.X = (a.X * screenSpace.X - b.X);
+            screenPosition.Y = -(a.Y * screenSpace.Y - b.Y);
+            screenPosition.Z = (screenSpace.Z - a.Z) * b.Z;
+            Vector4.Transform(ref screenPosition, ref invProjView, out worldSpace);
+            w = 1f / worldSpace.W;
+            result.X = worldSpace.X * w;
+            result.Y = worldSpace.Y * w;
+            result.Z = worldSpace.Z * w;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="world"></param>
+        /// <param name="view"></param>
+        /// <param name="projection"></param>
+        public static void PrepareProject(Matrix world, Matrix view, Matrix projection)
+        {
+            Matrix.Multiply(ref view, ref projection, out viewProj);
+            Matrix.Multiply(ref world, ref viewProj, out worldViewProj);
+        }
+
+        /// <summary>
+        /// Project method
+        /// </summary>
+        /// <remarks>
+        /// This code is based on the HLSL code provided on 
+        /// http://social.msdn.microsoft.com/Forums/en-US/xnaframework/thread/fa479f61-c31f-4b73-b7a4-29d101b79048/ .
+        /// Credit goes to riemerg. 
+        /// </remarks>
+        /// <see cref="PrepareProject"/>
+        /// <param name="worldPos"></param>
+        /// <param name="screenSpace"></param>
+        public static void Project(ref Vector3 worldPos, ref Vector3 screenSpace)
+        {
+            Vector4.Transform(ref worldPos, ref worldViewProj, out screenPosition);
+            float w = 1 / screenPosition.W / 2.0f;
+            screenSpace.X = screenPosition.X * w + 0.5f;
+            screenSpace.Y = 1 - (screenPosition.Y * w + 0.5f);
+        }
+
+#if WINDOWS
+
+        /// <summary>
+        /// Saves Matrix values to a file
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <param name="mat"></param>
+        public static void SaveMatrixToXML(string filename, Matrix mat)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
+
+            xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
+
+            XmlElement xmlRootNode = xmlDoc.CreateElement("Matrix");
+            xmlDoc.AppendChild(xmlRootNode);
+
+            SaveMatrixToXML(xmlRootNode, mat, xmlDoc);
+
+            try
+            {
+                xmlDoc.Save(filename);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException("Failed to save the matrix: " + filename);
+            }
+        }
+
+        /// <summary>
+        /// Saves Matrix values to an XML node
+        /// </summary>
+        /// <param name="rootNode"></param>
+        /// <param name="mat"></param>
+        /// <param name="xmlDoc"></param>
+        public static void SaveMatrixToXML(XmlElement rootNode, Matrix mat, XmlDocument xmlDoc)
+        {
+            XmlElement m11Node = xmlDoc.CreateElement("M11");
+            m11Node.InnerText = mat.M11.ToString();
+            rootNode.AppendChild(m11Node);
+
+            XmlElement m12Node = xmlDoc.CreateElement("M12");
+            m12Node.InnerText = mat.M12.ToString();
+            rootNode.AppendChild(m12Node);
+
+            XmlElement m13Node = xmlDoc.CreateElement("M13");
+            m13Node.InnerText = mat.M13.ToString();
+            rootNode.AppendChild(m13Node);
+
+            XmlElement m14Node = xmlDoc.CreateElement("M14");
+            m14Node.InnerText = mat.M14.ToString();
+            rootNode.AppendChild(m14Node);
+
+            XmlElement m21Node = xmlDoc.CreateElement("M21");
+            m21Node.InnerText = mat.M21.ToString();
+            rootNode.AppendChild(m21Node);
+
+            XmlElement m22Node = xmlDoc.CreateElement("M22");
+            m22Node.InnerText = mat.M22.ToString();
+            rootNode.AppendChild(m22Node);
+
+            XmlElement m23Node = xmlDoc.CreateElement("M23");
+            m23Node.InnerText = mat.M23.ToString();
+            rootNode.AppendChild(m23Node);
+
+            XmlElement m24Node = xmlDoc.CreateElement("M24");
+            m24Node.InnerText = mat.M24.ToString();
+            rootNode.AppendChild(m24Node);
+
+            XmlElement m31Node = xmlDoc.CreateElement("M31");
+            m31Node.InnerText = mat.M31.ToString();
+            rootNode.AppendChild(m31Node);
+
+            XmlElement m32Node = xmlDoc.CreateElement("M32");
+            m32Node.InnerText = mat.M32.ToString();
+            rootNode.AppendChild(m32Node);
+
+            XmlElement m33Node = xmlDoc.CreateElement("M33");
+            m33Node.InnerText = mat.M33.ToString();
+            rootNode.AppendChild(m33Node);
+
+            XmlElement m34Node = xmlDoc.CreateElement("M34");
+            m34Node.InnerText = mat.M34.ToString();
+            rootNode.AppendChild(m34Node);
+
+            XmlElement m41Node = xmlDoc.CreateElement("M41");
+            m41Node.InnerText = mat.M41.ToString();
+            rootNode.AppendChild(m41Node);
+
+            XmlElement m42Node = xmlDoc.CreateElement("M42");
+            m42Node.InnerText = mat.M42.ToString();
+            rootNode.AppendChild(m42Node);
+
+            XmlElement m43Node = xmlDoc.CreateElement("M43");
+            m43Node.InnerText = mat.M43.ToString();
+            rootNode.AppendChild(m43Node);
+
+            XmlElement m44Node = xmlDoc.CreateElement("M44");
+            m44Node.InnerText = mat.M44.ToString();
+            rootNode.AppendChild(m44Node);
+        }
+
+        /// <summary>
+        /// Loads Matrix values from a file
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <param name="mat"></param>
+        public static void LoadMatrixFromXML(string filename, ref Matrix mat)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+
+            try
+            {
+                xmlDoc.Load(filename);
+            }
+            catch (Exception exp)
+            {
+                throw new GoblinException(exp.Message);
+            }
+
+            foreach (XmlNode xmlNode in xmlDoc.ChildNodes)
+            {
+                if (xmlNode is XmlElement)
+                {
+                    if (xmlNode.Name.Equals("Matrix"))
+                    {
+                        MatrixHelper.LoadMatrixFromXML(xmlNode, ref mat);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Loads Matrix values from an XML node
+        /// </summary>
+        /// <param name="matrixNode"></param>
+        /// <param name="mat"></param>
+        public static void LoadMatrixFromXML(XmlNode matrixNode, ref Matrix mat)
+        {
+            mat.M11 = float.Parse(matrixNode.ChildNodes[0].InnerText);
+            mat.M12 = float.Parse(matrixNode.ChildNodes[1].InnerText);
+            mat.M13 = float.Parse(matrixNode.ChildNodes[2].InnerText);
+            mat.M14 = float.Parse(matrixNode.ChildNodes[3].InnerText);
+
+            mat.M21 = float.Parse(matrixNode.ChildNodes[4].InnerText);
+            mat.M22 = float.Parse(matrixNode.ChildNodes[5].InnerText);
+            mat.M23 = float.Parse(matrixNode.ChildNodes[6].InnerText);
+            mat.M24 = float.Parse(matrixNode.ChildNodes[7].InnerText);
+
+            mat.M31 = float.Parse(matrixNode.ChildNodes[8].InnerText);
+            mat.M32 = float.Parse(matrixNode.ChildNodes[9].InnerText);
+            mat.M33 = float.Parse(matrixNode.ChildNodes[10].InnerText);
+            mat.M34 = float.Parse(matrixNode.ChildNodes[11].InnerText);
+
+            mat.M41 = float.Parse(matrixNode.ChildNodes[12].InnerText);
+            mat.M42 = float.Parse(matrixNode.ChildNodes[13].InnerText);
+            mat.M43 = float.Parse(matrixNode.ChildNodes[14].InnerText);
+            mat.M44 = float.Parse(matrixNode.ChildNodes[15].InnerText);
+        }
+#endif
     }
 }

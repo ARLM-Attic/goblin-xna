@@ -224,6 +224,7 @@ namespace GoblinXNA.Graphics
                 texture.Dispose();
         }
 
+#if !WINDOWS_PHONE
         public virtual XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
@@ -259,6 +260,7 @@ namespace GoblinXNA.Graphics
                 texture = State.Content.Load<Texture2D>(textureName);
             }
         }
+#endif
 
         #endregion
     }

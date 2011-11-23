@@ -88,7 +88,9 @@ namespace GoblinXNA.SceneGraph
         /// <param name="deviceIdentifier">The 6DOF device identifier (see InputMapper class)</param>
         public TrackerNode(String deviceIdentifier) : this("", deviceIdentifier) { }
 
+#if WINDOWS
         public TrackerNode() : this(GenericInput.Instance.Identifier) { }
+#endif
 
         #endregion
 
@@ -169,6 +171,7 @@ namespace GoblinXNA.SceneGraph
 
         #region Override Methods
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -214,6 +217,7 @@ namespace GoblinXNA.SceneGraph
                 }
             }
         }
+#endif
 
         #endregion
     }

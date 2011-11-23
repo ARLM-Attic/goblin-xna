@@ -70,9 +70,10 @@ namespace GoblinXNA
     public sealed class State
     {
         #region Member Fields
-        private static GraphicsDeviceManager _graphics;
+        private static IGraphicsDeviceService _graphics;
         private static GraphicsDevice _device;
         private static ContentManager _content;
+        private static SpriteBatch spriteBatch;
         private static bool initialized;
         private static Texture2D blankTexture;
         private static Matrix viewMatrix;
@@ -80,8 +81,6 @@ namespace GoblinXNA
         private static Matrix viewProjMatrix;
         private static Matrix viewInverse;
         private static Matrix cameraTransform;
-        private static bool canUsePS20;
-        private static bool canUsePS30;
 
         private static Dictionary<string, string> settings;
 
@@ -92,10 +91,7 @@ namespace GoblinXNA
         private static bool isServer;
         private static int numWaitForClients;
 
-        private static ShadowMapShader shadowShader;
         private static Color boundingBoxColor;
-
-        private static LineManager3D lineManager3D;
 
         private static bool showFPS;
         private static bool showTriangleCount;
@@ -103,18 +99,6 @@ namespace GoblinXNA
         private static Color debugTextColor;
 
         private static ushort threadOption;
-
-        // Remember scene render target. This is very important because for our post screen shaders we have to render our whole scene
-        // to this render target. But in the process we will use many other shaders and they might set their own render targets and then
-        // reset it, but we need to have this scene still to be set. Don't reset to the back buffer (with SetRenderTarget(0, null), this
-        // would stop rendering to our scene render target and the post screen shader will not be able to process our screen.		
-        private static RenderTarget2D remSceneRenderTarget = null;
-
-        // Remember the last render target we set, this way we can check if the rendertarget was set before calling resolve!		
-        private static RenderTarget2D lastSetRenderTarget = null;
-
-        // Remember render to texture instances to allow recreating them all when DeviceReset is called.		
-        private static List<RenderToTexture> remRenderToTextures = new List<RenderToTexture>();
         #endregion
 
         #region Constructors
@@ -130,19 +114,13 @@ namespace GoblinXNA
             _device = _graphics.GraphicsDevice;
 
             // Restore z buffer state
-            _device.RenderState.DepthBufferEnable = true;
-            _device.RenderState.DepthBufferWriteEnable = true;
+            _device.DepthStencilState = DepthStencilState.Default;
             // Set u/v addressing back to wrap
-            _device.SamplerStates[0].AddressU = TextureAddressMode.Wrap;
-            _device.SamplerStates[0].AddressV = TextureAddressMode.Wrap;
-
-            // Recreate all render-targets
-            foreach (RenderToTexture renderToTexture in remRenderToTextures)
-                renderToTexture.HandleDeviceReset();
+            _device.SamplerStates[0] = SamplerState.LinearWrap;
         }
 
         #region Properties
-        internal static GraphicsDeviceManager Graphics
+        internal static IGraphicsDeviceService Graphics
         {
             get { return _graphics; }
         }
@@ -155,6 +133,11 @@ namespace GoblinXNA
         public static ContentManager Content
         {
             get { return _content; }
+        }
+
+        public static SpriteBatch SharedSpriteBatch
+        {
+            get { return spriteBatch; }
         }
 
         /// <summary>
@@ -223,53 +206,19 @@ namespace GoblinXNA
         }
 
         /// <summary>
-        /// Gets or sets whether depth buffer is enabled.
-        /// </summary>
-        internal static bool DepthBufferEnabled
-        {
-            get { return _device.RenderState.DepthBufferEnable; }
-            set { _device.RenderState.DepthBufferEnable = value; }
-        }
-
-        internal static bool DepthBufferWriteEnabled
-        {
-            get { return _device.RenderState.DepthBufferWriteEnable; }
-            set { _device.RenderState.DepthBufferWriteEnable = value; }
-        }
-
-        /// <summary>
         /// Gets or sets whether to enable alpha-blended transparency
         /// </summary>
         internal static bool AlphaBlendingEnabled
         {
-            get { return _device.RenderState.AlphaBlendEnable; }
             set
             {
                 if (value)
                 {
-                    _device.RenderState.AlphaBlendEnable = true;
-                    _device.RenderState.SourceBlend = Blend.SourceAlpha;
-                    _device.RenderState.DestinationBlend = Blend.InverseSourceAlpha;
+                    _device.BlendState = BlendState.AlphaBlend;
                 }
                 else
-                    _device.RenderState.AlphaBlendEnable = false;
+                    _device.BlendState = BlendState.Opaque;
             }
-        }
-
-        /// <summary>
-        /// Gets whether pixel shader 2.0 is supported for the local graphics card
-        /// </summary>
-        public static bool CanUsePS20
-        {
-            get { return canUsePS20; }
-        }
-
-        /// <summary>
-        /// Gets whether pixel shader 3.0 is supported for the local graphics card
-        /// </summary>
-        public static bool CanUsePS30
-        {
-            get { return canUsePS30; }
         }
 
         /// <summary>
@@ -284,27 +233,12 @@ namespace GoblinXNA
         }
 
         /// <summary>
-        /// Gets the shader used to perform shadow mapping
-        /// </summary>
-        public static ShadowMapShader ShadowShader
-        {
-            get { return shadowShader; }
-            set { shadowShader = value; }
-        }
-
-        /// <summary>
         /// Gets or sets the color used to draw the bounding box of each model for debugging.
         /// </summary>
         public static Color BoundingBoxColor
         {
             get { return boundingBoxColor; }
             set { boundingBoxColor = value; }
-        }
-
-        public static LineManager3D LineManager
-        {
-            get { return lineManager3D; }
-            set { lineManager3D = value; }
         }
 
         /// <summary>
@@ -418,7 +352,7 @@ namespace GoblinXNA
         /// </param>
         /// <see cref="GetSettingVariable"/>
         /// <exception cref="GoblinException"></exception>
-        public static void InitGoblin(GraphicsDeviceManager graphics, ContentManager content,
+        public static void InitGoblin(IGraphicsDeviceService graphics, ContentManager content,
             String settingFile)
         {
             if (graphics == null || content == null)
@@ -426,12 +360,12 @@ namespace GoblinXNA
 
             _graphics = graphics;
             _device = graphics.GraphicsDevice;
-            _graphics.DeviceReset += new EventHandler(graphics_DeviceReset);
+            _graphics.DeviceReset += new EventHandler<EventArgs>(graphics_DeviceReset);
             _content = content;
             initialized = true;
+            spriteBatch = new SpriteBatch(_device);
             // creates a blank texture for 2D primitive drawing when texture is not needed
-            blankTexture = new Texture2D(_device, 1, 1, 1, TextureUsage.AutoGenerateMipMap,
-                SurfaceFormat.Bgra5551);
+            blankTexture = new Texture2D(_device, 1, 1, false, SurfaceFormat.Bgra5551);
 
             // puts a white pixel in this blank texture to make a 1x1 blank texture
             ushort[] texData = new ushort[1];
@@ -440,20 +374,25 @@ namespace GoblinXNA
             viewMatrix = Matrix.Identity;
             projMatrix = Matrix.Identity;
 
-            canUsePS20 = _device.GraphicsDeviceCapabilities.PixelShaderVersion.Major >= 2;
-            canUsePS30 = _device.GraphicsDeviceCapabilities.PixelShaderVersion.Major >= 3;
-
             // bounding box color for drawing 3D models' bounding box
             boundingBoxColor = Color.Red;
-            
-            lineManager3D = new LineManager3D();
 
+            DebugShapeRenderer.Initialize();
+  
             settings = new Dictionary<string, string>();
 
             if (settingFile.Length != 0)
                 LoadSettings(settingFile);
+#if WINDOWS
             else
-                WriteSettingTemplate();
+            {
+                try
+                {
+                    WriteSettingTemplate();
+                }
+                catch (Exception) { }
+            }
+#endif
 
             printLevel = Log.LogLevel.Error;
             nextNodeID = 0;
@@ -492,8 +431,10 @@ namespace GoblinXNA
         /// <param name="filename">the filename where the setting variables are stored</param>
         private static void LoadSettings(String filename)
         {
-            XmlTextReader reader = new XmlTextReader(filename);
+            FileStream fs = new FileStream(filename, FileMode.Open);
+            XmlReader reader = XmlReader.Create(fs);
 
+            // Parse the file and display each of the nodes.
             while (reader.Read())
             {
                 switch (reader.NodeType)
@@ -513,7 +454,10 @@ namespace GoblinXNA
         /// </summary>
         private static void WriteSettingTemplate()
         {
-            XmlTextWriter writer = new XmlTextWriter("template_setting.xml", null);
+            XmlWriterSettings ws = new XmlWriterSettings();
+            ws.Indent = true;
+            FileStream fs = new FileStream("template_setting.xml", FileMode.Create);
+            XmlWriter writer = XmlWriter.Create(fs, ws);
             writer.WriteStartDocument();
 
             writer.WriteStartElement("GoblinXNASettings");
@@ -579,47 +523,8 @@ namespace GoblinXNA
 
         internal static void Restore3DSettings()
         {
-            State.Device.SamplerStates[0].AddressU = TextureAddressMode.Wrap;
-            State.Device.SamplerStates[0].AddressV = TextureAddressMode.Wrap;
+            State.Device.SamplerStates[0] = SamplerState.LinearWrap;
+            State.Device.Textures[0] = null;
         }
-
-        #region Render targets
-        // Add render to texture instance to allow recreating them all when DeviceReset is called with help of the remRenderToTextures list. 
-        internal static void AddRemRenderToTexture(RenderToTexture renderToTexture)
-        {
-            remRenderToTextures.Add(renderToTexture);
-        }
-
-        // Current render target we have set, null if it is just the back buffer.		
-        internal static RenderTarget2D CurrentRenderTarget
-        {
-            get { return lastSetRenderTarget; }
-        }
-
-        // Set render target		
-        internal static void SetRenderTarget(RenderTarget2D renderTarget, bool isSceneRenderTarget)
-        {
-            _device.SetRenderTarget(0, renderTarget);
-            if (isSceneRenderTarget)
-                remSceneRenderTarget = renderTarget;
-            lastSetRenderTarget = renderTarget;
-        }
-
-        // Reset render target		
-        internal static void ResetRenderTarget(bool fullResetToBackBuffer)
-        {
-            if (remSceneRenderTarget == null || fullResetToBackBuffer)
-            {
-                remSceneRenderTarget = null;
-                lastSetRenderTarget = null;
-                _device.SetRenderTarget(0, null);
-            }
-            else
-            {
-                _device.SetRenderTarget(0, remSceneRenderTarget);
-                lastSetRenderTarget = remSceneRenderTarget;
-            }
-        }
-        #endregion Render targets
     }
 }

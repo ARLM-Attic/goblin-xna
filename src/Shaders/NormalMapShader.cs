@@ -67,9 +67,6 @@ namespace GoblinXNA.Shaders
             reflectAmount,
             envMap;
 
-        private Matrix tmpMat1;
-        private Matrix tmpMat2;
-        private Matrix tmpMat3;
         private Vector3 tmpVec1;
 
         private Vector4 lColor;
@@ -173,13 +170,7 @@ namespace GoblinXNA.Shaders
             else
                 lNode = localLights[localLights.Count - 1];
 
-            tmpVec1 = lNode.LightSource.Direction;
-            Matrix.CreateTranslation(ref tmpVec1, out tmpMat1);
-            tmpMat2 = lNode.WorldTransformation;
-            MatrixHelper.GetRotationMatrix(ref tmpMat2, out tmpMat2);
-            Matrix.Multiply(ref tmpMat1, ref tmpMat2, out tmpMat3);
-
-            tmpVec1 = tmpMat3.Translation;
+            tmpVec1 = lNode.LightSource.TransformedDirection;
             tmpVec1.Normalize();
             lightDirection.SetValue(-tmpVec1);
 
@@ -190,16 +181,16 @@ namespace GoblinXNA.Shaders
             lightColor.SetValue(lColor);
         }
 
-        public override void Render(Matrix worldMatrix, string techniqueName,
+        public override void Render(ref Matrix worldMatrix, string techniqueName,
             RenderHandler renderDelegate)
         {
             viewProj.SetValue(State.ViewProjectionMatrix);
             viewInverse.SetValue(State.ViewInverseMatrix);
 
             if (techniqueName.Length == 0)
-                techniqueName = "NormalMap";
+                techniqueName = "NormalMapOnly";
 
-            base.Render(worldMatrix, techniqueName, renderDelegate);
+            base.Render(ref worldMatrix, techniqueName, renderDelegate);
         }
 
         #endregion

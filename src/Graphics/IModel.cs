@@ -44,6 +44,28 @@ using GoblinXNA.Shaders;
 namespace GoblinXNA.Graphics
 {
     /// <summary>
+    /// An enum that indicates how the object will be used in a shadow mapping shader.
+    /// </summary>
+    public enum ShadowAttribute 
+    { 
+        /// <summary>
+        /// Indicates that this model does not cast or receive shadow when shadow mapping is in use.
+        /// </summary>
+        None, 
+        /// <summary>
+        /// Indicates that this model receives shadows cast by other objects that can cast shadows, but
+        /// does not cast shadows on other objects.
+        /// </summary>
+        ReceiveOnly, 
+        /// <summary>
+        /// Indicates that this model receives shadows cast by other objects that can cast shadows, and
+        /// also cast shadows on other objects that can receive shadows. This model receives self-casted
+        /// shadows.
+        /// </summary>
+        ReceiveCast 
+    }
+
+    /// <summary>
     /// Model encapsulates all the model-related information needed for rendering.
     /// </summary>
     public interface IModel
@@ -51,24 +73,14 @@ namespace GoblinXNA.Graphics
         #region Properties
 
         /// <summary>
-        /// Flag indicating whether model is enabled and should be rendered.
-        /// </summary>
-        bool Enabled { get; set; }
-
-        /// <summary>
-        /// Flag reflecting whether lighting should be used when rendering this model.
+        /// Gets or sets whether lighting should be used when rendering this model.
         /// </summary>
         bool UseLighting { get; set; }
 
         /// <summary>
-        /// Gets or sets if this model can cast shadows on other objects that can receive shadows
+        /// Gets or sets how this model will be used when shadow mapping is in use.
         /// </summary>
-        bool CastShadows { get; set; }
-
-        /// <summary>
-        /// Gets or sets if this model can receive shadows cast by objects that can cast shadows
-        /// </summary>
-        bool ReceiveShadows { get; set; }
+        ShadowAttribute ShadowAttribute { get; set; }
 
         /// <summary>
         /// Gets or sets the shader to use for rendering this model
@@ -148,29 +160,15 @@ namespace GoblinXNA.Graphics
         /// </remarks>
         /// <param name="material">Material properties of this model</param>
         /// <param name="renderMatrix">Transform of this model</param>
-        void Render(Matrix renderMatrix, Material material);
+        void Render(ref Matrix renderMatrix, Material material);
 
         /// <summary>
-        /// Generate shadows for this model in the generate shadows pass
-        /// of our shadow mapping shader. All objects rendered here will
-        /// cast shadows in our scene.
+        /// 
         /// </summary>
-        /// <remarks>
-        /// This function is called automatically to cast shadows, so do not call this method
-        /// </remarks>
-        /// <param name="renderMatrix">Transform of this model</param>
-        void GenerateShadows(Matrix renderMatrix);
+        /// <param name="renderMatrix"></param>
+        void PrepareShadows(ref Matrix renderMatrix);
 
-        /// <summary>
-        /// Renders all objects that should receive shadows here. Called from the 
-        /// ShadowMappingShader.UseShadow method.
-        /// </summary>
-        /// <remarks>
-        /// This function is called automatically to receive shadows, so do not call this method
-        /// </remarks>
-        /// <param name="renderMatrix">Transform of this model</param>
-        void UseShadows(Matrix renderMatrix);
-
+#if !WINDOWS_PHONE
         /// <summary>
         /// Saves the information necessary to create this model.
         /// </summary>
@@ -190,6 +188,7 @@ namespace GoblinXNA.Graphics
         /// </summary>
         /// <param name="xmlNode"></param>
         void Load(XmlElement xmlNode);
+#endif
 
         #endregion
     }

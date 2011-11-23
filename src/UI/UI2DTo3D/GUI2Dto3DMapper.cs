@@ -219,7 +219,7 @@ namespace GoblinXNA.UI.UI2DTo3D
                 //this.colObj = colObj;
 
                 guiTexture = new Texture2D(State.Device, mapper.GUIWidth, mapper.GUIHeight,
-                    1, TextureUsage.AutoGenerateMipMap, mapper.TextureFormat);
+                    false, mapper.TextureFormat);
                 texCoords = new VertexPositionTexture[4];
 
                 // Calculate the GUI positions where it will rendered in the 3D world
@@ -240,7 +240,7 @@ namespace GoblinXNA.UI.UI2DTo3D
                 texCoords[3].Position = new Vector3(width, height, 0);
                 texCoords[3].TextureCoordinate = new Vector2(1, 1);
 
-                vb = new DynamicVertexBuffer(State.Device, sizeof(float) * 5 * 4, BufferUsage.WriteOnly);
+                vb = new DynamicVertexBuffer(State.Device, VertexPositionTexture.VertexDeclaration, 4, BufferUsage.WriteOnly);
                 vb.SetData(texCoords);
 
                 short[] indices = new short[6];
@@ -295,7 +295,7 @@ namespace GoblinXNA.UI.UI2DTo3D
                 if (guiTexture.IsDisposed)
                 {
                     guiTexture = new Texture2D(State.Device, mapper.GUIWidth, 
-                        mapper.GUIHeight, 1, TextureUsage.AutoGenerateMipMap, mapper.TextureFormat);
+                        mapper.GUIHeight, false, mapper.TextureFormat);
                 }
 
                 guiTexture.SetData(textureData);

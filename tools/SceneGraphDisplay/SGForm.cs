@@ -390,7 +390,7 @@ namespace SceneGraphDisplay
                     Matrix transmat = currentGeometryNode.WorldTransformation;
 
                     // workaround for storing the X,Y coordinates of the particular geometry node in the property value table
-                    Vector3 point = CurrentScene.GraphicsDevice.Viewport.Project(bs.Center, CurrentScene.CameraNode.Camera.Projection, CurrentScene.CameraNode.Camera.View, Matrix.Identity);
+                    Vector3 point = State.Device.Viewport.Project(bs.Center, CurrentScene.CameraNode.Camera.Projection, CurrentScene.CameraNode.Camera.View, Matrix.Identity);
                     PropertyValueList.Add(new PropertyValue("[X]", "" + point.X));
                     PropertyValueList.Add(new PropertyValue("[Y]", "" + point.Y));
 
@@ -686,39 +686,15 @@ namespace SceneGraphDisplay
         /// </summary>
         public void UpdatePickedObjectDrawing()
         {
-            if (State.LineManager == null)
-                throw new GoblinException("You need to initialize State.LineManager");
-
             if (CurrentPickedGeometryNode != null)
             {
-                CurrentPickedGeometryNode.ShowBoundingVolume = true;
-                Vector3 point = CurrentScene.GraphicsDevice.Viewport.Project(CurrentPickedGeometryNode.BoundingVolume.Center, CurrentScene.CameraNode.Camera.Projection, CurrentScene.CameraNode.Camera.View, Matrix.Identity);
-                float X = point.X;
-                float Y = point.Y;
+                Vector3[] corners = CurrentPickedGeometryNode.Model.MinimumBoundingBox.GetCorners();
+                Matrix renderMatrix = CurrentPickedGeometryNode.MarkerTransform *
+                    CurrentPickedGeometryNode.WorldTransformation;
+                for (int i = 0; i < corners.Length; i++)
+                    Vector3.Transform(ref corners[i], ref renderMatrix, out corners[i]);
 
-                BoundingBox bb = CurrentPickedGeometryNode.Model.MinimumBoundingBox;
-                Vector3 min = bb.Min;
-                Vector3 max = bb.Max;
-                Vector3 minMaxZ = (new Vector3(min.X, min.Y, max.Z));
-                Vector3 minMaxX = (new Vector3(max.X, min.Y, min.Z));
-                Vector3 minMaxY = (new Vector3(min.X, max.Y, min.Z));
-                Vector3 maxMinX = (new Vector3(min.X, max.Y, max.Z));
-                Vector3 maxMinY = (new Vector3(max.X, min.Y, max.Z));
-                Vector3 maxMinZ = (new Vector3(max.X, max.Y, min.Z));
-
-                Microsoft.Xna.Framework.Graphics.Color color = Microsoft.Xna.Framework.Graphics.Color.Red;
-                State.LineManager.AddLine(min, minMaxX, color);
-                State.LineManager.AddLine(min, minMaxY, color);
-                State.LineManager.AddLine(min, minMaxZ, color);
-                State.LineManager.AddLine(max, maxMinX, color);
-                State.LineManager.AddLine(max, maxMinY, color);
-                State.LineManager.AddLine(max, maxMinZ, color);
-                State.LineManager.AddLine(minMaxY, maxMinX, color);
-                State.LineManager.AddLine(minMaxY, maxMinZ, color);
-                State.LineManager.AddLine(minMaxZ, maxMinX, color);
-                State.LineManager.AddLine(minMaxZ, maxMinY, color);
-                State.LineManager.AddLine(minMaxX, maxMinY, color);
-                State.LineManager.AddLine(minMaxX, maxMinZ, color);
+                DebugShapeRenderer.AddBoundingBox(corners, Microsoft.Xna.Framework.Color.Red, 0);
             }
         }
 
@@ -939,9 +915,9 @@ namespace SceneGraphDisplay
                 Vector3 farSource = new Vector3(mouseLocation.X, mouseLocation.Y, 1);
 
                 // Now convert the near and far source to actual near and far 3D points based on our eye location and view frustum
-                Vector3 nearPoint = CurrentScene.GraphicsDevice.Viewport.Unproject(nearSource,
+                Vector3 nearPoint = State.Device.Viewport.Unproject(nearSource,
                     State.ProjectionMatrix, State.ViewMatrix, Matrix.Identity);
-                Vector3 farPoint = CurrentScene.GraphicsDevice.Viewport.Unproject(farSource,
+                Vector3 farPoint = State.Device.Viewport.Unproject(farSource,
                     State.ProjectionMatrix, State.ViewMatrix, Matrix.Identity);
 
                 Node SceneGraphNode = CurrentScene.RootNode;

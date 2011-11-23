@@ -42,7 +42,9 @@ using XnaTexture = Microsoft.Xna.Framework.Graphics.Texture;
 
 using GoblinXNA;
 using GoblinXNA.Graphics;
+#if !WINDOWS_PHONE
 using GoblinXNA.Graphics.ParticleEffects;
+#endif
 using GoblinXNA.SceneGraph;
 using GoblinXNA.Shaders;
 using GoblinXNA.Helpers;
@@ -50,24 +52,20 @@ using GoblinXNA.Helpers;
 namespace Tutorial14___Skinned_Model_Animation
 {
     /// <summary>
-    /// An implementation of the IShader interface that works with the SkinnedModel shader (SkinnedModel.fx)
+    /// An implementation of the IShader interface that works with SkinnedEffect
     /// </summary>
-    public class SkinnedModelShader : Shader
+    public class SkinnedModelShader : IShader, IAlphaBlendable
     {
         #region Member Fields
 
-        /// <summary>
-        /// Defines some of the commonly used effect parameters in shader files.
-        /// </summary>
-        protected EffectParameter 
-            bones,
-            view,
-            texture,
-            ambientLightColor,
-            lights,
-            numLights;
-
-        protected List<LightSource> lightSources;
+        private SkinnedEffect skinnedEffect;
+        private List<LightSource> lightSources;
+        private Vector3 ambientLight;
+        private float[] originalAlphas;
+        private bool originalSet;
+        private int alphaIndexer;
+        private SkinnedEffect internalEffect;
+        private bool lightsChanged;
 
         #region Temporary Variables
 
@@ -81,83 +79,122 @@ namespace Tutorial14___Skinned_Model_Animation
         #endregion
 
         #region Constructors
-
-        public SkinnedModelShader(String shaderName)
-            : base(shaderName)
+        /// <summary>
+        /// Creates a simple shader to render 3D meshes using the BasicEffect class.
+        /// </summary>
+        /// <exception cref="GoblinException"></exception>
+        public SkinnedModelShader()
         {
-            lightSources = new List<LightSource>();
-        }
+            if (!State.Initialized)
+                throw new GoblinException("Goblin XNA needs to be initialized first using State.InitGoblin(..)");
 
+            skinnedEffect = new SkinnedEffect(State.Device);
+            lightSources = new List<LightSource>();
+            ambientLight = Vector3.Zero;
+
+            originalSet = false;
+            alphaIndexer = 0;
+        }
         #endregion
 
-        #region Overriden Properties
-
-        public override int MaxLights
+        #region Properties
+        public int MaxLights
         {
             get { return 3; }
         }
 
-        #endregion
-
-        #region Overriden Methods
-
-        /// <summary>
-        /// Loads the effect parameters from the loaded shader file.
-        /// </summary>
-        protected override void GetParameters()
+        public Effect CurrentEffect
         {
-            // Geometry
-            world = effect.Parameters["World"];
-            view = effect.Parameters["View"];
-            projection = effect.Parameters["Projection"];
+            get { return skinnedEffect; }
+        }
 
-            //Bones
-            bones = effect.Parameters["Bones"];
-
-            //Texture
-            texture = effect.Parameters["Texture"];
-
-            lights = effect.Parameters["lights"];
-            ambientLightColor = effect.Parameters["ambientLightColor"];
-            numLights = effect.Parameters["numLights"];
+        public Material CurrentMaterial
+        {
+            get;
+            set;
         }
 
         /// <summary>
-        /// This shader does not support material effect.
+        /// Indicates whether to prefer using per-pixel lighting if applicable.
         /// </summary>
-        /// <param name="material"></param>
-        public override void SetParameters(Material material)
+        public bool PreferPerPixelLighting
+        {
+            get { return skinnedEffect.PreferPerPixelLighting; }
+            set { skinnedEffect.PreferPerPixelLighting = value; }
+        }
+        #endregion
+
+        #region IAlphaBlendable implementations
+        public void SetOriginalAlphas(ModelEffectCollection effectCollection)
+        {
+            if (originalSet)
+                return;
+
+            originalAlphas = new float[effectCollection.Count];
+
+            for (int i = 0; i < effectCollection.Count; i++)
+                if(effectCollection[i] is SkinnedEffect)
+                    originalAlphas[i] = ((SkinnedEffect)effectCollection[i]).Alpha;
+
+            originalSet = true;
+        }
+        #endregion
+
+        #region IShader implementations
+        public void SetParameters(Material material)
         {
             if (material.InternalEffect != null)
             {
-                effect = material.InternalEffect;
-
-                GetParameters();
-
-                numLights.SetValue(lightSources.Count);
-
-                if (lightSources.Count > 0)
+                if (material.InternalEffect is SkinnedEffect)
                 {
-                    for (int i = 0; i < lightSources.Count; i++)
+                    internalEffect = (SkinnedEffect)material.InternalEffect;
+                    internalEffect.Alpha = originalAlphas[alphaIndexer] * material.Diffuse.W;
+
+                    internalEffect.PreferPerPixelLighting = skinnedEffect.PreferPerPixelLighting;
+                    internalEffect.AmbientLightColor = skinnedEffect.AmbientLightColor;
+
+                    if (lightsChanged)
                     {
-                        lights.Elements[i].StructureMembers["direction"].SetValue(lightSources[i].Direction);
-                        lights.Elements[i].StructureMembers["color"].SetValue(lightSources[i].Diffuse);
+                        if (lightSources.Count > 0)
+                        {
+                            DirectionalLight[] lights = {internalEffect.DirectionalLight0,
+                            internalEffect.DirectionalLight1, internalEffect.DirectionalLight2};
+
+                            int numLightSource = lightSources.Count;
+                            for (int i = 0; i < numLightSource; i++)
+                            {
+                                lights[i].Enabled = true;
+                                lights[i].DiffuseColor = Vector3Helper.GetVector3(lightSources[i].Diffuse);
+                                lights[i].Direction = lightSources[i].Direction;
+                                lights[i].SpecularColor = Vector3Helper.GetVector3(lightSources[i].Specular);
+                            }
+                        }
                     }
+
+                    alphaIndexer = (alphaIndexer + 1) % originalAlphas.Length;
                 }
+                else
+                    Log.Write("Passed internal effect is not BasicEffect, so we can not apply the " +
+                        "effect to this shader", Log.LogLevel.Warning);
+            }
+            else
+            {
+                skinnedEffect.Alpha = material.Diffuse.W;
+                skinnedEffect.DiffuseColor = Vector3Helper.GetVector3(material.Diffuse);
+                skinnedEffect.SpecularColor = Vector3Helper.GetVector3(material.Specular);
+                skinnedEffect.EmissiveColor = Vector3Helper.GetVector3(material.Emissive);
+                skinnedEffect.SpecularPower = material.SpecularPower;
+                skinnedEffect.Texture = material.Texture;
             }
         }
 
-        /// <summary>
-        /// This shader does not support lighting effect.
-        /// </summary>
-        /// <param name="lightSources"></param>
-        /// <param name="ambientLightColor"></param>
-        public override void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
+        public void SetParameters(List<LightNode> globalLights, List<LightNode> localLights)
         {
             bool ambientSet = false;
+            ClearBasicEffectLights();
             lightSources.Clear();
             LightNode lNode = null;
-            Vector4 ambient = new Vector4(0, 0, 0, 1);
+            Vector4 ambientLightColor = new Vector4(0, 0, 0, 1);
 
             // traverse the local lights in reverse order in order to get closest light sources
             // in the scene graph
@@ -165,9 +202,9 @@ namespace Tutorial14___Skinned_Model_Animation
             {
                 lNode = localLights[i];
                 // only set the ambient light color if it's not set yet and not the default color (0, 0, 0, 1)
-                if (!ambientSet && (!lNode.AmbientLightColor.Equals(ambient)))
+                if (!ambientSet && (!lNode.AmbientLightColor.Equals(ambientLightColor)))
                 {
-                    ambient = lNode.AmbientLightColor;
+                    ambientLightColor = lNode.AmbientLightColor;
                     ambientSet = true;
                 }
 
@@ -204,7 +241,7 @@ namespace Tutorial14___Skinned_Model_Animation
                 // only set the ambient light color if it's not set yet and not the default color (0, 0, 0, 1)
                 if (!ambientSet && (!lNode.AmbientLightColor.Equals(ambientLightColor)))
                 {
-                    ambient = lNode.AmbientLightColor;
+                    ambientLightColor = lNode.AmbientLightColor;
                     ambientSet = true;
                 }
 
@@ -233,86 +270,95 @@ namespace Tutorial14___Skinned_Model_Animation
                         break;
                 }
             }
-
-            ambientLightColor.SetValue(ambient);
-            numLights.SetValue(lightSources.Count);
+            
+            ambientLight = Vector3Helper.GetVector3(ambientLightColor);
 
             if (lightSources.Count > 0)
             {
-                for (int i = 0; i < lightSources.Count; i++)
+                DirectionalLight[] lights = {skinnedEffect.DirectionalLight0,
+                    skinnedEffect.DirectionalLight1, skinnedEffect.DirectionalLight2};
+
+                int numLightSource = lightSources.Count;
+                for (int i = 0; i < numLightSource; i++)
                 {
-                    lights.Elements[i].StructureMembers["direction"].SetValue(lightSources[i].Direction);
-                    lights.Elements[i].StructureMembers["color"].SetValue(lightSources[i].Diffuse);
+                    lights[i].Enabled = true;
+                    lights[i].DiffuseColor = Vector3Helper.GetVector3(lightSources[i].Diffuse);
+                    lights[i].Direction = lightSources[i].Direction;
+                    lights[i].SpecularColor = Vector3Helper.GetVector3(lightSources[i].Specular);
                 }
+            }
+
+            skinnedEffect.AmbientLightColor = ambientLight;
+
+            lightsChanged = true;
+        }
+
+        /// <summary>
+        /// This shader does not support special camera effect.
+        /// </summary>
+        /// <param name="camera"></param>
+        public virtual void SetParameters(CameraNode camera)
+        {
+        }
+
+        public virtual void SetParameters(GoblinXNA.Graphics.Environment environment)
+        {
+            skinnedEffect.FogEnabled = environment.FogEnabled;
+            if (environment.FogEnabled)
+            {
+                skinnedEffect.FogStart = environment.FogStartDistance;
+                skinnedEffect.FogEnd = environment.FogEndDistance;
+                skinnedEffect.FogColor = Vector3Helper.GetVector3(environment.FogColor);
             }
         }
 
-        public override void Render(Matrix worldMatrix, String techniqueName,
-            RenderHandler renderDelegate)
+#if !WINDOWS_PHONE
+        /// <summary>
+        /// This shader does not support particle effect.
+        /// </summary>
+        /// <param name="particleEffect"></param>
+        public void SetParameters(ParticleEffect particleEffect)
         {
-            if (techniqueName == null)
-                throw new GoblinException("techniqueName is null");
-            if (renderDelegate == null)
-                throw new GoblinException("renderDelegate is null");
+        }
+#endif
 
-            world.SetValue(worldMatrix);
-            view.SetValue(State.ViewMatrix);
-            projection.SetValue(State.ProjectionMatrix);
+        public void Render(ref Matrix worldMatrix, string techniqueName, RenderHandler renderDelegate)
+        {
+            SkinnedEffect effect = (internalEffect != null) ? internalEffect : skinnedEffect;
+            effect.View = State.ViewMatrix;
+            effect.Projection = State.ProjectionMatrix;
+            effect.World = worldMatrix;
 
-            // Start shader
-            effect.CurrentTechnique = effect.Techniques[techniqueName];
-            try
+            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
             {
-                BlendFunction origBlendFunc = State.Device.RenderState.BlendFunction;
-                Blend origDestBlend = State.Device.RenderState.DestinationBlend;
-                Blend origSrcBlend = State.Device.RenderState.SourceBlend;
-                CompareFunction origDepthFunc = State.Device.RenderState.DepthBufferFunction;
-                bool origAlphaEnable = State.Device.RenderState.AlphaBlendEnable;
-                bool origDepthWriteEnable = State.Device.RenderState.DepthBufferWriteEnable;
-
-                State.Device.RenderState.BlendFunction = BlendFunction.Add;
-                State.Device.RenderState.DestinationBlend = Blend.One;
-                State.Device.RenderState.SourceBlend = Blend.One;
-                State.Device.RenderState.DepthBufferFunction = CompareFunction.LessEqual;
-                State.Device.RenderState.DepthBufferEnable = true;
-
-                effect.Begin(SaveStateMode.None);
-
-
-                State.Device.RenderState.DepthBufferWriteEnable = true;
-                State.Device.RenderState.AlphaBlendEnable = false;
-
-                // Render all passes (usually just one)
-                //foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-                for (int num = 0; num < effect.CurrentTechnique.Passes.Count; num++)
-                {
-                    EffectPass pass = effect.CurrentTechnique.Passes[num];
-
-                    pass.Begin();
-                    renderDelegate();
-                    pass.End();
-
-                }
-                State.Device.RenderState.AlphaBlendEnable = true;
-                State.Device.RenderState.DepthBufferWriteEnable = false;
-
-
-                State.Device.RenderState.BlendFunction = origBlendFunc;
-                State.Device.RenderState.DestinationBlend = origDestBlend;
-                State.Device.RenderState.SourceBlend = origSrcBlend;
-                State.Device.RenderState.DepthBufferFunction = origDepthFunc;
-                State.Device.RenderState.AlphaBlendEnable = origAlphaEnable;
-                State.Device.RenderState.DepthBufferWriteEnable = origDepthWriteEnable;
+                pass.Apply();
+                renderDelegate();
             }
-            catch (Exception exp)
-            {
-                Log.Write(exp.Message);
-            }
-            finally
-            {
-                // End shader
-                effect.End();
-            }
+        }
+
+        public void RenderEnd()
+        {
+            if (lightsChanged)
+                lightsChanged = false;
+        }
+
+        public void Dispose()
+        {
+            if (skinnedEffect != null)
+                skinnedEffect.Dispose();
+            if (internalEffect != null)
+                internalEffect.Dispose();
+        }
+
+        #endregion
+
+        #region Private Method
+
+        private void ClearBasicEffectLights()
+        {
+            skinnedEffect.DirectionalLight0.Enabled = false;
+            skinnedEffect.DirectionalLight1.Enabled = false;
+            skinnedEffect.DirectionalLight2.Enabled = false;
         }
 
         #endregion
@@ -321,13 +367,7 @@ namespace Tutorial14___Skinned_Model_Animation
 
         public void UpdateBones(Matrix[] updatedBones)
         {
-            int k = updatedBones.Length;
-            Matrix[] temp = new Matrix[k];
-            for (int i = 0; i < k; i++)
-            {
-                temp[i] = updatedBones[i];
-            }
-            bones.SetValue(temp);
+            internalEffect.SetBoneTransforms(updatedBones);
         }
 
         #endregion

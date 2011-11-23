@@ -22,10 +22,15 @@ namespace GoblinXNA.Graphics.ParticleEffects
     public class ExplosionSmokeParticleEffect : ParticleEffect
     {
         /// <summary>
+        /// Creates a particle system that simulates an explosion effect with smoke with 200 maximum particles.
+        /// </summary>
+        public ExplosionSmokeParticleEffect() : this(200) { }
+
+        /// <summary>
         /// Creates a particle system that simulates an explosion effect with smoke.
         /// </summary>
-        public ExplosionSmokeParticleEffect()
-            : base()
+        public ExplosionSmokeParticleEffect(int maxParticles)
+            : base(maxParticles)
         {
         }
 
@@ -34,9 +39,6 @@ namespace GoblinXNA.Graphics.ParticleEffects
             base.Initialize();
 
             textureName = "smoke";
-
-            maxParticles = 200;
-            particles = new ParticleVertex[maxParticles];
 
             duration = TimeSpan.FromSeconds(4);
 

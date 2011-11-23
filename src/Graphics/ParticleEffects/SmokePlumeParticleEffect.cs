@@ -20,10 +20,18 @@ namespace GoblinXNA.Graphics.ParticleEffects
     public class SmokePlumeParticleEffect : ParticleEffect
     {
         /// <summary>
+        /// Creates a smoke particle system with 600 maximum particles.
+        /// </summary>
+        public SmokePlumeParticleEffect() : this(600) { }
+
+        /// <summary>
         /// Creates a smoke particle system.
         /// </summary>
-        public SmokePlumeParticleEffect()
-            : base()
+        /// <param name="maxParticles">
+        /// Maximum number of particles that can be displayed at one time.
+        /// </param>
+        public SmokePlumeParticleEffect(int maxParticles)
+            : base(maxParticles)
         {
         }
 
@@ -32,9 +40,6 @@ namespace GoblinXNA.Graphics.ParticleEffects
             base.Initialize();
 
             textureName = "smoke";
-
-            maxParticles = 600;
-            particles = new ParticleVertex[maxParticles];
 
             duration = TimeSpan.FromSeconds(10);
 

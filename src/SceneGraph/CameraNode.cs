@@ -164,11 +164,8 @@ namespace GoblinXNA.SceneGraph
                 if (!isStereo)
                     throw new GoblinException("Use CompoundViewMatrix for mono (non-stereo) camera");
 
-                if (!leftCompoundMatrix.Equals(value))
-                {
-                    leftCompoundMatrix = value;
-                    leftViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).LeftProjection);
-                }
+                leftCompoundMatrix = value;
+                leftViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).LeftProjection);
             }
         }
 
@@ -190,11 +187,8 @@ namespace GoblinXNA.SceneGraph
                 if (!isStereo)
                     throw new GoblinException("Use CompoundViewMatrix for mono (non-stereo) camera");
 
-                if (!rightCompoundMatrix.Equals(value))
-                {
-                    rightCompoundMatrix = value;
-                    rightViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).RightProjection);
-                }
+                rightCompoundMatrix = value;
+                rightViewFrustum = new BoundingFrustum(value * ((StereoCamera)camera).RightProjection);
             }
         }
 
@@ -282,6 +276,7 @@ namespace GoblinXNA.SceneGraph
             return node;
         }
 
+#if !WINDOWS_PHONE
         public override XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = base.Save(xmlDoc);
@@ -307,6 +302,7 @@ namespace GoblinXNA.SceneGraph
             leftViewFrustum = new BoundingFrustum(camera.Projection);
             rightViewFrustum = new BoundingFrustum(camera.Projection);
         }
+#endif
 
         #endregion
     }

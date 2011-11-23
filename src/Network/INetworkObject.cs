@@ -92,8 +92,10 @@ namespace GoblinXNA.Network
         /// <summary>
         /// Interprets the information associated with this object received over the network.
         /// </summary>
-        /// <param name="msg"></param>
-        void InterpretMessage(byte[] msg);
+        /// <param name="msg">A byte array that contains the message associated with this network object</param>
+        /// <param name="startIndex">The starting index in the byte array where associated information starts</param>
+        /// <param name="length"></param>
+        void InterpretMessage(byte[] msg, int startIndex, int length);
 
         #endregion
     }

@@ -111,8 +111,13 @@ namespace GoblinXNA.Helpers
 
                 // Add some info about this session
                 writer.WriteLine("");
+#if WINDOWS_PHONE
+                writer.WriteLine("/// Session started at: " + 
+                    String.Format("{0:d/M/yyyy HH:mm:ss}", DateTime.Now));
+#else
                 writer.WriteLine("/// Session started at: " +
                     StringHelper.WriteIsoDateAndTime(DateTime.Now));
+#endif
                 writer.WriteLine("/// GoblinXNA");
                 writer.WriteLine("");
             } // try

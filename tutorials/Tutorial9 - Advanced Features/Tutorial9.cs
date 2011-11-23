@@ -32,7 +32,6 @@
 
 using System;
 using System.Collections.Generic;
-
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -46,7 +45,13 @@ using GoblinXNA.Device.Generic;
 using GoblinXNA.Graphics.Geometry;
 using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Physics;
+#if WINDOWS
 using GoblinXNA.Physics.Newton1;
+#else
+using GoblinXNA.Physics.Matali;
+using Komires.MataliPhysics;
+using MataliPhysicsObject = Komires.MataliPhysics.PhysicsObject;
+#endif
 using GoblinXNA.Sounds;
 using GoblinXNA.UI;
 using GoblinXNA.UI.UI3D;
@@ -75,11 +80,16 @@ namespace Tutorial9___Advanced_Features
         VectorFont vectorFont;
         // A list of 3D texts to display
         List<Text3DInfo> text3ds;
+        SoundEffect bounceSound;
 
         public Tutorial9()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+#if WINDOWS_PHONE
+            graphics.IsFullScreen = true;
+#endif
         }
 
         /// <summary>
@@ -91,27 +101,37 @@ namespace Tutorial9___Advanced_Features
         protected override void Initialize()
         {
             base.Initialize();
-
+#if WINDOWS
             // Display the mouse cursor
             this.IsMouseVisible = true;
+#endif
 
             // Initialize the GoblinXNA framework
             State.InitGoblin(graphics, Content, "");
 
+#if WINDOWS_PHONE
+            this.Activated += Sound.Instance.GameActivated;
+#endif
+
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set the background color to CornflowerBlue color. 
             // GraphicsDevice.Clear(...) is called by Scene object with this color. 
             scene.BackgroundColor = Color.CornflowerBlue;
 
+#if WINDOWS
             // We will use the Newton physics engine (http://www.newtondynamics.com)
             // for processing the physical simulation
             scene.PhysicsEngine = new NewtonPhysics();
+#else
+            scene.PhysicsEngine = new MataliPhysics();
+#endif
             scene.PhysicsEngine.Gravity = 30;
 
-            // Initialize the XNA audio engine
-            Sound.Initialize("Tutorial9");
+#if WINDOWS_PHONE
+            ((MataliPhysics)scene.PhysicsEngine).SimulationTimeStep = 1 / 30f;
+#endif
 
             text3ds = new List<Text3DInfo>();
 
@@ -124,6 +144,7 @@ namespace Tutorial9___Advanced_Features
             // Create 3D objects
             CreateObjects();
 
+#if WINDOWS
             // Set up physics material interaction specifications between the shooting box and the ground
             NewtonMaterial physMat = new NewtonMaterial();
             physMat.MaterialName1 = "ShootingBox";
@@ -146,8 +167,8 @@ namespace Tutorial9___Advanced_Features
                 if (collisionCount >= 4)
                 {
                     // Set the collision sound volume based on the contact speed
-                    Sound.SetVolume("Default", contactSpeed);
-                    Sound.Play("rubber_ball_01");
+                    SoundEffectInstance instance = Sound.Instance.PlaySoundEffect(bounceSound);
+                    //instance.Volume = contactSpeed / 50f;
                     // Print a text message on the screen
                     Notifier.AddMessage("Contact with speed of " + contactSpeed);
 
@@ -172,9 +193,7 @@ namespace Tutorial9___Advanced_Features
 
             // Add this physics material interaction specifications to the physics engine
             ((NewtonPhysics)scene.PhysicsEngine).AddPhysicsMaterial(physMat);
-
-            // Use per pixel lighting for better quality
-            scene.PreferPerPixelLighting = true;
+#endif
 
             // Add a mouse click handler for shooting a box model from the mouse location 
             MouseInput.Instance.MouseClickEvent += new HandleMouseClick(MouseClickHandler);
@@ -334,6 +353,10 @@ namespace Tutorial9___Advanced_Features
             GeometryNode shootBox = new GeometryNode("ShooterBox" + shooterID++);
             shootBox.Model = boxModel;
             shootBox.Material = shooterMat;
+#if !WINDOWS
+            shootBox.Physics = new MataliObject(shootBox);
+            ((MataliObject)shootBox.Physics).CollisionStartCallback = BoxCollideWithGround;
+#endif
             // Define the material name of this shooting box model
             shootBox.Physics.MaterialName = "ShootingBox";
             shootBox.Physics.Interactable = true;
@@ -350,9 +373,12 @@ namespace Tutorial9___Advanced_Features
 
             // Assign the initial velocity to this shooting box
             shootBox.Physics.InitialLinearVelocity = linVel;
-            shootBox.Physics.InitialWorldTransform = Matrix.CreateTranslation(near);
 
-            scene.RootNode.AddChild(shootBox);
+            TransformNode shooterTrans = new TransformNode();
+            shooterTrans.Translation = near;
+
+            scene.RootNode.AddChild(shooterTrans);
+            shooterTrans.AddChild(shootBox);
         }
 
         protected override void LoadContent()
@@ -360,6 +386,7 @@ namespace Tutorial9___Advanced_Features
             base.LoadContent();
 
             vectorFont = Content.Load<VectorFont>("Arial-24-Vector");
+            bounceSound = Content.Load<SoundEffect>("rubber_ball_01");
         }
 
         /// <summary>
@@ -371,6 +398,45 @@ namespace Tutorial9___Advanced_Features
             Content.Unload();
         }
 
+#if !WINDOWS
+
+        private void BoxCollideWithGround(MataliPhysicsObject baseObject, MataliPhysicsObject collidingObject)
+        {
+            String materialName = ((IPhysicsObject)collidingObject.UserTagObj).MaterialName;
+            if (materialName.Equals("Ground"))
+            {
+                // Set the collision sound volume based on the contact speed
+                SoundEffectInstance instance = Sound.Instance.PlaySoundEffect(bounceSound);
+                // Print a text message on the screen
+                Notifier.AddMessage("Contact with ground");
+
+                // Create a 3D text to be rendered
+                Text3DInfo text3d = new Text3DInfo();
+                text3d.Text = "BOOM!!";
+                // The larger the contact speed, the longer the 3D text will stay displayed
+                text3d.Duration = 1 * 500;
+                text3d.ElapsedTime = 0;
+                Vector3 contactPosition = Vector3.Zero;
+                baseObject.MainWorldTransform.GetPosition(ref contactPosition);
+                // Scale down the vector font since it's quite large, and display the text
+                // above the contact position
+                text3d.Transform = Matrix.CreateScale(0.03f) *
+                    Matrix.CreateTranslation(contactPosition + Vector3.UnitY * 4);
+
+                // Add this 3D text to the display list
+                text3ds.Add(text3d);
+            }
+        }
+
+#endif
+
+#if !WINDOWS_PHONE
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+#endif
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -378,6 +444,16 @@ namespace Tutorial9___Advanced_Features
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+#if WINDOWS_PHONE
+            // Allows the game to exit
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            {
+                scene.Dispose();
+
+                this.Exit();
+            }
+#endif
+
             float elapsedMsecs = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
             // Create a list of 3D text to remove
@@ -395,7 +471,7 @@ namespace Tutorial9___Advanced_Features
             for (int i = 0; i < removeList.Count; i++)
                 text3ds.Remove(removeList[i]);
 
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
         /// <summary>
@@ -424,7 +500,7 @@ namespace Tutorial9___Advanced_Features
                 }
             }
 
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
 
         /// <summary>

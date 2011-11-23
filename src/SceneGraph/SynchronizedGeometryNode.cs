@@ -150,15 +150,16 @@ namespace GoblinXNA.SceneGraph
                 return MatrixHelper.ConvertToOptimizedBytes(worldTransform);
         }
 
-        public virtual void InterpretMessage(byte[] msg)
+        public virtual void InterpretMessage(byte[] msg, int startIndex, int length)
         {
             if (requiresPrecision)
-                MatrixHelper.ConvertFromUnoptimizedBytes(msg, ref worldTransform);
+                MatrixHelper.ConvertFromUnoptimizedBytes(msg, startIndex, ref worldTransform);
             else
-                MatrixHelper.ConvertFromOptimizedBytes(msg, ref worldTransform);
+                MatrixHelper.ConvertFromOptimizedBytes(msg, startIndex, length, ref worldTransform);
             physicsProperties.PhysicsWorldTransform = worldTransform;
         }
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// Saves the information of this physics object to an XML element.
         /// </summary>
@@ -202,6 +203,7 @@ namespace GoblinXNA.SceneGraph
             if (networkNode.HasAttribute("RequiresPrecision"))
                 requiresPrecision = bool.Parse(networkNode.GetAttribute("RequiresPrecision"));
         }
+#endif
 
         #endregion
     }

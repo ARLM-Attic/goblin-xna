@@ -40,7 +40,6 @@ using Microsoft.Xna.Framework.Graphics;
 
 using GoblinXNA.Graphics;
 using GoblinXNA.UI.UI2D;
-using GoblinXNA.UI.UI2DTo3D;
 using GoblinXNA.UI.UI3D;
 
 namespace GoblinXNA.UI
@@ -200,7 +199,7 @@ namespace GoblinXNA.UI
         /// <param name="renderRightEye"></param>
         public void Draw(float elapsedTime, bool clear, bool renderRightEye)
         {
-            State.DepthBufferEnabled = false;
+            State.Device.DepthStencilState = DepthStencilState.None;
 
             passedTime += elapsedTime;
             if (passedTime >= 1000)
@@ -391,7 +390,7 @@ namespace GoblinXNA.UI
             else
                 UI2DRenderer.Flush(clear, globalUIShift/2);
 
-            State.DepthBufferEnabled = true;
+            State.Device.DepthStencilState = DepthStencilState.Default;
 
             UI3DRenderer.Flush(clear);
         }

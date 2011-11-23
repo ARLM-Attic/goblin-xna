@@ -2,6 +2,7 @@ using System;
 
 namespace Tutorial7___Custom_Shape
 {
+#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -15,5 +16,6 @@ namespace Tutorial7___Custom_Shape
             }
         }
     }
+#endif
 }
 

@@ -227,6 +227,7 @@ namespace GoblinXNA.Device.Util
             Matrix.Multiply(ref tmpMat1, ref tmpMat2, out result);
         }
 
+#if !WINDOWS_PHONE
         public virtual XmlElement Save(XmlDocument xmlDoc)
         {
             XmlElement xmlNode = xmlDoc.CreateElement(TypeDescriptor.GetClassName(this));
@@ -260,7 +261,7 @@ namespace GoblinXNA.Device.Util
             if (xmlNode.HasAttribute("RotThreshold"))
                 rotThreshold = float.Parse(xmlNode.GetAttribute("RotThreshold"));
         }
-
+#endif
         #endregion
     }
 }

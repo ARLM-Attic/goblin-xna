@@ -47,7 +47,6 @@ namespace GoblinXNA.UI.UI2D
     public class UI2DRenderer
     {
         #region Static Member Fields
-        private static SpriteBatch spriteBatch;
         private static Dictionary<Circle, Texture2D> circleTextures = new Dictionary<Circle, Texture2D>();
         private static Dictionary<Polygon, Texture2D> polyTextures = new Dictionary<Polygon, Texture2D>();
         private static List<Drawable2DObject> queuedObjects = new List<Drawable2DObject>();
@@ -188,7 +187,7 @@ namespace GoblinXNA.UI.UI2D
                 texture = circleTextures[circle];
             else
             {
-                texture = new Texture2D(State.Device, rect.Width, rect.Height, 1, TextureUsage.None,
+                texture = new Texture2D(State.Device, rect.Width, rect.Height, false,
                     SurfaceFormat.Bgra5551);
 
                 ushort[] data = new ushort[rect.Width * rect.Height];
@@ -255,8 +254,7 @@ namespace GoblinXNA.UI.UI2D
                 texture = circleTextures[circle];
             else
             {
-                texture = new Texture2D(State.Device, rect.Width, rect.Height, 1, TextureUsage.None,
-                    SurfaceFormat.Bgra5551);
+                texture = new Texture2D(State.Device, rect.Width, rect.Height, false, SurfaceFormat.Bgra5551);
 
                 ushort[] data = new ushort[rect.Width * rect.Height];
 
@@ -369,16 +367,14 @@ namespace GoblinXNA.UI.UI2D
                     throw new GoblinException("The polygon is not a convex shape");
                 }
 
-                texture = new Texture2D(State.Device, rect.Width, rect.Height, 1, TextureUsage.None,
-                    SurfaceFormat.Bgra5551);
+                texture = new Texture2D(State.Device, rect.Width, rect.Height, false, SurfaceFormat.Bgra5551);
                 texture.SetData(data);
 
                 polyTextures.Add(poly, texture);
             }
             else
             {
-                texture = new Texture2D(State.Device, rect.Width, rect.Height, 1, TextureUsage.None,
-                    SurfaceFormat.Bgra5551);
+                texture = new Texture2D(State.Device, rect.Width, rect.Height, false, SurfaceFormat.Bgra5551);
 
                 int currentY = 0;
 
@@ -582,12 +578,10 @@ namespace GoblinXNA.UI.UI2D
                     finalPos.X = origin.X;
                     break;
                 case GoblinEnums.HorizontalAlignment.Center:
-                    finalPos.X = (State.Graphics.PreferredBackBufferWidth -
-                        font.MeasureString(text).X * scale.X) / 2 + origin.X;
+                    finalPos.X = (State.Width - font.MeasureString(text).X * scale.X) / 2 + origin.X;
                     break;
                 case GoblinEnums.HorizontalAlignment.Right:
-                    finalPos.X = State.Graphics.PreferredBackBufferWidth -
-                        font.MeasureString(text).X * scale.X + origin.X;
+                    finalPos.X = State.Width - font.MeasureString(text).X * scale.X + origin.X;
                     break;
             }
             switch (yAlign)
@@ -596,12 +590,10 @@ namespace GoblinXNA.UI.UI2D
                     finalPos.Y = origin.Y;
                     break;
                 case GoblinEnums.VerticalAlignment.Center:
-                    finalPos.Y = (State.Graphics.PreferredBackBufferHeight -
-                        font.MeasureString(text).Y * scale.Y) / 2 + origin.Y;
+                    finalPos.Y = (State.Height - font.MeasureString(text).Y * scale.Y) / 2 + origin.Y;
                     break;
                 case GoblinEnums.VerticalAlignment.Bottom:
-                    finalPos.Y = State.Graphics.PreferredBackBufferHeight -
-                        font.MeasureString(text).Y * scale.Y + origin.Y;
+                    finalPos.Y = State.Height - font.MeasureString(text).Y * scale.Y + origin.Y;
                     break;
             }
 
@@ -631,11 +623,8 @@ namespace GoblinXNA.UI.UI2D
         /// </summary>
         public static void Flush(bool clear, int shiftAmount)
         {
-            if (spriteBatch == null)
-                spriteBatch = new SpriteBatch(State.Device);
-
             // Start rendering with alpha blending mode, and render back to front
-            spriteBatch.Begin(SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None);
+            State.SharedSpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
 
             Vector2 actualPos = Vector2.Zero;
             Rectangle actualRect = Rectangle.Empty;
@@ -653,7 +642,7 @@ namespace GoblinXNA.UI.UI2D
                         if (shiftAmount != 0)
                             actualPos.X += shiftAmount;
 
-                        spriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, actualPos,
+                        State.SharedSpriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, actualPos,
                             obj2d.textInfo.color, obj2d.textInfo.rotation, obj2d.textInfo.origin,
                             obj2d.textInfo.scale, obj2d.textInfo.effect, obj2d.textInfo.depth);
                     }
@@ -669,9 +658,9 @@ namespace GoblinXNA.UI.UI2D
                             actualRect.X += shiftAmount;
 
                         if (obj2d.shapeInfo.angle == 0)
-                            spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, obj2d.shapeInfo.color);
+                            State.SharedSpriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, obj2d.shapeInfo.color);
                         else
-                            spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, null, obj2d.shapeInfo.color,
+                            State.SharedSpriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, null, obj2d.shapeInfo.color,
                                 obj2d.shapeInfo.angle, Vector2.Zero, SpriteEffects.None, 0);
                     }
                 }
@@ -686,7 +675,7 @@ namespace GoblinXNA.UI.UI2D
                     if (shiftAmount != 0)
                         actualPos.X += shiftAmount;
 
-                    spriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, actualPos,
+                    State.SharedSpriteBatch.DrawString(obj2d.textInfo.font, obj2d.textInfo.text, actualPos,
                         obj2d.textInfo.color, obj2d.textInfo.rotation, obj2d.textInfo.origin,
                         obj2d.textInfo.scale, obj2d.textInfo.effect, obj2d.textInfo.depth);
                 }
@@ -697,14 +686,14 @@ namespace GoblinXNA.UI.UI2D
                         actualRect.X += shiftAmount;
 
                     if (obj2d.shapeInfo.angle == 0)
-                        spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, obj2d.shapeInfo.color);
+                        State.SharedSpriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, obj2d.shapeInfo.color);
                     else
-                        spriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, null, obj2d.shapeInfo.color,
+                        State.SharedSpriteBatch.Draw(obj2d.shapeInfo.texture, actualRect, null, obj2d.shapeInfo.color,
                             obj2d.shapeInfo.angle, Vector2.Zero, SpriteEffects.None, 0);
                 }
             }
 
-            spriteBatch.End();
+            State.SharedSpriteBatch.End();
 
             if (clear)
             {

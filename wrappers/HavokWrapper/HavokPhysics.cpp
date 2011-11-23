@@ -8,6 +8,7 @@
 #include <Common/Base/Memory/MemoryClasses/hkMemoryClassDefinitions.h>
 #include <Common/Base/Memory/System/hkMemorySystem.h>
 #include <Common/Base/Memory/Allocator/hkMemoryAllocator.h>
+#include <Common/Base/Memory/Allocator/Malloc/hkMallocAllocator.h>
 
 #include <Common/Internal/ConvexHull/hkGeometryUtility.h>
 #include <Common/Internal/ConvexHull/hkPlaneEquationUtil.h>
@@ -63,11 +64,15 @@ extern "C"
 {
 	__declspec(dllexport) bool init_world(float gravity[], float worldSize, float collisionTolerance,
 		hkpWorldCinfo::SimulationType simType, hkpWorldCinfo::SolverType solverType, bool fireCollisionCallbacks,
-		bool enableDeactivation)
+		bool enableDeactivation, float contactRestingVelocity)
 	{
+		hkMallocAllocator mallocBase;
+		hkMemorySystem::FrameInfo frameInfo(0);
+
 		hkMemoryRouter* memoryRouter;
 
-		memoryRouter = hkMemoryInitUtil::initFreeList();
+		memoryRouter = hkMemoryInitUtil::initFreeList(&mallocBase, frameInfo);
+		extAllocator::initDefault();
 
 		if (memoryRouter == HK_NULL)
 		{
@@ -87,6 +92,7 @@ extern "C"
 		info.setupSolverInfo(solverType);
 		info.m_fireCollisionCallbacks = fireCollisionCallbacks;
 		info.m_enableDeactivation = enableDeactivation;
+		info.m_contactRestingVelocity = contactRestingVelocity;
 
 		world = new hkpWorld(info);
 		hkpAgentRegisterUtil::registerAllAgents(world->getCollisionDispatcher());

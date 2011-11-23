@@ -37,7 +37,6 @@ using System.IO;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using XnaTexture = Microsoft.Xna.Framework.Graphics.Texture;
 
 using GoblinXNA.Graphics;
 using GoblinXNA.Graphics.ParticleEffects;
@@ -116,15 +115,6 @@ namespace GoblinXNA.Shaders
         {
             get;
             set;
-        }
-
-        public Matrix WorldTransform
-        {
-            set
-            {
-                if(world != null)
-                    world.SetValue(value);
-            }
         }
 
         /// <summary>
@@ -219,7 +209,7 @@ namespace GoblinXNA.Shaders
         /// <param name="lastUsedValue">Last used value</param>
         /// <param name="newValue">New value</param>
         protected void SetValue(EffectParameter param,
-            ref XnaTexture lastUsedValue, XnaTexture newValue)
+            ref Texture lastUsedValue, Texture newValue)
         {
             if (param != null &&
                 lastUsedValue != newValue)
@@ -267,6 +257,7 @@ namespace GoblinXNA.Shaders
 
         #endregion
 
+        #region Methods
         /// <summary>
         /// Reloads the shader file with the specified path.
         /// </summary>
@@ -275,17 +266,9 @@ namespace GoblinXNA.Shaders
         {
             this.shaderName = Path.GetFileNameWithoutExtension(shaderName);
             // Load shader
-
-            /*CompiledEffect compiledEffect = Effect.CompileEffectFromFile(
-                Path.Combine(GoblinSetting.GetSettingVariable("ShaderDirectory"),
-                this.shaderName + ".fx"), null, null, CompilerOptions.None, 
-                TargetPlatform.Windows);
-
-            effect = new Effect(GoblinSetting.Device, compiledEffect.GetEffectCode(),
-                CompilerOptions.None, null);*/
             effect = State.Content.Load<Effect>(
                 Path.Combine(State.GetSettingVariable("ShaderDirectory"),
-                this.shaderName)).Clone(State.Device);
+                this.shaderName)).Clone();
 
             // Reset and get all avialable parameters.
             // This is especially important for derived classes.
@@ -310,6 +293,10 @@ namespace GoblinXNA.Shaders
             lastUsedViewProjMatrix = Matrix.Identity;
             lastUsedWorldViewProjMatrix = Matrix.Identity;
         }
+
+        #endregion
+
+        #region IShader Members
 
         /// <summary>
         /// This shader does not support material effect.
@@ -352,9 +339,7 @@ namespace GoblinXNA.Shaders
         {
         }
 
-        #region IShader Members
-
-        public virtual void Render(Matrix worldMatrix, String techniqueName, 
+        public virtual void Render(ref Matrix worldMatrix, String techniqueName, 
             RenderHandler renderDelegate)
         {
             if (techniqueName == null)
@@ -365,30 +350,21 @@ namespace GoblinXNA.Shaders
             world.SetValue(worldMatrix);
             // Start shader
             effect.CurrentTechnique = effect.Techniques[techniqueName];
-            try
-            {
-                effect.Begin(SaveStateMode.None);
 
-                // Render all passes (usually just one)
-                //foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-                for (int num = 0; num < effect.CurrentTechnique.Passes.Count; num++)
-                {
-                    EffectPass pass = effect.CurrentTechnique.Passes[num];
+            // Render all passes (usually just one)
+            //foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+            for (int num = 0; num < effect.CurrentTechnique.Passes.Count; num++)
+            {
+                EffectPass pass = effect.CurrentTechnique.Passes[num];
 
-                    pass.Begin();
-                    renderDelegate();
-                    pass.End();
-                }
+                pass.Apply();
+                renderDelegate();
             }
-            catch (Exception exp)
-            {
-                Log.Write(exp.Message);
-            }
-            finally
-            {
-                // End shader
-                effect.End();
-            }
+
+        }
+
+        public virtual void RenderEnd()
+        {
         }
 
         public virtual void Dispose()

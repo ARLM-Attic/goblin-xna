@@ -178,6 +178,7 @@ namespace GoblinXNA.SceneGraph
             return node;
         }
 
+#if !WINDOWS_PHONE
         /// <summary>
         /// Saves the information of this node to an XML document.
         /// </summary>
@@ -205,6 +206,7 @@ namespace GoblinXNA.SceneGraph
             if(xmlNode.HasAttribute("Enabled"))
                 enabled = bool.Parse(xmlNode.GetAttribute("Enabled"));
         }
+#endif
 
         /// <summary>
         /// Disposes this node.

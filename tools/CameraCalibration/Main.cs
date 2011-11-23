@@ -34,6 +34,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.IO;
+using System.Windows.Forms;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -42,15 +44,19 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
 
 using GoblinXNA;
 using GoblinXNA.Device.Vision;
 using GoblinXNA.Device.Vision.Marker;
 using GoblinXNA.Device.Capture;
+using GoblinXNA.Device.Generic;
 using GoblinXNA.SceneGraph;
 using GoblinXNA.UI;
+using GoblinXNA.UI.UI2D;
+
+using Microsoft.Research.Kinect.Nui;
+using Camera = GoblinXNA.SceneGraph.Camera;
 
 namespace CameraCalibration
 {
@@ -60,10 +66,17 @@ namespace CameraCalibration
     public class Main : Microsoft.Xna.Framework.Game
     {
         GraphicsDeviceManager graphics;
+        SpriteFont font;
         Scene scene;
 
         IVideoCapture captureDevice;
         IntPtr imagePtr;
+        bool useImageSequence = false;
+        int sequenceID = 0;
+        string[] imageNames;
+        int successCount = 0;
+        bool calibrateNextSequence = false;
+        string imageDirectory = "../../../Images/";
 
         const int ETALON_ROWS = 6;
         const int ETALON_COLUMNS = 8;
@@ -73,7 +86,8 @@ namespace CameraCalibration
         int captureCount = 0;
         float timer = 0;
         bool finalized = false;
-        bool useImageSequence = false;
+
+        int cameraID = 0;
 
         string calibrationFilename = "calib.xml";
 
@@ -81,6 +95,9 @@ namespace CameraCalibration
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            graphics.PreferredBackBufferWidth = 800;
+            graphics.PreferredBackBufferHeight = 600;
         }
 
         /// <summary>
@@ -97,7 +114,7 @@ namespace CameraCalibration
             State.InitGoblin(graphics, Content, "");
 
             // Initialize the scene graph
-            scene = new Scene(this);
+            scene = new Scene();
 
             // Set up the camera, which defines the eye location and viewing frustum
             CreateCamera();
@@ -106,6 +123,20 @@ namespace CameraCalibration
             SetupCalibration();
 
             State.ShowNotifications = true;
+            Notifier.FadeOutTime = 5000;
+
+            KeyboardInput.Instance.KeyPressEvent += new HandleKeyPress(KeyPressHandler);
+        }
+
+        private void KeyPressHandler(Keys key, KeyModifier modifier)
+        {
+            if ((key == Keys.Escape) && finalized)
+                this.Exit();
+
+            if ((key == Keys.Enter || key == Keys.Space) && useImageSequence && !finalized)
+            {
+                calibrateNextSequence = true;
+            }
         }
 
         private void CreateCamera()
@@ -115,7 +146,6 @@ namespace CameraCalibration
 
             // Set the vertical field of view to be 60 degrees
             camera.FieldOfViewY = MathHelper.ToRadians(60);
-            //camera.InterpupillaryDistance = 0.5f;
             // Set the near clipping plane to be 0.1f unit away from the camera
             camera.ZNearPlane = 0.1f;
             // Set the far clipping plane to be 1000 units away from the camera
@@ -132,18 +162,24 @@ namespace CameraCalibration
         private void SetupCalibration()
         {
             if (useImageSequence)
-            {
                 captureDevice = new NullCapture();
-                // Use whatever the resolution of the still image you're using instead of 640x480
-                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
-                    ImageFormat.R8G8B8_24, false);
-                ((NullCapture)captureDevice).StaticImageFile = "image" + captureCount + ".jpg";
-            }
             else
+                captureDevice = new DirectShowCapture2();
+            captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                ImageFormat.R8G8B8_24, false);
+            if (useImageSequence)
             {
-                captureDevice = new DirectShowCapture();
-                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
-                    ImageFormat.R8G8B8_24, false);
+                imageNames = Directory.GetFiles(imageDirectory);
+
+                if (imageNames != null && imageNames.Length > 0)
+                {
+                    ((NullCapture)captureDevice).StaticImageFile = imageNames[0];
+                }
+                else
+                {
+                    MessageBox.Show("No images are found in " + imageDirectory + " for static image calibration");
+                    this.Exit();
+                }
             }
 
             // Add this video capture device to the scene so that it can be used for
@@ -155,66 +191,114 @@ namespace CameraCalibration
             scene.ShowCameraImage = true;
 
             // Initializes ALVAR camera
-            ALVARDllBridge.alvar_init_camera(null, captureDevice.Width, captureDevice.Height);
+            ALVARDllBridge.alvar_init();
+            ALVARDllBridge.alvar_add_camera(null, captureDevice.Width, captureDevice.Height);
         }
 
-        /// <summary>
-        /// Allows the game to run logic such as updating the world,
-        /// checking for collisions, gathering input, and playing audio.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        private void Calibrate()
+        {
+            string channelSeq = "RGB";
+            int nChannles = 3;
+
+            captureDevice.GetImageTexture(null, ref imagePtr);
+
+            double square_size = 22.8; // in millimeters
+            if (ALVARDllBridge.alvar_calibrate_camera(cameraID, nChannles, channelSeq, channelSeq, imagePtr,
+                square_size, ETALON_ROWS, ETALON_COLUMNS))
+            {
+                if (useImageSequence)
+                {
+                    Notifier.AddMessage(((NullCapture)captureDevice).StaticImageFile + " succeeded");
+                    successCount++;
+                }
+                else
+                    Notifier.AddMessage("Captured Image " + (captureCount + 1));
+                captureCount++;
+            }
+            else if (useImageSequence)
+            {
+                Notifier.AddMessage(((NullCapture)captureDevice).StaticImageFile + " failed");
+            }
+        }
+
+        private void FinalizeCalibration()
+        {
+            if (useImageSequence)
+                Notifier.AddMessage("Calibrating " + successCount + " images...");
+            else
+                Notifier.AddMessage("Calibrating...");
+            ALVARDllBridge.alvar_finalize_calibration(cameraID, calibrationFilename);
+
+            Notifier.FadeOutTime = -1;
+            Notifier.AddMessage("Finished calibration. Saved " + calibrationFilename);
+
+            finalized = true;
+        }
+
+        protected override void LoadContent()
+        {
+            font = Content.Load<SpriteFont>("Sample");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            scene.Dispose();
+        }
+
         protected override void Update(GameTime gameTime)
         {
-            base.Update(gameTime);
+            scene.Update(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly, this.IsActive);
         }
 
-        /// <summary>
-        /// This is called when the game should draw itself.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-
-            // If we are still collecting calibration data
-            // - For every 1.5s add calibration data from detected 7*9 chessboard
-            if (captureCount < CALIB_COUNT_MAX)
+            if (useImageSequence)
             {
-                if (timer >= CAPTURE_INTERVAL)
+                if (calibrateNextSequence)
                 {
-                    string channelSeq = "RGB";
-                    int nChannles = 3;
-                    
-                    if(useImageSequence)
-                        ((NullCapture)captureDevice).StaticImageFile = "image" + captureCount + ".jpg";
+                    Calibrate();
 
-                    captureDevice.GetImageTexture(null, ref imagePtr);
-
-                    if (ALVARDllBridge.alvar_calibrate_camera(nChannles, channelSeq, channelSeq, imagePtr,
-                        2.8, ETALON_ROWS, ETALON_COLUMNS))
+                    if (sequenceID < imageNames.Length - 1)
                     {
-                        Notifier.AddMessage("Captured Image " + (captureCount + 1));
-                        captureCount++;
+                        sequenceID++;
+                        ((NullCapture)captureDevice).StaticImageFile = imageNames[sequenceID];
+                    }
+                    else
+                    {
+                        FinalizeCalibration();
                     }
 
-                    timer = 0;
+                    calibrateNextSequence = false;
                 }
+
+                UI2DRenderer.WriteText(Vector2.Zero, "Press ENTER key to proceed to the next image", Color.Yellow,
+                    font, Vector2.One * 0.6f, GoblinEnums.HorizontalAlignment.Center,
+                    GoblinEnums.VerticalAlignment.Bottom);
             }
             else
             {
-                if (!finalized)
+                timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+
+                // If we are still collecting calibration data
+                // - For every 1.5s add calibration data from detected 7*9 chessboard
+                if (captureCount < CALIB_COUNT_MAX)
                 {
-                    Notifier.AddMessage("Calibrating...");
-                    ALVARDllBridge.alvar_finalize_calibration(calibrationFilename);
-
-                    Notifier.FadeOutTime = -1;
-                    Notifier.AddMessage("Finished calibration. Saved " + calibrationFilename);
-
-                    finalized = true;
+                    if (timer >= CAPTURE_INTERVAL)
+                    {
+                        Calibrate();
+                        timer = 0;
+                    }
+                }
+                else
+                {
+                    if (!finalized)
+                    {
+                        FinalizeCalibration();
+                    }
                 }
             }
 
-            base.Draw(gameTime);
+            scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
         }
     }
 }

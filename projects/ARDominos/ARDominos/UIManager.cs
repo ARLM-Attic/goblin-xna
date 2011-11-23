@@ -45,7 +45,7 @@ using GoblinXNA.SceneGraph;
 
 namespace ARDominos
 {
-    public class UIManager : DrawableGameComponent
+    public class UIManager
     {
         #region Member Fields
         // A font used for drawing the GUI texts
@@ -75,10 +75,8 @@ namespace ARDominos
 
         #region Constructors
 
-        public UIManager(Game mainGame, GameState gameState) : base(mainGame)
+        public UIManager(GameState gameState)
         {
-            this.DrawOrder = 200;
-            mainGame.Components.Add(this);
             this.gameState = gameState;
 
             modeStatusLabel = "Add  ";
@@ -160,7 +158,7 @@ namespace ARDominos
             frame.Transparency = 0.7f;  // Ranges from 0 (fully transparent) to 1 (fully opaque)
             frame.TextTransparency = 1.0f;
 
-            uiFont = this.Game.Content.Load<SpriteFont>("UIFont");
+            uiFont = State.Content.Load<SpriteFont>("UIFont");
 
             G2DLabel gameLabel = new G2DLabel("Game Mode:");
             gameLabel.TextFont = uiFont;
@@ -263,29 +261,22 @@ namespace ARDominos
 
         #region Override Methods
 
-        protected override void LoadContent()
+        public void LoadContent()
         {
-            labelFont = this.Game.Content.Load<SpriteFont>("Sample");
-            victoryFont = this.Game.Content.Load<SpriteFont>("Victory");
+            labelFont = State.Content.Load<SpriteFont>("Sample");
+            victoryFont = State.Content.Load<SpriteFont>("Victory");
 
-            trophyGold = this.Game.Content.Load<Texture2D>("gold_trophy");
-            trophySilver = this.Game.Content.Load<Texture2D>("silver_trophy");
-            trophyBronze = this.Game.Content.Load<Texture2D>("bronze_trophy");
-
-            base.LoadContent();
+            trophyGold = State.Content.Load<Texture2D>("gold_trophy");
+            trophySilver = State.Content.Load<Texture2D>("silver_trophy");
+            trophyBronze = State.Content.Load<Texture2D>("bronze_trophy");
         }
 
-        public override void Update(GameTime gameTime)
-        {
-            base.Update(gameTime);
-        }
-
-        public override void Draw(GameTime gameTime)
+        public void Draw(GameTime gameTime)
         {
             // Count the time elapsed in the play mode if game is not over yet
             if (gameState.CurrentGameMode == GameState.GameMode.Play && !gameState.GameOver)
             {
-                gameState.ElapsedSecond += gameTime.ElapsedRealTime.TotalSeconds;
+                gameState.ElapsedSecond += gameTime.ElapsedGameTime.TotalSeconds;
                 if (gameState.ElapsedSecond >= 60)
                 {
                     gameState.ElapsedMinute++;
@@ -360,8 +351,6 @@ namespace ARDominos
                 UI2DRenderer.FillRectangle(new Rectangle((State.Width - trophy.Width) / 2,
                     280, trophy.Width, trophy.Height), trophy, Color.White);
             }
-
-            base.Draw(gameTime);
         }
         #endregion
     }
