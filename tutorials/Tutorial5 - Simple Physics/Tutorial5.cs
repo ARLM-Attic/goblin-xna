@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,6 @@
 // When you use Havok physics, make sure to add HavokWrapper.dll to your solution and make
 // the "Copy to Output" option "Copy if Newer". 
 //#define USE_HAVOK
-//#define USE_MATALI
 
 using System;
 using System.Collections.Generic;
@@ -52,8 +51,6 @@ using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Physics;
 #if USE_HAVOK
 using GoblinXNA.Physics.Havok;
-#elif USE_MATALI || WINDOWS_PHONE
-using GoblinXNA.Physics.Matali;
 #else
 using GoblinXNA.Physics.Newton1;
 #endif
@@ -117,13 +114,6 @@ namespace Tutorial5___Simple_Physics
 
             // Use the havok physics engine to perform physics simulation
             scene.PhysicsEngine = new HavokPhysics(info);
-#elif USE_MATALI || WINDOWS_PHONE
-
-            scene.PhysicsEngine = new MataliPhysics();
-            scene.PhysicsEngine.Gravity = 30;
-#if WINDOWS_PHONE
-            ((MataliPhysics)scene.PhysicsEngine).SimulationTimeStep = 1 / 30f;
-#endif
 
 #else
             // We will use the Newton physics engine (http://www.newtondynamics.com)

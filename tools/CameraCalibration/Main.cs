@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,6 @@ using GoblinXNA.SceneGraph;
 using GoblinXNA.UI;
 using GoblinXNA.UI.UI2D;
 
-using Microsoft.Research.Kinect.Nui;
 using Camera = GoblinXNA.SceneGraph.Camera;
 
 namespace CameraCalibration
@@ -164,7 +163,7 @@ namespace CameraCalibration
             if (useImageSequence)
                 captureDevice = new NullCapture();
             else
-                captureDevice = new DirectShowCapture2();
+                captureDevice = new DirectShowCapture();
             captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
             if (useImageSequence)

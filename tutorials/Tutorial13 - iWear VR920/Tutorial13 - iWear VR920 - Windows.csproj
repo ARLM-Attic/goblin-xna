@@ -126,20 +126,20 @@
     <Compile Include="Tutorial13.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\data\Calibrations\Wrap920_1_Adjustments.xml">
-      <Link>Wrap920_1_Adjustments.xml</Link>
+    <Content Include="..\..\data\Calibrations\Wrap920_Adjustments.xml">
+      <Link>Wrap920_Adjustments.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\data\Calibrations\Wrap920_1_Left.xml">
-      <Link>Wrap920_1_Left.xml</Link>
+    <Content Include="..\..\data\Calibrations\Wrap920_Left.xml">
+      <Link>Wrap920_Left.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\data\Calibrations\Wrap920_1_Right.xml">
-      <Link>Wrap920_1_Right.xml</Link>
+    <Content Include="..\..\data\Calibrations\Wrap920_Right.xml">
+      <Link>Wrap920_Right.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\data\Calibrations\Wrap920_1_Stereo_Millimeter.xml">
-      <Link>Wrap920_1_Stereo_Millimeter.xml</Link>
+    <Content Include="..\..\data\Calibrations\Wrap920_Stereo_Millimeter.xml">
+      <Link>Wrap920_Stereo_Millimeter.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\dlls\unmanaged\alvar150.dll">

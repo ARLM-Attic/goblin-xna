@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,7 @@ using Model = GoblinXNA.Graphics.Model;
 using GoblinXNA.Graphics.Geometry;
 using GoblinXNA.Device.Generic;
 using GoblinXNA.UI.UI2D;
+using GoblinXNA.Shaders;
 
 // A GoblinXNA project is created by selecting the project type "XNA Game Studio 4.0"
 // under "Visual C#", and selecting the template "Windows Game(4.0)".

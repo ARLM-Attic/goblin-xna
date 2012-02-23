@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,6 +64,13 @@ namespace GoblinXNA.Device.Vision.Marker
         /// Gets or sets the far clipping plane used to compute CameraProjection.
         /// </summary>
         float ZFarPlane { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to perform marker tracking. For optimization purpose, if you don't need
+        /// marker tracking while in certain state, it's best to set this to false, and when you need it
+        /// you can set back to true. The default value is true.
+        /// </summary>
+        bool EnableTracking { get; set; }
 
         /// <summary>
         /// Initilizes the marker tracker with a set of configuration parameters.

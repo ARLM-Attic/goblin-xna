@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -69,6 +69,10 @@ namespace GoblinXNA.SceneGraph
         public delegate void RenderBeforeUI(bool leftView, bool renderUI);
 
         public delegate void RenderAfterUI(bool leftView, bool renderUI);
+
+        public delegate void RenderBeforeBackground(bool leftView);
+
+        public delegate void RenderAfterBackground(bool leftView);
 
         #endregion
 
@@ -204,9 +208,6 @@ namespace GoblinXNA.SceneGraph
         protected RenderTarget2D screen;
 
         protected String curCamNodeName; // used only when loading a scene graph from XML file
-
-        protected RenderBeforeUI renderBeforeUI;
-        protected RenderAfterUI renderAfterUI;
 
         protected RenderTarget2D sceneRenderTarget;
         protected RenderTarget2D uiRenderTarget;
@@ -933,20 +934,42 @@ namespace GoblinXNA.SceneGraph
         }
 
         /// <summary>
-        /// Sets the callback function that is invoked after all 3D geometries are rendered, but
+        /// Gets or sets the callback function that is invoked before rendering the background texture
+        /// including the video texture.
+        /// </summary>
+        public RenderBeforeBackground RenderBeforeBackgroundCallback
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the callback function that is invoked after rendering the background texture
+        /// including the video texture, but before rendering the 3D scene objects.
+        /// </summary>
+        public RenderAfterBackground RenderAfterBackgroundCallback
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the callback function that is invoked after all 3D geometries are rendered, but
         /// right before the 2D UIs are rendered.
         /// </summary>
         public RenderBeforeUI RenderBeforeUICallback
         {
-            set { renderBeforeUI = value; }
+            get;
+            set;
         }
 
         /// <summary>
-        /// Sets the callback function that is invoked after the 2D UIs are rendered.
+        /// Gets or sets the callback function that is invoked after the 2D UIs are rendered.
         /// </summary>
         public RenderAfterUI RenderAfterUICallback
         {
-            set { renderAfterUI = value; }
+            get;
+            set;
         }
 
         /// <summary>
@@ -1054,20 +1077,20 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         /// <param name="boundingVolume"></param>
         /// <returns></returns>
-        protected virtual bool IsWithinViewFrustum(BoundingSphere boundingVolume)
+        protected virtual bool IsWithinViewFrustum(GeometryNode gNode)
         {
-            if (!enableFrustumCulling)
+            if (!enableFrustumCulling || gNode.AlwaysRender)
                 return true;
 
             if (cameraNode.Stereo)
             {
                 if (renderLeftView)
-                    return cameraNode.LeftBoundingFrustum.Intersects(boundingVolume);
+                    return cameraNode.LeftBoundingFrustum.Intersects(gNode.BoundingVolume);
                 else
-                    return cameraNode.RightBoundingFrustum.Intersects(boundingVolume);
+                    return cameraNode.RightBoundingFrustum.Intersects(gNode.BoundingVolume);
             }
             else
-                return cameraNode.BoundingFrustum.Intersects(boundingVolume);
+                return cameraNode.BoundingFrustum.Intersects(gNode.BoundingVolume);
         }
 
         /// <summary>
@@ -1701,13 +1724,13 @@ namespace GoblinXNA.SceneGraph
                 foreach (GeometryNode node in opaqueGroup)
                     if (renderGroups[node.GroupID] && node.ShouldRender &&
                         node.Model.ShadowAttribute == ShadowAttribute.ReceiveOnly &&
-                        IsWithinViewFrustum(node.BoundingVolume))
+                        IsWithinViewFrustum(node))
                         shadowBackgroundGeometries.Add(node);
 
                 foreach (GeometryNode occluderNode in occluderGroup)
                     if (renderGroups[occluderNode.GroupID] && occluderNode.ShouldRender &&
                         occluderNode.Model.ShadowAttribute == ShadowAttribute.ReceiveOnly &&
-                        IsWithinViewFrustum(occluderNode.BoundingVolume))
+                        IsWithinViewFrustum(occluderNode))
                         shadowBackgroundGeometries.Add(occluderNode);
 
                 shadowMap.PrepareRenderTargets(shadowOccluderGeometries, shadowBackgroundGeometries);
@@ -1753,7 +1776,7 @@ namespace GoblinXNA.SceneGraph
                 foreach (GeometryNode occluderNode in occluderGroup)
                 {
                     if (renderGroups[occluderNode.GroupID] && occluderNode.ShouldRender &&
-                        IsWithinViewFrustum(occluderNode.BoundingVolume))
+                        IsWithinViewFrustum(occluderNode))
                     {
                         if(firstPass)
                             triangleCount += occluderNode.Model.TriangleCount;
@@ -1810,9 +1833,15 @@ namespace GoblinXNA.SceneGraph
                     State.SharedSpriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Opaque);
                     State.SharedSpriteBatch.Draw(State.BlankTexture, new Rectangle(0, 0, State.Width, State.Height), backgroundColor);
                     State.SharedSpriteBatch.End();
+
+                    if(RenderBeforeBackgroundCallback != null)
+                        RenderBeforeBackgroundCallback(renderLeftView);
                 }
                 else
                 {
+                    if(RenderBeforeBackgroundCallback != null)
+                        RenderBeforeBackgroundCallback(renderLeftView);
+
                     if (showCameraImage)
                     {
                         bool secondImage = false;
@@ -1860,6 +1889,9 @@ namespace GoblinXNA.SceneGraph
                         State.SharedSpriteBatch.End();
                     }
                 }
+
+                if(RenderAfterBackgroundCallback != null)
+                    RenderAfterBackgroundCallback(renderLeftView);
 
                 // Now turn on the depth buffer back for normal rendering
                 State.Device.DepthStencilState = DepthStencilState.Default;
@@ -1960,7 +1992,7 @@ namespace GoblinXNA.SceneGraph
 
                 if (renderGroups[node.GroupID])
                 {
-                    if (node.ShouldRender && IsWithinViewFrustum(node.BoundingVolume) && 
+                    if (node.ShouldRender && IsWithinViewFrustum(node) && 
                         node.Material.Diffuse.W > 0)
                     {
                         if(firstPass)
@@ -2211,6 +2243,8 @@ namespace GoblinXNA.SceneGraph
                     passToMarkerTracker = true;
                     processSeparateImagePtr = true;
                 }
+
+                passToMarkerTracker = passToMarkerTracker && markerTracker.EnableTracking;
 
                 if (processLeftImageData || processLeftImagePtr)
                 {
@@ -2585,6 +2619,23 @@ namespace GoblinXNA.SceneGraph
         /// </summary>
         public virtual void RenderScene(bool renderUI)
         {
+            RenderScene(renderUI, false);
+        }
+
+        /// <summary>
+        /// Only renders the 3D scene (and the 2DUIs if 'renderUI' is true). Unlike the Draw function, 
+        /// this function doesn't perform physics update or scene graph updates if 'reTraverseScenegraph is
+        /// false). It simply renders the 3D scene. This method is useful when you need to render the scene more 
+        /// than once (e.g., when rendering multiple viewport or stereoscopic view).
+        /// <param name="renderUI">Whether to renderUI</param>
+        /// <param name="reTraverseScenegraph">Whether to re-traverse the scenegraph before rendering in the
+        /// case the scene graph has changes</param>
+        /// </summary>
+        public virtual void RenderScene(bool renderUI, bool reTraverseScenegraph)
+        {
+            if(reTraverseScenegraph)
+                PrepareSceneForRendering();
+
             if (cameraNode.Stereo)
             {
                 if (renderLeftView)
@@ -2618,8 +2669,8 @@ namespace GoblinXNA.SceneGraph
 
             DebugShapeRenderer.Draw(uiElapsedTime);
 
-            if (renderBeforeUI != null)
-                renderBeforeUI(renderLeftView, renderUI);
+            if (RenderBeforeUICallback != null)
+                RenderBeforeUICallback(renderLeftView, renderUI);
 
             if (cameraNode.Stereo)
             {
@@ -2631,8 +2682,8 @@ namespace GoblinXNA.SceneGraph
             else if(renderUI)
                 uiRenderer.Draw(uiElapsedTime, true, false);
 
-            if (renderAfterUI != null)
-                renderAfterUI(renderLeftView, renderUI);
+            if (RenderAfterUICallback != null)
+                RenderAfterUICallback(renderLeftView, renderUI);
 
             if (cameraNode.Stereo)
                 renderLeftView = !renderLeftView;

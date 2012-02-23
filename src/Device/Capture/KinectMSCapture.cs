@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,7 +41,7 @@ using GoblinXNA.Device.Vision;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-using Microsoft.Research.Kinect.Nui;
+using Microsoft.Kinect;
 
 namespace GoblinXNA.Device.Capture
 {
@@ -66,19 +66,14 @@ namespace GoblinXNA.Device.Capture
 
         private ImageReadyCallback imageReadyCallback;
 
-        private Runtime nui;
-        private RuntimeOptions options;
+        private KinectSensor sensor;
 
         private int[] videoData;
         private byte[] rawVideo;
 
-        private bool displayVideoInDepthSpace;
-        private int[,] colorToDepthSpaceMap;
-        private bool useHighDefVideo;
-        private Rectangle videoInDepthSpaceBound;
-        private bool isVideoClipped;
-
         private bool copyingRawVideo = false;
+
+        private bool depthStreamEnabled;
 
         #endregion
 
@@ -87,37 +82,21 @@ namespace GoblinXNA.Device.Capture
         /// <summary>
         /// Creates a video capture using the Kinect camera with the Microsoft SDK.
         /// </summary>
-        /// <param name="options"></param>
-        /// <param name="displayVideoInDepthSpace">Indicates whether to display the video image in the depth space. You should
-        /// set this to true if you are using the video image with the depth data</param>
-        /// <param name="useHighDefVideo">Indicates whether to display the depth mapped video in high defintion.
-        /// The regular depth mapped video will be 320x240, but if this is set to true, a 640x480 video will
-        /// be produced using the depth mapped clipping bound</param>
-        public KinectMSCapture(RuntimeOptions options, bool displayVideoInDepthSpace, bool useHighDefVideo)
+        /// <param name="depthFrameEnabled">Whether the depth frame will be enabled. If set to true, the color
+        /// frame will be obtained in AllFramesReady event so that the color frame is synchronized with the
+        /// depth frame. Otherwise, the color frame will be obtained in ColorFrameReady event.</param>
+        public KinectMSCapture(bool depthStreamEnabled)
         {
             cameraInitialized = false;
             videoDeviceID = -1;
 
-            this.displayVideoInDepthSpace = displayVideoInDepthSpace;
-            this.useHighDefVideo = useHighDefVideo;
+            this.depthStreamEnabled = depthStreamEnabled;
 
             cameraWidth = 0;
             cameraHeight = 0;
             grayscale = false;
 
             imageReadyCallback = null;
-
-            this.options = options | RuntimeOptions.UseColor;
-        }
-
-        public KinectMSCapture(RuntimeOptions options, bool displayVideoInDepthSpace)
-            : this(options, displayVideoInDepthSpace, false)
-        {
-        }
-
-        public KinectMSCapture()
-            : this(RuntimeOptions.UseColor, false, false)
-        {
         }
 
         #endregion
@@ -170,9 +149,9 @@ namespace GoblinXNA.Device.Capture
             set { imageReadyCallback = value; }
         }
 
-        public Runtime NuiRuntime
+        public KinectSensor Sensor
         {
-            get { return nui; }
+            get { return sensor; }
         }
 
         /// <summary>
@@ -196,25 +175,6 @@ namespace GoblinXNA.Device.Capture
             set;
         }
 
-        /// <summary>
-        /// Gets the bound of the video frame mapped to the depth space. This property is valid 
-        /// only if 'displayVideoInDepthSpace' parameter in the constructor is passed as 'true'.
-        /// </summary>
-        public Rectangle VideoInDepthSpaceBound
-        {
-            get { return videoInDepthSpaceBound; }
-        }
-
-        /// <summary>
-        /// Gets whether the depth space mapped video is clipped due to the video and IR camera mis-alignment.
-        /// This property is is valid only if 'displayVideoInDepthSpace' parameter in the constructor is 
-        /// passed as 'true'.
-        /// </summary>
-        public bool IsVideoClipped
-        {
-            get { return isVideoClipped; }
-        }
-
         #endregion
 
         #region Public Methods
@@ -231,163 +191,48 @@ namespace GoblinXNA.Device.Capture
             this.videoDeviceID = videoDeviceID;
             this.format = format;
 
-            ImageResolution res = ImageResolution.Invalid;
+            ColorImageFormat colorFormat = ColorImageFormat.Undefined;
 
             switch (resolution)
             {
-                case Resolution._160x120:
-                    cameraWidth = 160;
-                    cameraHeight = 120;
-                    res = ImageResolution.Resolution80x60;
-                    break;
-                case Resolution._320x240:
-                    cameraWidth = 320;
-                    cameraHeight = 240;
-                    res = ImageResolution.Resolution320x240;
-                    break;
                 case Resolution._640x480:
                     cameraWidth = 640;
                     cameraHeight = 480;
-                    res = ImageResolution.Resolution640x480;
+                    colorFormat = ColorImageFormat.RgbResolution640x480Fps30;
                     break;
-                case Resolution._800x600:
-                    cameraWidth = 800;
-                    cameraHeight = 600;
-                    break;
-                case Resolution._1024x768:
-                    cameraWidth = 1024;
-                    cameraHeight = 768;
-                    break;
-                case Resolution._1280x1024:
-                    cameraWidth = 1280;
-                    cameraHeight = 1024;
-                    res = ImageResolution.Resolution1280x1024;
-                    break;
-                case Resolution._1600x1200:
-                    cameraWidth = 1600;
-                    cameraHeight = 1200;
-                    break;
+                default:
+                    throw new GoblinException(resolution.ToString() + " is not supported by Kinect video. The only " +
+                        "supported resolution is 640x480");
             }
 
-            if (res == ImageResolution.Invalid)
-                throw new GoblinException(resolution.ToString() + " is not supported by Kinect video");
+            if (framerate != FrameRate._30Hz)
+                throw new GoblinException(framerate.ToString() + " is not supported by Kinect video. The only supported " +
+                    "frame rate is 30 Hz");
 
-            if (displayVideoInDepthSpace)
-            {
-                res = ImageResolution.Resolution640x480;
-                if (useHighDefVideo)
-                {
-                    
-                }
-                else
-                {
-                    cameraWidth = 320;
-                    cameraHeight = 240;
-                }
-            }
+            sensor = (from sensorToCheck in KinectSensor.KinectSensors
+                      where sensorToCheck.Status == KinectStatus.Connected
+                      select sensorToCheck).ElementAtOrDefault(videoDeviceID);
 
-            nui = new Runtime(videoDeviceID);
+            sensor.ColorStream.Enable(colorFormat);
 
-            nui.Initialize(options);
-            
-            nui.VideoFrameReady += new EventHandler<ImageFrameReadyEventArgs>(VideoImageReady);
-            
-            nui.VideoStream.Open(ImageStreamType.Video, 2, res, ImageType.Color);
+            sensor.Start();
 
-            if (UsedForCalibration || displayVideoInDepthSpace)
+            if(depthStreamEnabled)
+                sensor.AllFramesReady += new EventHandler<AllFramesReadyEventArgs>(AllImagesReady);
+            else
+                sensor.ColorFrameReady += new EventHandler<ColorImageFrameReadyEventArgs>(VideoImageReady);
+
+            if (UsedForCalibration)
                 videoData = new int[cameraWidth * cameraHeight];
 
-            if (displayVideoInDepthSpace)
-            {
-                ImageViewArea iv = new ImageViewArea();
-                int colorX = 0, colorY = 0;
-                colorToDepthSpaceMap = new int[240, 320];
-                Point min = new Point(int.MaxValue, int.MaxValue);
-                Point max = new Point(-1, -1);
-                for (int i = 0; i < 240; ++i)
-                {
-                    for (int j = 0; j < 320; ++j)
-                    {
-                        nui.NuiCamera.GetColorPixelCoordinatesFromDepthPixel(res,
-                            iv, j, i, (short)0, out colorX, out colorY);
-
-                        if (colorX < min.X)
-                            min.X = colorX;
-                        if (colorX > max.X)
-                            max.X = colorX;
-                        if (colorY < min.Y)
-                            min.Y = colorY;
-                        if (colorY > max.Y)
-                            max.Y = colorY;
-
-                        if (colorY >= nui.VideoStream.Height)
-                        {
-                            colorY = nui.VideoStream.Height - 1;
-                            isVideoClipped = true;
-                        }
-                        if (colorX >= nui.VideoStream.Width)
-                        {
-                            colorX = nui.VideoStream.Width - 1;
-                            isVideoClipped = true;
-                        }
-                        colorToDepthSpaceMap[i, j] = colorY * nui.VideoStream.Width + colorX;
-                    }
-                }
-
-                videoInDepthSpaceBound = new Rectangle(min.X, min.Y, max.X - min.X, max.Y - min.Y);
-            }
-
             cameraInitialized = true;
-        }
-
-        /// <summary>
-        /// Recomputes the mapping between the video and the depth coordinate using the updated depth values.
-        /// </summary>
-        /// <param name="depthData"></param>
-        public void ReComputeVideoInDepthMapping(float[] depthData)
-        {
-            ImageViewArea iv = new ImageViewArea();
-            int colorX = 0, colorY = 0, index = 0;
-            Point min = new Point(int.MaxValue, int.MaxValue);
-            Point max = new Point(-1, -1);
-            for (int i = 0; i < 240; ++i)
-            {
-                for (int j = 0; j < 320; ++j, ++index)
-                {
-                    nui.NuiCamera.GetColorPixelCoordinatesFromDepthPixel(nui.VideoStream.Resolution,
-                        iv, j, i, (short)((short)depthData[index] << 3), out colorX, out colorY);
-
-                    if (colorX < min.X)
-                        min.X = colorX;
-                    if (colorX > max.X)
-                        max.X = colorX;
-                    if (colorY < min.Y)
-                        min.Y = colorY;
-                    if (colorY > max.Y)
-                        max.Y = colorY;
-
-                    if (colorY >= nui.VideoStream.Height)
-                    {
-                        colorY = nui.VideoStream.Height - 1;
-                        isVideoClipped = true;
-                    }
-                    if (colorX >= nui.VideoStream.Width)
-                    {
-                        colorX = nui.VideoStream.Width - 1;
-                        isVideoClipped = true;
-                    }
-                    colorToDepthSpaceMap[i, j] = colorY * nui.VideoStream.Width + colorX;
-                }
-            }
-
-            videoInDepthSpaceBound = new Rectangle(min.X, min.Y, max.X - min.X, max.Y - min.Y);
         }
 
         public void GetImageTexture(int[] returnImage, ref IntPtr imagePtr)
         {
             if (returnImage != null)
             {
-                if (UsedForCalibration || displayVideoInDepthSpace)
+                if (UsedForCalibration)
                     Buffer.BlockCopy(videoData, 0, returnImage, 0, videoData.Length * sizeof(int));
                 else
                     videoData = returnImage;
@@ -423,90 +268,74 @@ namespace GoblinXNA.Device.Capture
 
         public void Dispose()
         {
-            if (nui != null)
-                nui.Uninitialize();
+            if (sensor != null)
+            {
+                sensor.Stop();
+                sensor.Dispose();
+            }
         }
 
         #endregion
 
         #region Private Methods
 
-        private void VideoImageReady(object sender, ImageFrameReadyEventArgs e)
+        private void AllImagesReady(object sender, AllFramesReadyEventArgs e)
         {
             if (!UsedForCalibration && videoData == null)
                 return;
 
-            ImageFrame videoFrame = e.ImageFrame;
+            using (ColorImageFrame imageFrame = e.OpenColorImageFrame())
+            {
+                if (imageFrame != null)
+                {
+                    CopyFrameData(imageFrame);
+                }
+            }
+        }
 
-            int length = videoFrame.Image.Height * videoFrame.Image.Width;
+        private void VideoImageReady(object sender, ColorImageFrameReadyEventArgs e)
+        {
+            if (!UsedForCalibration && videoData == null)
+                return;
 
+            using (ColorImageFrame imageFrame = e.OpenColorImageFrame())
+            {
+                if (imageFrame != null)
+                {
+                    CopyFrameData(imageFrame);
+                }
+            }
+        }
+
+        private void CopyFrameData(ColorImageFrame imageFrame)
+        {
             while (copyingRawVideo) { }
-            rawVideo = videoFrame.Image.Bits;
+
+            if (rawVideo == null)
+                rawVideo = new byte[imageFrame.PixelDataLength];
+
+            imageFrame.CopyPixelDataTo(rawVideo);
 
             int videoIndex = 0;
             int index = 0;
 
-            if (displayVideoInDepthSpace)
+            if (MirrorImage)
             {
-                if (useHighDefVideo)
+                for (int i = 0; i < imageFrame.Height; ++i)
                 {
-                    for (int i = 0; i < length; ++i, videoIndex += videoFrame.Image.BytesPerPixel)
-                    {
-                        videoData[i] = (int)(rawVideo[videoIndex] << 16 | rawVideo[videoIndex + 1] << 8 |
+                    index = i * imageFrame.Width;
+                    for (int j = imageFrame.Width - 1; j >= 0; --j,
+                        videoIndex += imageFrame.BytesPerPixel)
+                        videoData[index + j] = (int)(rawVideo[videoIndex] << 16 | rawVideo[videoIndex + 1] << 8 |
                             rawVideo[videoIndex + 2]);
-                    }
-
-                    
-                }
-                else
-                {
-                    if (MirrorImage)
-                    {
-                        for (int i = 0; i < cameraHeight; ++i)
-                        {
-                            for (int j = 0; j < cameraWidth; ++j, ++index)
-                            {
-                                videoIndex = colorToDepthSpaceMap[i, (cameraWidth - j - 1)] *
-                                    videoFrame.Image.BytesPerPixel;
-                                videoData[index] = (int)(rawVideo[videoIndex] << 16 |
-                                    rawVideo[videoIndex + 1] << 8 | rawVideo[videoIndex + 2]);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (int i = 0; i < cameraHeight; ++i)
-                        {
-                            for (int j = 0; j < cameraWidth; ++j, ++index)
-                            {
-                                videoIndex = colorToDepthSpaceMap[i, j] * videoFrame.Image.BytesPerPixel;
-                                videoData[index] = (int)(rawVideo[videoIndex] << 16 |
-                                    rawVideo[videoIndex + 1] << 8 | rawVideo[videoIndex + 2]);
-                            }
-                        }
-                    }
                 }
             }
             else
             {
-                if (MirrorImage)
+                for (int i = 0; i < videoData.Length; ++i, videoIndex += imageFrame.BytesPerPixel)
                 {
-                    for (int i = 0; i < videoFrame.Image.Height; ++i)
-                    {
-                        index = i * videoFrame.Image.Width;
-                        for (int j = videoFrame.Image.Width - 1; j >= 0; --j, 
-                            videoIndex += videoFrame.Image.BytesPerPixel)
-                            videoData[index + j] = (int)(rawVideo[videoIndex] << 16 | rawVideo[videoIndex + 1] << 8 |
-                                rawVideo[videoIndex + 2]);
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < length; ++i, videoIndex += videoFrame.Image.BytesPerPixel)
-                    {
-                        videoData[i] = (int)(rawVideo[videoIndex] << 16 | rawVideo[videoIndex + 1] << 8 |
-                            rawVideo[videoIndex + 2]);
-                    }
+                    videoData[i] = (int)(rawVideo[videoIndex] << 16 | rawVideo[videoIndex + 1] << 8 |
+                        rawVideo[videoIndex + 2]);
                 }
             }
 

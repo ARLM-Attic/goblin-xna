@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -241,7 +241,7 @@ namespace GoblinXNA.SceneGraph
         /// Gets the transform updated by a marker. This information is valid only when
         /// at least one of its successor is a MarkerNode.
         /// </summary>
-        public Matrix MarkerTransform
+        public virtual Matrix MarkerTransform
         {
             get { return markerTransform; }
             internal set 
@@ -333,6 +333,19 @@ namespace GoblinXNA.SceneGraph
         {
             get { return ignoreDepth; }
             set { ignoreDepth = value; }
+        }
+
+        /// <summary>
+        /// Indicates whether to render this geometry regardless of whether the bounding sphere of the 
+        /// associated model is within the view frustum of the main camera. The default value is false.
+        /// </summary>
+        /// <remarks>
+        /// This property is ignored if Scene.EnableFrustumCulling is set to false.
+        /// </remarks>
+        public virtual bool AlwaysRender
+        {
+            get;
+            set;
         }
 
         #endregion

@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,9 +34,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Xml;
 using System.IO;
 using System.Threading;
+using System.Xml;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -68,15 +68,27 @@ namespace StereoCameraCalibration
     /// </summary>
     public class Main : Microsoft.Xna.Framework.Game
     {
-        const int CALIB_COUNT_MAX = 20;
-        const float CAPTURE_INTERVAL = 1500; // in milliseconds = 1.5s
-        const string calibrationFilename = "stereoCalib.xml";
-        const float EXPECTED_GAP_MIN = 56;
-        const float EXPECTED_GAP_MAX = 62;
+        int CALIB_COUNT_MAX;
+        string calibrationFilename;
+        string adjustmentsFilename;
+        string LEFT_CALIB;
+        string RIGHT_CALIB;
+        float EXPECTED_GAP_MIN;
+        float EXPECTED_GAP_MAX;
+        int leftDeviceID;
+        int rightDeviceID;
 
         GraphicsDeviceManager graphics;
 
         Scene scene;
+
+        RenderTarget2D stereoScreenLeft;
+        RenderTarget2D stereoScreenRight;
+        Rectangle leftRect;
+        Rectangle rightRect;
+        Rectangle leftSource;
+        Rectangle rightSource;
+        SpriteBatch spriteBatch;
 
         ALVARMarkerTracker markerTracker;
         Object markerID;
@@ -95,23 +107,28 @@ namespace StereoCameraCalibration
 
         List<Matrix> relativeTransforms;
 
-        Viewport leftViewport;
-        Viewport rightViewport;
-
         Thread calibrationThread;
-
-        CameraTransformStream camTransform;
 
         int captureCount = 0;
         bool finalized = false;
+
+        TransformNode groundMarkerNode;
+
+        int camWidthAdjustmentLeft = 0;
+        int camHShiftAdjustmentLeft = 0;
+        int camVShiftAdjustmentLeft = 0;
+        int camWidthAdjustmentRight = 0;
+        int camHShiftAdjustmentRight = 0;
+        int camVShiftAdjustmentRight = 0;
+        bool adjustingLeft = true;
+
+        int stereoWidth;
+        int stereoHeight;
 
         public Main()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
-
-            graphics.PreferredBackBufferWidth = 1280;
-            graphics.PreferredBackBufferHeight = 480;
         }
 
         protected override void Initialize()
@@ -119,7 +136,30 @@ namespace StereoCameraCalibration
             base.Initialize();
 
             // Initialize the GoblinXNA framework
-            State.InitGoblin(graphics, Content, "");
+            State.InitGoblin(graphics, Content, "Setting.xml");
+
+            if (bool.Parse(State.GetSettingVariable("IsFullScreen")))
+            {
+                graphics.IsFullScreen = true;
+            }
+            else
+            {
+                graphics.PreferredBackBufferWidth = 1280;
+                graphics.PreferredBackBufferHeight = 480;
+            }
+            graphics.ApplyChanges();
+
+            LEFT_CALIB = State.GetSettingVariable("LeftCameraCalibration");
+            RIGHT_CALIB = State.GetSettingVariable("RightCameraCalibration");
+            calibrationFilename = State.GetSettingVariable("StereoCameraCalibration");
+            adjustmentsFilename = State.GetSettingVariable("StereoCameraAdjustments");
+
+            leftDeviceID = int.Parse(State.GetSettingVariable("LeftCameraID"));
+            rightDeviceID = int.Parse(State.GetSettingVariable("RightCameraID"));
+
+            CALIB_COUNT_MAX = int.Parse(State.GetSettingVariable("CalibrationCount"));
+            EXPECTED_GAP_MIN = float.Parse(State.GetSettingVariable("ExpectedMinDistance"));
+            EXPECTED_GAP_MAX = float.Parse(State.GetSettingVariable("ExpectedMaxDistance"));
 
             // Initialize the scene graph
             scene = new Scene();
@@ -135,9 +175,10 @@ namespace StereoCameraCalibration
             // Set up the stereo camera calibration
             SetupCalibration();
 
-            SetupNetwork();
-
             KeyboardInput.Instance.KeyPressEvent += new HandleKeyPress(HandleKeyPressEvent);
+
+            State.ShowNotifications = true;
+            Notifier.FadeOutTime = 2000;
         }
 
         private void HandleKeyPressEvent(Keys key, KeyModifier modifier)
@@ -146,16 +187,167 @@ namespace StereoCameraCalibration
             if (key == Keys.Escape)
                 this.Exit();
 
-            if (key == Keys.Space)
+            if(!finalized)
             {
-                if (!calibrating && !finalized)
+                if (key == Keys.Space)
                 {
-                    calibrationThread = new Thread(CalibrateStereo);
-                    calibrationThread.Start();
+                    if (!calibrating)
+                    {
+                        calibrationThread = new Thread(CalibrateStereo);
+                        calibrationThread.Start();
+                    }
                 }
-
-                //SaveCameraImages();
             }
+            else
+            {
+                switch (key)
+                {
+                    case Keys.Space:
+                        SaveAdjustments();
+                        break;
+                    case Keys.Down:
+                        if (adjustingLeft)
+                        {
+                            camWidthAdjustmentLeft++;
+                            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+                            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                                camHeightAdjustment + camVShiftAdjustmentLeft,
+                                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        else
+                        {
+                            camWidthAdjustmentRight++;
+                            int camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+                            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                                camHeightAdjustment + camVShiftAdjustmentRight,
+                                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        break;
+                    case Keys.Up:
+                        if (adjustingLeft)
+                        {
+                            camWidthAdjustmentLeft--;
+                            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+                            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                                camHeightAdjustment + camVShiftAdjustmentLeft,
+                                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        else
+                        {
+                            camWidthAdjustmentRight--;
+                            int camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+                            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                                camHeightAdjustment + camVShiftAdjustmentRight,
+                                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        break;
+                    case Keys.Right:
+                        if (adjustingLeft)
+                        {
+                            camHShiftAdjustmentLeft--;
+                            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+                            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                                camHeightAdjustment + camVShiftAdjustmentLeft,
+                                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        else
+                        {
+                            camHShiftAdjustmentRight--;
+                            int camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+                            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                                camHeightAdjustment + camVShiftAdjustmentRight,
+                                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        break;
+                    case Keys.Left:
+                        if (adjustingLeft)
+                        {
+                            camHShiftAdjustmentLeft++;
+                            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+                            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                                camHeightAdjustment + camVShiftAdjustmentLeft,
+                                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        else
+                        {
+                            camHShiftAdjustmentRight++;
+                            int camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+                            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                                camHeightAdjustment + camVShiftAdjustmentRight,
+                                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        break;
+                    case Keys.PageUp:
+                        if (adjustingLeft)
+                        {
+                            camVShiftAdjustmentLeft--;
+                            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+                            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                                camHeightAdjustment + camVShiftAdjustmentLeft,
+                                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        else
+                        {
+                            camVShiftAdjustmentRight--;
+                            int camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+                            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                                camHeightAdjustment + camVShiftAdjustmentRight,
+                                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        break;
+                    case Keys.PageDown:
+                        if (adjustingLeft)
+                        {
+                            camVShiftAdjustmentLeft++;
+                            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+                            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                                camHeightAdjustment + camVShiftAdjustmentLeft,
+                                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        else
+                        {
+                            camVShiftAdjustmentRight++;
+                            int camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+                            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                                camHeightAdjustment + camVShiftAdjustmentRight,
+                                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+                        }
+                        break;
+                    case Keys.Enter:
+                        adjustingLeft = !adjustingLeft;
+                        break;
+                }
+            }
+        }
+
+        private void CreateLights()
+        {
+            // Create a directional light source
+            LightSource lightSource = new LightSource();
+            lightSource.Direction = new Vector3(1, -0.75f, -0.5f);
+            lightSource.Diffuse = new Vector4(0.8f, 0.8f, 0.8f, 1);
+            lightSource.Specular = new Vector4(0.4f, 0.4f, 0.4f, 1);
+
+            // Create a light node to hold the light source
+            LightNode lightNode = new LightNode();
+            // Add an ambient component
+            lightNode.AmbientLightColor = new Vector4(0.15f, 0.15f, 0.15f, 1);
+            lightNode.LightSource = lightSource;
+
+            // Add this light node to the root node
+            groundMarkerNode.AddChild(lightNode);
         }
 
         private void SetupStereoCamera()
@@ -171,38 +363,47 @@ namespace StereoCameraCalibration
 
         private void SetupViewports()
         {
-            // Create a viewport for the left eye image
-            leftViewport = new Viewport();
-            leftViewport.X = 0;
-            leftViewport.Y = 0;
-            leftViewport.Width = 640;
-            leftViewport.Height = 480;
-            leftViewport.MinDepth = State.Device.Viewport.MinDepth;
-            leftViewport.MaxDepth = State.Device.Viewport.MaxDepth;
+            stereoWidth = State.Width / 2;
+            stereoHeight = State.Height;
 
-            // Create a viewport for the right eye image
-            rightViewport = new Viewport();
-            rightViewport.X = 640;
-            rightViewport.Y = 0;
-            rightViewport.Width = 640;
-            rightViewport.Height = 480;
-            rightViewport.MinDepth = State.Device.Viewport.MinDepth;
-            rightViewport.MaxDepth = State.Device.Viewport.MaxDepth;
+            PresentationParameters pp = GraphicsDevice.PresentationParameters;
 
-            scene.BackgroundBound = leftViewport.Bounds;
+            stereoScreenLeft = new RenderTarget2D(GraphicsDevice, stereoWidth, stereoHeight, false,
+                SurfaceFormat.Color, pp.DepthStencilFormat);
+            stereoScreenRight = new RenderTarget2D(GraphicsDevice, stereoWidth, stereoHeight, false,
+                SurfaceFormat.Color, pp.DepthStencilFormat);
+
+            leftRect = new Rectangle(0, 0, stereoWidth, stereoHeight);
+            rightRect = new Rectangle(stereoWidth, 0, stereoWidth, stereoHeight);
+
+            int camHeightAdjustment = camWidthAdjustmentLeft * stereoHeight / stereoWidth;
+
+            leftSource = new Rectangle(camWidthAdjustmentLeft + camHShiftAdjustmentLeft,
+                camHeightAdjustment + camVShiftAdjustmentLeft,
+                stereoWidth - camWidthAdjustmentLeft * 2, stereoHeight - camHeightAdjustment * 2);
+
+            camHeightAdjustment = camWidthAdjustmentRight * stereoHeight / stereoWidth;
+
+            rightSource = new Rectangle(camWidthAdjustmentRight + camHShiftAdjustmentRight,
+                camHeightAdjustment + camVShiftAdjustmentRight,
+                stereoWidth - camWidthAdjustmentRight * 2, stereoHeight - camHeightAdjustment * 2);
+
+            spriteBatch = new SpriteBatch(GraphicsDevice);
+
+            scene.BackgroundBound = leftRect;
         }
 
         private void SetupCalibration()
         {
             leftCaptureDevice = new DirectShowCapture2();
-            leftCaptureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+            leftCaptureDevice.InitVideoCapture(leftDeviceID, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
 
             // Add left video capture device to the scene for rendering left eye image
             scene.AddVideoCaptureDevice(leftCaptureDevice);
 
             rightCaptureDevice = new DirectShowCapture2();
-            rightCaptureDevice.InitVideoCapture(1, FrameRate._30Hz, Resolution._640x480,
+            rightCaptureDevice.InitVideoCapture(rightDeviceID, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
 
             // Add right video capture device to the scene for rendering right eye image
@@ -225,13 +426,13 @@ namespace StereoCameraCalibration
             markerTracker.MaxMarkerError = 0.02f;
             markerTracker.ZNearPlane = 0.1f;
             markerTracker.ZFarPlane = 1000;
-            markerTracker.InitTracker(leftCaptureDevice.Width, leftCaptureDevice.Height, "Wrap920_0_Left.xml", markerSize);
+            markerTracker.InitTracker(leftCaptureDevice.Width, leftCaptureDevice.Height, LEFT_CALIB, markerSize);
             ((StereoCamera)scene.CameraNode.Camera).LeftProjection = markerTracker.CameraProjection;
 
             // Add another marker detector for tracking right video capture device
             ALVARDllBridge.alvar_add_marker_detector(markerSize, 5, 2);
 
-            ALVARDllBridge.alvar_add_camera("Wrap920_0_Right.xml", rightCaptureDevice.Width, rightCaptureDevice.Height);
+            ALVARDllBridge.alvar_add_camera(RIGHT_CALIB, rightCaptureDevice.Width, rightCaptureDevice.Height);
             double[] projMat = new double[16];
             double cameraFovX = 0, cameraFovY = 0;
             ALVARDllBridge.alvar_get_camera_params(1, projMat, ref cameraFovX, ref cameraFovY, 1000, 0.1f);
@@ -304,15 +505,12 @@ namespace StereoCameraCalibration
                     float xyRatio = yGap / xGap;
                     float xzRatio = zGap / xGap;
 
-                    if (xyRatio < 0.05 && xzRatio < 0.2 && rawPos.Length() > EXPECTED_GAP_MIN && rawPos.Length() < EXPECTED_GAP_MAX)
+                    if (xyRatio < 0.2 && xzRatio < 0.2 && rawPos.Length() > EXPECTED_GAP_MIN && rawPos.Length() < EXPECTED_GAP_MAX)
                     {
-                        camTransform.LeftCameraTransform = leftEyeTransform;
-                        camTransform.RightCameraTransform = rightEyeTransform;
-                        camTransform.ReadyToSend = true;
-
                         relativeTransforms.Add(relativeTransform);
 
                         Console.WriteLine("Completed calculation " + (captureCount + 1));
+                        Notifier.AddMessage("Completed calculation: " + (captureCount + 1) + "/" + CALIB_COUNT_MAX);
 
                         rawScale = Vector3Helper.QuaternionToEulerAngleVector3(rawRot);
                         rawScale = Vector3Helper.RadiansToDegrees(rawScale);
@@ -325,6 +523,7 @@ namespace StereoCameraCalibration
                     {
                         Console.WriteLine("Failed: Pos: " + rawPos.ToString() + ", Length: " + rawPos.Length());
                         Console.WriteLine();
+                        Notifier.AddMessage("Failed. Try again");
                     }
                 }
             }
@@ -334,57 +533,12 @@ namespace StereoCameraCalibration
                 SaveCalibration();
 
                 Console.WriteLine("Finished calibration. Saved " + calibrationFilename);
+                Notifier.AddMessage("Finished calibration!!");
 
                 finalized = true;
             }
 
             calibrating = false;
-        }
-
-        private void SaveCameraImages()
-        {
-            if (leftVideoData == null)
-            {
-                leftVideoData = new int[leftCaptureDevice.Width * leftCaptureDevice.Height];
-                rightVideoData = new int[rightCaptureDevice.Width * rightCaptureDevice.Height];
-
-                leftTexture = new Texture2D(State.Device, leftCaptureDevice.Width, leftCaptureDevice.Height, false,
-                    SurfaceFormat.Color);
-                rightTexture = new Texture2D(State.Device, rightCaptureDevice.Width, rightCaptureDevice.Height, false,
-                    SurfaceFormat.Color);
-
-                if (!Directory.Exists("Images"))
-                    Directory.CreateDirectory("Images");
-            }
-
-            IntPtr zeroPtr = IntPtr.Zero;
-            leftCaptureDevice.GetImageTexture(leftVideoData, ref zeroPtr);
-            rightCaptureDevice.GetImageTexture(rightVideoData, ref zeroPtr);
-
-            int alpha = (int)(255 << 24);
-            for (int i = 0; i < leftVideoData.Length; ++i)
-            {
-                leftVideoData[i] |= alpha;
-                rightVideoData[i] |= alpha;
-            }
-
-            leftTexture.SetData<int>(leftVideoData);
-            rightTexture.SetData<int>(rightVideoData);
-
-            captureCount++;
-            leftTexture.SaveAsPng(new FileStream("Images/left" + captureCount.ToString("00") + ".png", FileMode.Create, FileAccess.Write),
-                leftTexture.Width, leftTexture.Height);
-            rightTexture.SaveAsPng(new FileStream("Images/right" + captureCount.ToString("00") + ".png", FileMode.Create, FileAccess.Write),
-                rightTexture.Width, rightTexture.Height);
-
-            Console.WriteLine("Completed calculation " + (captureCount));
-
-            if (captureCount > CALIB_COUNT_MAX)
-            {
-                Console.WriteLine("Finished calibration. Saved " + calibrationFilename);
-
-                finalized = true;
-            }
         }
 
         private void SaveCalibration()
@@ -415,40 +569,169 @@ namespace StereoCameraCalibration
             Matrix avgTransform = Matrix.CreateFromQuaternion(rotSum);
             avgTransform.Translation = avgPos;
 
-            XmlDocument xmlDoc = new XmlDocument();
-            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
+            MatrixHelper.SaveMatrixToXML(calibrationFilename, avgTransform);
 
-            XmlElement xmlNode = xmlDoc.CreateElement("StereoCalibration");
+            ((StereoCamera)scene.CameraNode.Camera).RightView = Matrix.Invert(avgTransform);
 
-            xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
-            xmlDoc.AppendChild(xmlNode);
+            CreateTestObjects();
+        }
 
-            MatrixHelper.SaveMatrixToXML(xmlNode, avgTransform, xmlDoc);
+        private void CreateTestObjects()
+        {
+            groundMarkerNode = new TransformNode();
+            scene.RootNode.AddChild(groundMarkerNode);
 
-            try
+            CreateLights();
+
+            Box box = new Box(24);
+
+            // Create a box geometry
             {
-                xmlDoc.Save(calibrationFilename);
+                GeometryNode boxNode = new GeometryNode("Box1");
+                boxNode.Model = box;
+                Material boxMat = new Material();
+
+                boxMat.Diffuse = Color.Red.ToVector4();
+                boxMat.Specular = Color.White.ToVector4();
+                boxMat.SpecularPower = 20;
+
+                boxNode.Material = boxMat;
+
+                TransformNode boxTrans = new TransformNode();
+                boxTrans.Translation = new Vector3(0, 0, 12);
+
+                groundMarkerNode.AddChild(boxTrans);
+                boxTrans.AddChild(boxNode);
             }
-            catch (Exception exp)
+
             {
-                Console.WriteLine("Failed to save the file: " + calibrationFilename);
+                GeometryNode boxNode = new GeometryNode("Box2");
+                boxNode.Model = box;
+                Material boxMat = new Material();
+
+                boxMat.Diffuse = Color.Blue.ToVector4();
+                boxMat.Specular = Color.White.ToVector4();
+                boxMat.SpecularPower = 20;
+
+                boxNode.Material = boxMat;
+
+                TransformNode boxTrans = new TransformNode();
+                boxTrans.Translation = new Vector3(-140, -72, 12);
+
+                groundMarkerNode.AddChild(boxTrans);
+                boxTrans.AddChild(boxNode);
+            }
+
+            {
+                GeometryNode boxNode = new GeometryNode("Box3");
+                boxNode.Model = box;
+                Material boxMat = new Material();
+
+                boxMat.Diffuse = Color.Green.ToVector4();
+                boxMat.Specular = Color.White.ToVector4();
+                boxMat.SpecularPower = 20;
+
+                boxNode.Material = boxMat;
+
+                TransformNode boxTrans = new TransformNode();
+                boxTrans.Translation = new Vector3(140, -72, 12);
+
+                groundMarkerNode.AddChild(boxTrans);
+                boxTrans.AddChild(boxNode);
+            }
+
+            {
+                GeometryNode boxNode = new GeometryNode("Box4");
+                boxNode.Model = box;
+                Material boxMat = new Material();
+
+                boxMat.Diffuse = Color.Purple.ToVector4();
+                boxMat.Specular = Color.White.ToVector4();
+                boxMat.SpecularPower = 20;
+
+                boxNode.Material = boxMat;
+
+                TransformNode boxTrans = new TransformNode();
+                boxTrans.Translation = new Vector3(-140, 72, 12);
+
+                groundMarkerNode.AddChild(boxTrans);
+                boxTrans.AddChild(boxNode);
+            }
+
+            {
+                GeometryNode boxNode = new GeometryNode("Box5");
+                boxNode.Model = box;
+                Material boxMat = new Material();
+
+                boxMat.Diffuse = Color.Yellow.ToVector4();
+                boxMat.Specular = Color.White.ToVector4();
+                boxMat.SpecularPower = 20;
+
+                boxNode.Material = boxMat;
+
+                TransformNode boxTrans = new TransformNode();
+                boxTrans.Translation = new Vector3(140, 72, 12);
+
+                groundMarkerNode.AddChild(boxTrans);
+                boxTrans.AddChild(boxNode);
             }
         }
 
-        private void SetupNetwork()
+        private void SaveAdjustments()
         {
-            State.EnableNetworking = true;
-            State.IsServer = true;
+            XmlDocument xmlDoc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "utf-8", null);
 
-            LidgrenServer server = new LidgrenServer("StereoCameraCalibration", 14242);
+            xmlDoc.InsertBefore(xmlDeclaration, xmlDoc.DocumentElement);
 
-            NetworkHandler networkHandler = new NetworkHandler();
-            networkHandler.NetworkServer = server;
+            XmlElement xmlRootNode = xmlDoc.CreateElement("CameraAdjustments");
+            xmlDoc.AppendChild(xmlRootNode);
 
-            scene.NetworkHandler = networkHandler;
+            {
+                XmlElement xmlDataNode = xmlDoc.CreateElement("LeftWidthAdjustment");
+                xmlDataNode.InnerText = camWidthAdjustmentLeft.ToString();
+                xmlRootNode.AppendChild(xmlDataNode);
+            }
 
-            camTransform = new CameraTransformStream();
-            scene.NetworkHandler.AddNetworkObject(camTransform);
+            {
+                XmlElement xmlDataNode = xmlDoc.CreateElement("LeftHorizontalShiftAdjustment");
+                xmlDataNode.InnerText = camHShiftAdjustmentLeft.ToString();
+                xmlRootNode.AppendChild(xmlDataNode);
+            }
+
+            {
+                XmlElement xmlDataNode = xmlDoc.CreateElement("LeftVerticalShiftAdjustment");
+                xmlDataNode.InnerText = camVShiftAdjustmentLeft.ToString();
+                xmlRootNode.AppendChild(xmlDataNode);
+            }
+
+            {
+                XmlElement xmlDataNode = xmlDoc.CreateElement("RightWidthAdjustment");
+                xmlDataNode.InnerText = camWidthAdjustmentRight.ToString();
+                xmlRootNode.AppendChild(xmlDataNode);
+            }
+
+            {
+                XmlElement xmlDataNode = xmlDoc.CreateElement("RightHorizontalShiftAdjustment");
+                xmlDataNode.InnerText = camHShiftAdjustmentRight.ToString();
+                xmlRootNode.AppendChild(xmlDataNode);
+            }
+
+            {
+                XmlElement xmlDataNode = xmlDoc.CreateElement("RightVerticalShiftAdjustment");
+                xmlDataNode.InnerText = camVShiftAdjustmentRight.ToString();
+                xmlRootNode.AppendChild(xmlDataNode);
+            }
+
+            try
+            {
+                xmlDoc.Save(adjustmentsFilename);
+                Notifier.AddMessage("Saved adjustments");
+            }
+            catch (Exception)
+            {
+                throw new GoblinException("Failed to save the adjustments: " + adjustmentsFilename);
+            }
         }
 
         protected override void Dispose(bool disposing)
@@ -466,11 +749,33 @@ namespace StereoCameraCalibration
 
         protected override void Draw(GameTime gameTime)
         {
-            State.Device.Viewport = leftViewport;
+            if (finalized)
+            {
+                leftCaptureDevice.GetImageTexture(null, ref leftImagePtr);
+
+                markerTracker.DetectorID = 0;
+                markerTracker.CameraID = 0;
+                markerTracker.ProcessImage(leftCaptureDevice, leftImagePtr);
+
+                bool markerFoundOnLeftVideo = markerTracker.FindMarker(markerID);
+
+                if (markerFoundOnLeftVideo)
+                {
+                    groundMarkerNode.WorldTransformation = markerTracker.GetMarkerTransform();
+                }
+            }
+
+            scene.SceneRenderTarget = stereoScreenLeft;
             scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
 
-            State.Device.Viewport = rightViewport;
+            scene.SceneRenderTarget = stereoScreenRight;
             scene.RenderScene();
+
+            GraphicsDevice.SetRenderTarget(null);
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Opaque);
+            spriteBatch.Draw(stereoScreenLeft, leftRect, leftSource, Color.White);
+            spriteBatch.Draw(stereoScreenRight, rightRect, rightSource, Color.White);
+            spriteBatch.End();
         }
     }
 }

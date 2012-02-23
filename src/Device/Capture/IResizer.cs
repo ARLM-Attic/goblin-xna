@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,7 @@ namespace GoblinXNA.Device.Capture
         /// </summary>
         float ScalingFactor { get; }
 
+#if WINDOWS
         /// <summary>
         /// Resizes the original image and store the resized image in the given memory address pointed by
         /// resizedImagePtr.
@@ -58,5 +59,16 @@ namespace GoblinXNA.Device.Capture
         /// <param name="resizedImagePtr">The pointer that contains the address of the resized image.</param>
         /// <param name="bpp">Bits per pixel</param>
         void ResizeImage(IntPtr origImagePtr, Vector2 origSize, ref IntPtr resizedImagePtr, int bpp);
+#else
+        /// <summary>
+        /// Resizes the original image and store the resized image in the given memory address pointed by
+        /// resizedImagePtr.
+        /// </summary>
+        /// <param name="origImage">The pixel byte array of the original image.</param>
+        /// <param name="origSize">The size of the original image.</param>
+        /// <param name="resizedImage">The pixel byte array of the resized image.</param>
+        /// <param name="bpp">Bits per pixel</param>
+        void ResizeImage(byte[] origImage, Vector2 origSize, ref byte[] resizedImage, int bpp);
+#endif
     }
 }

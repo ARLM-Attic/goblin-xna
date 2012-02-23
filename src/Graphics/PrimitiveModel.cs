@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -385,11 +385,7 @@ namespace GoblinXNA.Graphics
                 afterEffect.Render(
                     ref renderMatrix,
                     technique,
-                    delegate
-                    {
-                        State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
-                            0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
-                    });
+                    ResubmitGeometry);
             }
 
             if (showBoundingBox)
@@ -406,10 +402,23 @@ namespace GoblinXNA.Graphics
                 SubmitGeometry);
         }
 
+        /// <summary>
+        /// Submits the vertex and index streams to the shader
+        /// </summary>
         protected virtual void SubmitGeometry()
         {
             State.Device.SetVertexBuffer(customMesh.VertexBuffer);
             State.Device.Indices = customMesh.IndexBuffer;
+            State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
+                0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
+        }
+
+        /// <summary>
+        /// Submits the vertex and index streams to the shader without setting the index stream assuming
+        /// it's already been set to the device
+        /// </summary>
+        protected virtual void ResubmitGeometry()
+        {
             State.Device.DrawIndexedPrimitives(customMesh.PrimitiveType,
                 0, 0, customMesh.NumberOfVertices, 0, customMesh.NumberOfPrimitives);
         }

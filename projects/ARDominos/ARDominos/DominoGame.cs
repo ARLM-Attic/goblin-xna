@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2009, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1067,7 +1067,7 @@ namespace ARDominos
 
             ALVARMarkerTracker tracker = new ALVARMarkerTracker();
             tracker.MaxMarkerError = 0.02f;
-            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 9.0);
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "default_calib.xml", 9.0);
 
             scene.MarkerTracker = tracker;
 

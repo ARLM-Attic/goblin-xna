@@ -81,26 +81,17 @@
     <Reference Include="System.Net" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CameraTransformStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Main.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\..\data\Calibrations\Wrap920_0_Left.xml">
-      <Link>Wrap920_0_Left.xml</Link>
+    <Content Include="..\..\..\data\Calibrations\Wrap920_Left.xml">
+      <Link>Wrap920_Left.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\..\data\Calibrations\Wrap920_0_Right.xml">
-      <Link>Wrap920_0_Right.xml</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\..\..\data\Calibrations\Wrap920_1_Left.xml">
-      <Link>Wrap920_1_Left.xml</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\..\..\data\Calibrations\Wrap920_1_Right.xml">
-      <Link>Wrap920_1_Right.xml</Link>
+    <Content Include="..\..\..\data\Calibrations\Wrap920_Right.xml">
+      <Link>Wrap920_Right.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\..\dlls\unmanaged\alvar150.dll">
@@ -135,10 +126,6 @@
       <Link>highgui100.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\..\projects\ARRoller\ARRollerALVAR.xml">
-      <Link>ARRollerALVAR.xml</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="..\..\..\tutorials\Tutorial8 - Optical Marker Tracking\ALVARGroundArray.xml">
       <Link>ALVARGroundArray.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -146,6 +133,9 @@
     <Content Include="Game.ico" />
     <Content Include="GameThumbnail.png">
       <XnaPlatformSpecific>true</XnaPlatformSpecific>
+    </Content>
+    <Content Include="Setting.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>

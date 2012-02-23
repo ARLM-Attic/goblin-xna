@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -70,6 +70,8 @@ namespace GoblinXNA.Device.Capture
 
         #region Public Methods
 
+#if WINDOWS
+
         public void ResizeImage(IntPtr origImagePtr, Vector2 origSize, 
             ref IntPtr resizedImagePtr, int bpp)
         {
@@ -99,7 +101,33 @@ namespace GoblinXNA.Device.Capture
                 }
             }
         }
+#else
+        public void ResizeImage(byte[] origImage, Vector2 origSize,
+            ref byte[] resizedImage, int bpp)
+        {
+            int newWidth = (int)(origSize.X * scale);
+            int newHeight = (int)(origSize.Y * scale);
+            int srcStride = (int)(origSize.X * bpp);
+            int dstStride = (int)(newWidth * bpp);
+            int incr = 2 * bpp;
+            int srcIndex = 0;
+            int destIndex = 0;
 
+            for (int i = 0; i < (int)origSize.Y; i += 2)
+            {
+                for (int j = 0; j < srcStride; j += incr)
+                {
+                    for (int k = 0; k < bpp; k++)
+                        resizedImage[destIndex + k] = origImage[srcIndex + k];
+
+                    srcIndex += incr;
+                    destIndex += bpp;
+                }
+
+                srcIndex += srcStride;
+            }
+        }
+#endif
         #endregion
     }
 }

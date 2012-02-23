@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -445,11 +445,13 @@ namespace GoblinXNA.Graphics
                     part.VertexBuffer.GetData<Vector3>(part.VertexOffset * declaration.VertexStride + vertexPosition.Offset,
                         data, 0, part.NumVertices, declaration.VertexStride);
 
-                    for (int ndx = 0; ndx < data.Length; ndx++)
+                    if (needTransform)
                     {
-                        if (needTransform)
-                            Vector3.Transform(ref data[ndx], ref transforms[modelMesh.ParentBone.Index],
-                                out data[ndx]);
+                        Matrix transform = transforms[modelMesh.ParentBone.Index];
+                        for (int ndx = 0; ndx < data.Length; ndx++)
+                        {
+                            Vector3.Transform(ref data[ndx], ref transform, out data[ndx]);
+                        }
                     }
 
                     vertices.AddRange(data);
@@ -586,12 +588,7 @@ namespace GoblinXNA.Graphics
                         afterEffect.Render(
                             ref tmpMat1,
                             "",
-                            delegate
-                            {
-                                State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
-                                    part.VertexOffset, 0, part.NumVertices, part.StartIndex, part.PrimitiveCount);
-
-                            });
+                            ResubmitGeometry);
                     }
                 }
             }
@@ -629,10 +626,23 @@ namespace GoblinXNA.Graphics
             }
         }
 
+        /// <summary>
+        /// Submits the vertex and index streams to the shader
+        /// </summary>
         protected virtual void SubmitGeometry()
         {
             State.Device.SetVertexBuffer(curPart.VertexBuffer);
             State.Device.Indices = curPart.IndexBuffer;
+            State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
+                curPart.VertexOffset, 0, curPart.NumVertices, curPart.StartIndex, curPart.PrimitiveCount);
+        }
+
+        /// <summary>
+        /// Submits the vertex and index streams to the shader without setting the index stream assuming
+        /// it's already been set to the device
+        /// </summary>
+        protected virtual void ResubmitGeometry()
+        {
             State.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList,
                 curPart.VertexOffset, 0, curPart.NumVertices, curPart.StartIndex, curPart.PrimitiveCount);
         }

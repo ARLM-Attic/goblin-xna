@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -178,7 +178,7 @@ namespace Tutorial13___iWear_VR920
 
             try
             {
-                xmlDoc.Load("Wrap920_1_Stereo_Millimeter.xml");
+                xmlDoc.Load("Wrap920_Stereo_Millimeter.xml");
             }
             catch (Exception exp)
             {
@@ -224,7 +224,7 @@ namespace Tutorial13___iWear_VR920
             XmlDocument xmlDoc = new XmlDocument();
             try
             {
-                xmlDoc.Load("Wrap920_1_Adjustments.xml");
+                xmlDoc.Load("Wrap920_Adjustments.xml");
             }
             catch (Exception exp)
             {
@@ -298,7 +298,7 @@ namespace Tutorial13___iWear_VR920
 
         private void SetupMarkerTracking()
         {
-            DirectShowCapture2 captureDevice = new DirectShowCapture2();
+            DirectShowCapture captureDevice = new DirectShowCapture();
             captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
                 ImageFormat.R8G8B8_24, false);
 
@@ -308,10 +308,10 @@ namespace Tutorial13___iWear_VR920
 
             // if we're using Wrap920AR, then we need to add another capture device for
             // processing stereo camera
-            DirectShowCapture2 captureDevice2 = null;
+            DirectShowCapture captureDevice2 = null;
             if (iTracker.ProductID == iWearDllBridge.IWRProductID.IWR_PROD_WRAP920)
             {
-                captureDevice2 = new DirectShowCapture2();
+                captureDevice2 = new DirectShowCapture();
                 captureDevice2.InitVideoCapture(1, FrameRate._30Hz, Resolution._640x480,
                     ImageFormat.R8G8B8_24, false);
 
@@ -320,7 +320,7 @@ namespace Tutorial13___iWear_VR920
                 // Calculate the right projection matrix using the camera intrinsic parameters for the 
                 // right camera
                 ((StereoCamera)scene.CameraNode.Camera).RightProjection =
-                    ALVARDllBridge.GetCameraProjection("Wrap920_1_Right.xml", captureDevice2.Width, 
+                    ALVARDllBridge.GetCameraProjection("Wrap920_Right.xml", captureDevice2.Width, 
                         captureDevice2.Height, 0.1f, 1000);
             }
 
@@ -329,7 +329,7 @@ namespace Tutorial13___iWear_VR920
             tracker.MaxMarkerError = 0.02f;
             tracker.ZNearPlane = 0.1f;
             tracker.ZFarPlane = 1000;
-            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "Wrap920_1_Left.xml", markerSize);
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "Wrap920_Left.xml", markerSize);
 
             ((StereoCamera)scene.CameraNode.Camera).LeftProjection = tracker.CameraProjection;
 

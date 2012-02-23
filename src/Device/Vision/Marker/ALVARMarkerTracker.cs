@@ -1,5 +1,5 @@
 ﻿/************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -149,6 +149,8 @@ namespace GoblinXNA.Device.Vision.Marker
             detectAdditional = false;
             detectorID = -1;
             cameraID = -1;
+
+            EnableTracking = true;
         }
 
         #endregion
@@ -247,6 +249,12 @@ namespace GoblinXNA.Device.Vision.Marker
 
                 zFarPlane = value;
             }
+        }
+
+        public bool EnableTracking
+        {
+            get;
+            set;
         }
 
         /// <summary>

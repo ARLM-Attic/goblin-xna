@@ -9,9 +9,22 @@ namespace CameraCalibration
         /// </summary>
         static void Main(string[] args)
         {
-            using (Main game = new Main())
+            int ID = 0;
+
+            switch (ID)
             {
-                game.Run();
+                case 0:
+                    using (Main game = new Main())
+                    {
+                        game.Run();
+                    }
+                    break;
+                case 1:
+                    using (ProjectionMatrixGenerator gen = new ProjectionMatrixGenerator())
+                    {
+                        gen.GenerateXML();
+                    }
+                    break;
             }
         }
     }

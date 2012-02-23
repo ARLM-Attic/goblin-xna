@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,10 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.IO;
 using System.Runtime.InteropServices;
+
+using Microsoft.Xna.Framework.Graphics;
 
 namespace GoblinXNA.Helpers
 {
@@ -361,6 +364,37 @@ namespace GoblinXNA.Helpers
             data = new byte[newLength];
             Buffer.BlockCopy(copy, 0, data, 0, copy.Length);
             copy = null;
+        }
+
+        /// <summary>
+        /// Encode a texture2D into a Jpeg byte array.
+        /// </summary>
+        /// <param name="image">A texture2D to be encoded</param>
+        /// <param name="width">The width of the returned encoded jpeg</param>
+        /// <param name="height">The height of the returned encoded jpeg</param>
+        public static byte[] Encode(Texture2D image, int width, int height)
+        {
+            byte[] jpegData = new byte[width * height / 4];
+            MemoryStream jpegStream = new MemoryStream(jpegData, 0, jpegData.Length);
+            image.SaveAsJpeg(jpegStream, width, height);
+
+            //set the memory stream pointer to the begining 
+            jpegStream.Seek(0, SeekOrigin.Begin);
+
+            return jpegData;
+        }
+
+        /// <summary>
+        /// Decode a Jpeg byte array in order to get a texture2D.
+        /// </summary>
+        /// <param name="jpegData">A Jpeg byte array to be decoded</param>
+        /// <param name="graphicsDevice">GraphicsDevice from graphicsDeviceManager</param>
+        public static Texture2D Decode(byte[] jpegData, GraphicsDevice graphicsDevice)
+        {
+            MemoryStream jpegStream = new MemoryStream(jpegData);
+            Texture2D texture = Texture2D.FromStream(graphicsDevice, jpegStream);
+
+            return texture;
         }
     }
 }

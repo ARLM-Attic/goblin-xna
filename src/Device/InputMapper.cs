@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -164,7 +164,7 @@ namespace GoblinXNA.Device
         /// <summary>
         /// Updates all of the status of the available 6DOF and non-6DOF input devices.
         /// </summary>
-        /// <param name="gameTime"></param>
+        /// <param name="elapsedTime"></param>
         /// <param name="deviceActive"></param>
         public void Update(TimeSpan elapsedTime, bool deviceActive)
         {

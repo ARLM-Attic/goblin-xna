@@ -1,5 +1,5 @@
 /************************************************************************************ 
- * Copyright (c) 2008-2011, Columbia University
+ * Copyright (c) 2008-2012, Columbia University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -97,9 +97,9 @@ namespace Tutorial8___Optical_Marker_Tracking
             // Use the newton physics engine to perform collision detection
             scene.PhysicsEngine = new NewtonPhysics();
 
-            // For some reason, it causes memory conflict when it attempts to update the
-            // marker transformation in the multi-threaded code, so if you're using ARTag
-            // then you should not enable the marker tracking thread
+            // For some reason, it sometimes causes memory conflict when it attempts to update the
+            // marker transformation in the multi-threaded code, so if you see weird exceptions 
+            // thrown in Shaders, then you should not enable the marker tracking thread
             State.ThreadOption = (ushort)ThreadOptions.MarkerTracking;
 
             // Set up optical marker tracking
@@ -170,8 +170,8 @@ namespace Tutorial8___Optical_Marker_Tracking
                 // and frame rate values may cause exceptions or simply be ignored, depending 
                 // on the device driver.  The values set here will work for a Microsoft VX 6000, 
                 // and many other webcams.
-                captureDevice = new DirectShowCapture2();
-                captureDevice.InitVideoCapture(0, FrameRate._30Hz, Resolution._640x480,
+                captureDevice = new DirectShowCapture();
+                captureDevice.InitVideoCapture(0, FrameRate._60Hz, Resolution._640x480,
                     ImageFormat.R8G8B8_24, false);
             }
 
@@ -181,7 +181,7 @@ namespace Tutorial8___Optical_Marker_Tracking
 
             ALVARMarkerTracker tracker = new ALVARMarkerTracker();
             tracker.MaxMarkerError = 0.02f;
-            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "calib.xml", 32.4f);
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "default_calib.xml", 32.4f);
 
             // Set the marker tracker to use for our scene
             scene.MarkerTracker = tracker;
@@ -367,7 +367,7 @@ namespace Tutorial8___Optical_Marker_Tracking
                 }
                 else
                     ((NewtonPhysics)scene.PhysicsEngine).SetTransform(boxNode.Physics, 
-                        Matrix.CreateTranslation(0, 0, 4));
+                        Matrix.CreateTranslation(0, 0, 16.1f));
             }
 
             scene.Draw(gameTime.ElapsedGameTime, gameTime.IsRunningSlowly);
