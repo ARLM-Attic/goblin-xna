@@ -276,7 +276,7 @@ namespace Tutorial8___Optical_Marker_Tracking
             boxNode.Model.Shader = new SimpleShadowShader(scene.ShadowMap);
 
             // Create a marker node to track a toolbar marker array.
-            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "Toolbar.txt");
+            toolbarMarkerNode = new MarkerNode(scene.MarkerTracker, "ALVARToolbar.xml");
 
             scene.RootNode.AddChild(toolbarMarkerNode);
 
