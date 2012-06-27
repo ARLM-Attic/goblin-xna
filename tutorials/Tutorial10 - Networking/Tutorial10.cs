@@ -97,6 +97,9 @@ namespace Tutorial10___Networking
             Content.RootDirectory = "Content";
 
 #if WINDOWS_PHONE
+            // Extend battery life under lock.
+            InactiveSleepTime = TimeSpan.FromSeconds(1);
+
             graphics.IsFullScreen = true;
 #endif
         }
@@ -238,6 +241,7 @@ namespace Tutorial10___Networking
 
             // Create a light node to hold the light source
             LightNode lightNode = new LightNode();
+            lightNode.AmbientLightColor = new Vector4(0.2f, 0.2f, 0.2f, 1);
             lightNode.LightSource = lightSource;
 
             // Add this light node to the root node

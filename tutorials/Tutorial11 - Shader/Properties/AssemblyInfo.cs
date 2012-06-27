@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("Tutorial11 - Shader")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyCompany("Columbia University")]
-[assembly: AssemblyCopyright("Copyright © Columbia University 2011")]
+[assembly: AssemblyCopyright("Copyright © Columbia University 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

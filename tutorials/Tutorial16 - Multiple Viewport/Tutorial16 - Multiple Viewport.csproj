@@ -50,7 +50,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\x86\Release</OutputPath>
+    <OutputPath>..\..\bin\x86\</OutputPath>
     <DefineConstants>TRACE;WINDOWS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -64,7 +64,7 @@
       <HintPath>..\..\..\dlls\managed\DShowNET.dll</HintPath>
     </Reference>
     <Reference Include="GoblinXNA">
-      <HintPath>..\..\..\bin\x86\GoblinXNA.dll</HintPath>
+      <HintPath>..\..\bin\x86\GoblinXNA.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
     <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
@@ -88,36 +88,52 @@
       <Link>default_calib.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\alvar150.dll">
-      <Link>alvar150.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\alvar200.dll">
+      <Link>alvar200.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\alvarplatform150.dll">
-      <Link>alvarplatform150.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\alvarplatform200.dll">
+      <Link>alvarplatform200.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\dlls\unmanaged\ALVARWrapper.dll">
       <Link>ALVARWrapper.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\cv100.dll">
-      <Link>cv100.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\opencv_calib3d240.dll">
+      <Link>opencv_calib3d240.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\cvaux100.dll">
-      <Link>cvaux100.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\opencv_core240.dll">
+      <Link>opencv_core240.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\cvcam100.dll">
-      <Link>cvcam100.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\opencv_features2d240.dll">
+      <Link>opencv_features2d240.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\cxcore100.dll">
-      <Link>cxcore100.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\opencv_flann240.dll">
+      <Link>opencv_flann240.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\dlls\unmanaged\highgui100.dll">
-      <Link>highgui100.dll</Link>
+    <Content Include="..\..\dlls\unmanaged\opencv_highgui240.dll">
+      <Link>opencv_highgui240.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\dlls\unmanaged\opencv_imgproc240.dll">
+      <Link>opencv_imgproc240.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\dlls\unmanaged\opencv_legacy240.dll">
+      <Link>opencv_legacy240.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\dlls\unmanaged\opencv_ml240.dll">
+      <Link>opencv_ml240.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\dlls\unmanaged\opencv_video240.dll">
+      <Link>opencv_video240.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\Tutorial8 - Optical Marker Tracking\ALVARGroundArray.xml">

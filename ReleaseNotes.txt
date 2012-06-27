@@ -1,5 +1,60 @@
 Goblin XNA Release Notes
 
+
+Version 4.1 (6/25/2012)
+
+
+Updates:
+
+1. Added ALVARWrapper 2.0. No need to compile ALVAR wrapper with VS 2008 anymore. Only VS 2010 is required.
+
+2. Added Windows Phone version of Goblin XNA and tutorials. Note that we did NOT include any AR related
+   tutorials due to the lack of vision-based tracking library that is compatible with our BSD license.
+   (NyARToolkit is GPL so we can't include it)
+
+3. Added AnimationHelper for supporting various animations by incorporating Thomas Graavard's work
+   from http://xnatweener.codeplex.com. Note that this has nothing to do with the animation stored
+   in the model file. You can find associated classes in GoblinXNA.Helpers.XNATweener package.
+
+4. Added ALVAR 2.0's feature tracking capability through ALVARFeatureTracker class in
+   GoblinXNA.Device.Vision.Feature package. 
+
+5. Added SimpleEffectShader.MixMaterialDiffuseWithTexture property to allow mixing/multiplying the 
+   Material.Diffuse value of GeometryNode with the texture in a loaded model.
+
+6. Added support for MataliPhysics version 1.8. 
+
+7. Added Tutorial 17 for demonstrating the AnimationHelper we've incorporated.
+
+8. Added Tutorial 18 for demonstrating the feature tracking in ALVAR 2.0. 
+
+
+Bug Fixes:
+
+1. Fixed a bug for light updates when a geometry node is disabled or out of view in one view port 
+   and visible in another viewport in multi-viewport setting.
+
+2. Fixed the Vector3Helper.QuaternionToEulerAngleVector3 function.
+
+3. Fixed a problem of a geometry node not being added back to the physics engine if it's removed 
+   from the scene and get added back to the scene.
+
+4. Fixed a problem of not clearing the background color on the right view for stereo rendering in VR mode
+
+5. Fixed StereoCamera view and projection values with indirect assignment of View and Projection matrix for 
+   left and right eyes using Translation, Rotation, FieldOfViewY, AspectRatio, InterpupillaryDistance, 
+   InterpupillaryShift, and FocalLength properties. 
+
+
+Changes:
+
+1. Updated tutorial 8, 13, and 16 to use ALVARWrapper 2.0.
+
+2. ContainsTransparency property is moved to IModel class from Model so that PrimitiveModel (or any IModel 
+   implementation) will have this property.
+
+
+
 Version 4.0 (2/22/2012)
 
 

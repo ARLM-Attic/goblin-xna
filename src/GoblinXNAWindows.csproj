@@ -115,6 +115,8 @@
     <Compile Include="Device\InputDevice.cs" />
     <Compile Include="Device\InputDevice_6DOF.cs" />
     <Compile Include="Device\InputMapper.cs" />
+    <Compile Include="Device\InterSense2\InterSense.cs" />
+    <Compile Include="Device\InterSense2\ISDllBridge.cs" />
     <Compile Include="Device\InterSense\InterSense.cs" />
     <Compile Include="Device\InterSense\InterSenseSocket.cs" />
     <Compile Include="Device\InterSense\InterSenseStation.cs" />
@@ -124,6 +126,7 @@
     <Compile Include="Device\iWear\iWearTracker.cs" />
     <Compile Include="Device\Vision\CvDllBridge.cs" />
     <Compile Include="Device\Vision\CxcoreDllBridge.cs" />
+    <Compile Include="Device\Vision\Feature\ALVARFeatureTracker.cs" />
     <Compile Include="Device\Vision\HighguiDllBridge.cs" />
     <Compile Include="Device\Util\DESPredictor.cs" />
     <Compile Include="Device\Util\IPredictor.cs" />
@@ -160,6 +163,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Graphics\NormalMapMaterial.cs" />
+    <Compile Include="Helpers\AnimationHelper.cs" />
     <Compile Include="Helpers\DefaultTransparencyComparer.cs" />
     <Compile Include="Helpers\EffectHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
@@ -169,10 +173,30 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Helpers\Vector4Helper.cs" />
+    <Compile Include="Helpers\XNATweener\Back.cs" />
+    <Compile Include="Helpers\XNATweener\BaseTweener.cs" />
+    <Compile Include="Helpers\XNATweener\Bounce.cs" />
+    <Compile Include="Helpers\XNATweener\Circular.cs" />
+    <Compile Include="Helpers\XNATweener\ColorTweener.cs" />
+    <Compile Include="Helpers\XNATweener\Cubic.cs" />
+    <Compile Include="Helpers\XNATweener\Elastic.cs" />
+    <Compile Include="Helpers\XNATweener\Exponential.cs" />
+    <Compile Include="Helpers\XNATweener\ITweener.cs" />
+    <Compile Include="Helpers\XNATweener\Linear.cs" />
+    <Compile Include="Helpers\XNATweener\Loop.cs" />
+    <Compile Include="Helpers\XNATweener\Quadratic.cs" />
+    <Compile Include="Helpers\XNATweener\Quartic.cs" />
+    <Compile Include="Helpers\XNATweener\Quintic.cs" />
+    <Compile Include="Helpers\XNATweener\Sinusoidal.cs" />
+    <Compile Include="Helpers\XNATweener\Tweener.cs" />
+    <Compile Include="Helpers\XNATweener\Vector2Tweener.cs" />
+    <Compile Include="Helpers\XNATweener\Vector3Tweener.cs" />
     <Compile Include="Network\INetworkHandler.cs" />
     <Compile Include="Network\NetworkHandler.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Network\SocketNetworkHandler.cs" />
+    <Compile Include="Network\SocketServer.cs" />
     <Compile Include="Physics\Havok\HavokDllBridge.cs" />
     <Compile Include="Physics\Havok\HavokObject.cs" />
     <Compile Include="Physics\Havok\HavokPhysics.cs" />

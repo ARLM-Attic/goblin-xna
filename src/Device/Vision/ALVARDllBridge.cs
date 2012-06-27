@@ -56,6 +56,12 @@ namespace GoblinXNA.Device.Vision
             int width, 
             int height);
 
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_add_fern_estimator", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void alvar_add_fern_estimator(
+            string calibFile,
+            int width,
+            int height);
+
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_get_camera_projection", CallingConvention = CallingConvention.Cdecl)]
         private static extern void alvar_get_camera_projection(
             string calibFile, 
@@ -80,6 +86,15 @@ namespace GoblinXNA.Device.Vision
             int markerRes,
             double margin);
 
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_train_feature", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int alvar_train_feature(
+            string imageFilename,
+            string classifierFilename);
+
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_add_feature_detector", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int alvar_add_feature_detector(
+            string classifierFilename);
+
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_set_marker_size", CallingConvention = CallingConvention.Cdecl)]
         public static extern int alvar_set_marker_size(
             int detectorID, 
@@ -88,6 +103,18 @@ namespace GoblinXNA.Device.Vision
 
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_add_multi_marker", CallingConvention = CallingConvention.Cdecl)]
         public static extern void alvar_add_multi_marker(String filename);
+
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_detect_feature", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool alvar_detect_feature(
+            int camID,
+            int numChannels,
+            string colorModel,
+            string channelSeq,
+            IntPtr imageData,
+            double minInlierRatio,
+            int minMappedPoints,
+            ref double inlierRatio,
+            ref int mappedPoints);
 
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_detect_marker", CallingConvention = CallingConvention.Cdecl)]
         public static extern void alvar_detect_marker(
@@ -107,7 +134,11 @@ namespace GoblinXNA.Device.Vision
         public static extern void alvar_get_poses(
             int detectorID,
             [Out] IntPtr ids,
-            [Out] IntPtr projMatrix);
+            [Out] IntPtr poseMatrices);
+
+        [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_get_feature_pose", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void alvar_get_feature_pose(
+            [Out] [MarshalAs(UnmanagedType.LPArray, SizeConst = 16)] double[] poseMatrices);
 
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_get_multi_marker_poses", CallingConvention = CallingConvention.Cdecl)]
         public static extern void alvar_get_multi_marker_poses(
@@ -115,7 +146,7 @@ namespace GoblinXNA.Device.Vision
             int camID,
             bool detectAdditional,
             [Out] IntPtr ids,
-            [Out] IntPtr projMatrix,
+            [Out] IntPtr poseMatrices,
             [Out] IntPtr errors);
 
         [DllImport("ALVARWrapper.dll", EntryPoint = "alvar_calibrate_camera", CallingConvention = CallingConvention.Cdecl)]

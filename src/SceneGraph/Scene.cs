@@ -1663,7 +1663,10 @@ namespace GoblinXNA.SceneGraph
                 if ((networkHandler != null) && (node is SynchronizedGeometryNode))
                     networkHandler.RemoveNetworkObject((SynchronizedGeometryNode)node);
                 if (physicsEngine != null && node.AddToPhysicsEngine)
+                {
                     physicsEngine.RemovePhysicsObject(node.Physics);
+                    node.PhysicsStateChanged = true;
+                }
 
                 node.IsRendered = false;
             }
@@ -1757,8 +1760,7 @@ namespace GoblinXNA.SceneGraph
                 if (lastPass)
                 {
                     State.Device.SetRenderTarget(sceneRenderTarget);
-                    if(renderLeftView)
-                        State.Device.Clear(backgroundColor);
+                    State.Device.Clear(backgroundColor);
                 }
                 else
                 {
@@ -1992,10 +1994,10 @@ namespace GoblinXNA.SceneGraph
 
                 if (renderGroups[node.GroupID])
                 {
-                    if (node.ShouldRender && IsWithinViewFrustum(node) && 
+                    if (node.ShouldRender && IsWithinViewFrustum(node) &&
                         node.Material.Diffuse.W > 0)
                     {
-                        if(firstPass)
+                        if (firstPass)
                             triangleCount += node.Model.TriangleCount;
 
                         if (enableLighting && node.Model.UseLighting)
@@ -2064,6 +2066,8 @@ namespace GoblinXNA.SceneGraph
                             AddColMeshLine(node.MarkerTransform, physicsEngine.GetCollisionMesh(node.Physics),
                                 node.MarkerTransformSet);
                     }
+                    else
+                        node.NeedsToUpdateLocalLights = true;
                 }
             }
         }

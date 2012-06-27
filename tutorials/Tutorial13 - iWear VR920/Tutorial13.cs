@@ -174,28 +174,8 @@ namespace Tutorial13___iWear_VR920
             StereoCamera camera = new StereoCamera();
 
             // Load the right eye view matrix from a calibration file created in StereoCameraCalibration tool
-            XmlDocument xmlDoc = new XmlDocument();
-
-            try
-            {
-                xmlDoc.Load("Wrap920_Stereo_Millimeter.xml");
-            }
-            catch (Exception exp)
-            {
-                throw new GoblinException(exp.Message);
-            }
-
             Matrix cameraRightView = Matrix.Identity;
-            foreach (XmlNode xmlNode in xmlDoc.ChildNodes)
-            {
-                if (xmlNode is XmlElement)
-                {
-                    if (xmlNode.Name.Equals("StereoCalibration"))
-                    {
-                        MatrixHelper.LoadMatrixFromXML(xmlNode, ref cameraRightView);
-                    }
-                }
-            }
+            MatrixHelper.LoadMatrixFromXML("Wrap920_Stereo_Millimeter.xml", ref cameraRightView);
 
             camera.LeftView = Matrix.CreateLookAt(Vector3.Zero, -Vector3.UnitZ, Vector3.UnitY);
             camera.RightView = Matrix.Invert(cameraRightView);

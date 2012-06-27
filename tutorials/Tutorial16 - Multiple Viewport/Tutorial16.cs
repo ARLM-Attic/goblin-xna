@@ -220,7 +220,7 @@ namespace Tutorial16___Multiple_Viewport
             tracker.ZNearPlane = arCameraNode.Camera.ZNearPlane;
             tracker.ZFarPlane = arCameraNode.Camera.ZFarPlane;
 
-            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "default_calib.xml", markerSize);
+            tracker.InitTracker(captureDevice.Width, captureDevice.Height, "default_calib.xml", 32.4f);
 
             // Set the marker tracker to use for our scene
             scene.MarkerTracker = tracker;

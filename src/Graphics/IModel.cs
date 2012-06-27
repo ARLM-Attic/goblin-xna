@@ -113,6 +113,14 @@ namespace GoblinXNA.Graphics
         bool ShowBoundingBox { get; set; }
 
         /// <summary>
+        /// Gets or sets whether the texture applied to this model contains
+        /// transparency. Make sure to set this to true if your model contains transparency,
+        /// otherwise, everything will be drawn in opaque color by default for optimization
+        /// purpose.
+        /// </summary>
+        bool ContainsTransparency { get; set; }
+
+        /// <summary>
         /// Gets the offset transformation from the origin of the world coordinate
         /// </summary>
         /// <remarks>

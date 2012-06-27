@@ -76,6 +76,9 @@ namespace Tutorial6___Simple_Particle_Systems
             Content.RootDirectory = "Content";
 
 #if WINDOWS_PHONE
+            // Extend battery life under lock.
+            InactiveSleepTime = TimeSpan.FromSeconds(1);
+
             graphics.IsFullScreen = true;
 #endif
         }

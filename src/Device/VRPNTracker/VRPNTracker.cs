@@ -69,6 +69,8 @@ namespace GoblinXNA.Device.VRPNTracker
         private float _ypos;
         private float _zpos;
 
+        private Matrix worldTransform;
+
         private TrackerRemote tracker;
 
         private static VRPNTracker VRPNtracker;
@@ -213,13 +215,7 @@ namespace GoblinXNA.Device.VRPNTracker
         {
             get
             {
-                Matrix temp2 = Matrix.CreateFromQuaternion(_orientation);
-                Matrix temp1 = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-                temp1.Translation = _position;
-
-                temp2 = Matrix.CreateFromQuaternion(_orientation) * Matrix.CreateTranslation(_position);
-
-                return temp2;
+                return worldTransform;
             }
         }
 
@@ -263,12 +259,15 @@ namespace GoblinXNA.Device.VRPNTracker
             _xpos = (float)e.Position.X;
             _ypos = (float)e.Position.Y;
             _zpos = (float)e.Position.Z;
-            
+
+            // tools inverts e.Orientation.Z for packetizing/sending, so invert it back
             _orientation = new Microsoft.Xna.Framework.Quaternion((float)e.Orientation.X, (float)e.Orientation.Y, (float)e.Orientation.Z, (float)e.Orientation.W);
-            _roll = (float)Math.Atan2(2 * (e.Orientation.X * e.Orientation.Y + e.Orientation.W * e.Orientation.Z), e.Orientation.W * e.Orientation.W + e.Orientation.X * e.Orientation.X - e.Orientation.Y * e.Orientation.Y - e.Orientation.Z * e.Orientation.Z);
-            _pitch = (float)Math.Atan2(2 * (e.Orientation.Y * e.Orientation.Z + e.Orientation.W * e.Orientation.X), e.Orientation.W * e.Orientation.W - e.Orientation.X * e.Orientation.X - e.Orientation.Y * e.Orientation.Y + e.Orientation.Z * e.Orientation.Z);
-            _yaw = (float)Math.Asin(-2 * (e.Orientation.X * e.Orientation.Z - e.Orientation.W * e.Orientation.Y));
-            
+            Vector3Helper.QuaternionToEuler(e.Orientation.X, e.Orientation.Y, e.Orientation.Z, e.Orientation.W,
+                out _yaw, out _pitch, out _roll);
+            _pitch *= -1;
+
+            Matrix.CreateFromQuaternion(ref _orientation, out worldTransform);
+            worldTransform.Translation = _position;
         }
 
         public void Update(TimeSpan elapsedTime, bool deviceActive)

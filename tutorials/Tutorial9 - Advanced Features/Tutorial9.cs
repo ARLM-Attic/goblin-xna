@@ -88,6 +88,9 @@ namespace Tutorial9___Advanced_Features
             Content.RootDirectory = "Content";
 
 #if WINDOWS_PHONE
+            // Extend battery life under lock.
+            InactiveSleepTime = TimeSpan.FromSeconds(1);
+
             graphics.IsFullScreen = true;
 #endif
         }

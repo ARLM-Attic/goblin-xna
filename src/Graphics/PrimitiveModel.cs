@@ -81,6 +81,8 @@ namespace GoblinXNA.Graphics
         protected Matrix tmpMat2;
         protected Vector3 tmpVec1;
 
+        protected BlendState origBlendState;
+
         #endregion
 
         #endregion
@@ -255,6 +257,12 @@ namespace GoblinXNA.Graphics
             set { showBoundingBox = value; }
         }
 
+        public virtual bool ContainsTransparency
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Gets the triangle count of this model
         /// </summary>
@@ -365,6 +373,9 @@ namespace GoblinXNA.Graphics
         /// <param name="renderMatrix">Transform of this model</param>
         public virtual void Render(ref Matrix renderMatrix, Material material)
         {
+            if (customMesh.NumberOfPrimitives == 0)
+                return;
+
             if ((shader.CurrentMaterial != material) || material.HasChanged)
             {
                 shader.SetParameters(material);
@@ -373,6 +384,12 @@ namespace GoblinXNA.Graphics
                     afterEffect.SetParameters(material);
 
                 material.HasChanged = false;
+            }
+
+            if (ContainsTransparency)
+            {
+                origBlendState = State.Device.BlendState;
+                State.AlphaBlendingEnabled = true;
             }
 
             shader.Render(
@@ -387,6 +404,9 @@ namespace GoblinXNA.Graphics
                     technique,
                     ResubmitGeometry);
             }
+
+            if (ContainsTransparency)
+                State.Device.BlendState = origBlendState;
 
             if (showBoundingBox)
                 RenderBoundingBox(ref renderMatrix);

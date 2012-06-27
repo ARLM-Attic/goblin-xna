@@ -8,8 +8,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Tutorial15 - OpenCV")]
 [assembly: AssemblyProduct("Tutorial15 - OpenCV")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyCopyright("Copyright ©  2011")]
+[assembly: AssemblyCompany("Columbia University")]
+[assembly: AssemblyCopyright("Copyright © Columbia University 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

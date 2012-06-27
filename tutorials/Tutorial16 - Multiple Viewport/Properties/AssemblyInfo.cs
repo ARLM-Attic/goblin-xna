@@ -9,9 +9,9 @@ using System.Resources;
 [assembly: AssemblyTitle("Tutorial16___Multiple_Viewport___Phone")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Columbia University")]
 [assembly: AssemblyProduct("Tutorial16___Multiple_Viewport___Phone")]
-[assembly: AssemblyCopyright("Copyright ©  2012")]
+[assembly: AssemblyCopyright("Copyright © Columbia University 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
