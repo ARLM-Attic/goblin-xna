@@ -216,8 +216,8 @@ namespace Tutorial6___Simple_Particle_Systems
             // Create a smoke particle effect and fire particle effect to simulate a
             // ring of fire around the torus model
 #if WINDOWS_PHONE
-            SmokePlumeParticleEffect smokeParticles = new SmokePlumeParticleEffect(20, spriteBatch);
-            FireParticleEffect fireParticles = new FireParticleEffect(40, spriteBatch);
+            SmokePlumeParticleEffect smokeParticles = new SmokePlumeParticleEffect(20);
+            FireParticleEffect fireParticles = new FireParticleEffect(40);
 #else
             SmokePlumeParticleEffect smokeParticles = new SmokePlumeParticleEffect();
             FireParticleEffect fireParticles = new FireParticleEffect();
@@ -242,8 +242,8 @@ namespace Tutorial6___Simple_Particle_Systems
             // Create another set of fire and smoke particle effects to simulate the fire
             // the ship catches when the ship passes the ring of fire
 #if WINDOWS_PHONE
-            FireParticleEffect shipFireEffect = new FireParticleEffect(150, spriteBatch);
-            SmokePlumeParticleEffect shipSmokeEffect = new SmokePlumeParticleEffect(80, spriteBatch);
+            FireParticleEffect shipFireEffect = new FireParticleEffect(150);
+            SmokePlumeParticleEffect shipSmokeEffect = new SmokePlumeParticleEffect(80);
             shipFireEffect.MinScale *= 1.5f;
             shipFireEffect.MaxScale *= 1.5f;
 #else

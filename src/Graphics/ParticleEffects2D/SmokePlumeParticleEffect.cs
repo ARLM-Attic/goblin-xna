@@ -25,13 +25,13 @@ namespace GoblinXNA.Graphics.ParticleEffects2D
     /// </summary>
     public class SmokePlumeParticleEffect : ParticleEffect
     {
-        public SmokePlumeParticleEffect(int howManyEffects, SpriteBatch spriteBatch)
-            : this(howManyEffects, spriteBatch, false)
+        public SmokePlumeParticleEffect(int howManyEffects)
+            : this(howManyEffects, false)
         {
         }
 
-        public SmokePlumeParticleEffect(int howManyEffects, SpriteBatch spriteBatch, bool computeIn3D)
-            : base(howManyEffects, spriteBatch, computeIn3D)
+        public SmokePlumeParticleEffect(int howManyEffects, bool computeIn3D)
+            : base(howManyEffects, computeIn3D)
         {
         }
 

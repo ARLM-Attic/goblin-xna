@@ -334,12 +334,10 @@ namespace GoblinXNA.Graphics.ParticleEffects2D
         /// </summary>
 		protected BlendState blendState;
 
-        private SpriteBatch spriteBatch;
-
         #endregion
 
-        protected ParticleEffect(int howManyEffects, SpriteBatch spriteBatch)
-            : this(howManyEffects, spriteBatch, false)
+        protected ParticleEffect(int howManyEffects)
+            : this(howManyEffects, false)
         {
         }
         
@@ -357,10 +355,9 @@ namespace GoblinXNA.Graphics.ParticleEffects2D
         /// However, this value should be set to the minimum possible, because
         /// it has a large impact on the amount of memory required, and slows down the
         /// Update and Draw functions.</remarks>
-        protected ParticleEffect(int howManyEffects, SpriteBatch spriteBatch, bool computeIn3D)
+        protected ParticleEffect(int howManyEffects, bool computeIn3D)
         {            
             this.howManyEffects = howManyEffects;
-            this.spriteBatch = spriteBatch;
             ComputeIn3D = computeIn3D;
             drawOrder = 0;
             enabled = true;
@@ -596,7 +593,7 @@ namespace GoblinXNA.Graphics.ParticleEffects2D
         {
             // tell sprite batch to begin, using the spriteBlendMode specified in
             // initializeConstants
-			spriteBatch.Begin(SpriteSortMode.Deferred, blendState);
+			State.SharedSpriteBatch.Begin(SpriteSortMode.Deferred, blendState);
 
             if (ComputeIn3D)
                 MatrixHelper.PrepareProject(renderMatrix, State.ViewMatrix, State.ProjectionMatrix);
@@ -640,11 +637,11 @@ namespace GoblinXNA.Graphics.ParticleEffects2D
                 else
                     drawPosition = p.Position;
 
-                spriteBatch.Draw(texture, drawPosition, null, color,
+                State.SharedSpriteBatch.Draw(texture, drawPosition, null, color,
                     p.Rotation, origin, scale, SpriteEffects.None, 0.0f);
             }
 
-            spriteBatch.End();
+            State.SharedSpriteBatch.End();
         }
 
         public int CompareTo(ParticleEffect other)

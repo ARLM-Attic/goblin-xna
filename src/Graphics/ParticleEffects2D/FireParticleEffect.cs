@@ -12,13 +12,13 @@ namespace GoblinXNA.Graphics.ParticleEffects2D
 {
     public class FireParticleEffect : ParticleEffect
     {
-        public FireParticleEffect(int howManyEffects, SpriteBatch spriteBatch)
-            : this(howManyEffects, spriteBatch, false)
+        public FireParticleEffect(int howManyEffects)
+            : this(howManyEffects, false)
         {
         }
 
-        public FireParticleEffect(int howManyEffects, SpriteBatch spriteBatch, bool computeIn3D)
-            : base(howManyEffects, spriteBatch, computeIn3D)
+        public FireParticleEffect(int howManyEffects, bool computeIn3D)
+            : base(howManyEffects, computeIn3D)
         {
         }
 
